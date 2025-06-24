@@ -3,7 +3,7 @@ requests==2.31.0
 python-telegram-bot==20.7
 
 # Tinkoff API (правильная версия)
-tinkoff-invest==1.3.2
+tinkoff-invest==1.0.5
 
 # Data analysis
 pandas==2.1.4
