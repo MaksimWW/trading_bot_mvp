@@ -192,3 +192,40 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# === ДОБАВЛЕНО ДЛЯ ТОРГОВОГО БОТА ===
+
+# Секретные данные и ключи
+.env
+config_secrets.py
+*.key
+*.token
+*.secret
+
+# Логи и временные файлы
+logs/*.log
+*.tmp
+*.cache
+
+# База данных
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# Торговые данные и бэкапы
+data/historical/*.csv
+data/backups/
+*.trade
+
+# Replit специфичные файлы
+.replit
+replit.nix
+.config/
+.cache/
+.upm/
+
+# Финансовые отчеты (конфиденциально)
+reports/
+*.xlsx
+*.pdf
+trading_results/
