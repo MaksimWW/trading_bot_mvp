@@ -1,16 +1,15 @@
-"""
-test_news_analyzer module for trading bot.
+"""Test module for news analyzer functionality."""
 
-This module provides functionality for the trading bot system.
-"""
-
-# TODO: Implement test_news_analyzer functionality
+import pytest
+from src.news_analyzer import main
 
 
-def main():
-    """Main function for test_news_analyzer module."""
-    pass
+def test_main_function_exists():
+    """Test that main function exists and is callable."""
+    assert callable(main)
 
 
-if __name__ == "__main__":
-    main()
+def test_main_function_runs():
+    """Test that main function runs without errors."""
+    result = main()
+    assert result is None  # main() returns None
