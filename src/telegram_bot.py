@@ -158,40 +158,31 @@ class TradingTelegramBot:
     async def price_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /price TICKER - получение цены акции"""
         try:
-            # Проверяем наличие тикера в команде
+            # Проверяем есть ли тикер в команде
             if not context.args:
                 await update.message.reply_text(
-                    "📝 **Укажите тикер акции**\n\n"
-                    "**Примеры:**\n"
-                    "• `/price SBER` - Сбербанк\n"
-                    "• `/price GAZP` - Газпром\n"
-                    "• `/price YNDX` - Яндекс",
+                    "📝 Укажите тикер акции. Например: `/price SBER`", 
                     parse_mode='Markdown'
                 )
                 return
-
+                
             ticker = context.args[0].upper()
-            await update.message.reply_text(f"🔍 Ищу цену для **{ticker}**...", parse_mode='Markdown')
+            await update.message.reply_text(f"🔍 Ищу цену для {ticker}...")
             logger.info(f"Запрос цены для тикера: {ticker}")
-
+            
             # Ищем инструмент
             instrument = self.tinkoff_client.search_instrument(ticker)
-
+            
             if not instrument:
                 await update.message.reply_text(
-                    f"❌ **Акция {ticker} не найдена**\n\n"
-                    "Проверьте правильность тикера или попробуйте:\n"
-                    "• `SBER` - Сбербанк\n"
-                    "• `GAZP` - Газпром\n"
-                    "• `YNDX` - Яндекс",
-                    parse_mode='Markdown'
+                    f"❌ Акция {ticker} не найдена. Проверьте тикер."
                 )
                 logger.warning(f"Инструмент {ticker} не найден")
                 return
-
+                
             # Получаем цену
             price_data = self.tinkoff_client.get_last_price(instrument.figi)
-
+            
             if not price_data:
                 await update.message.reply_text(
                     f"❌ Не удалось получить цену для {ticker}. Попробуйте позже."
@@ -201,26 +192,21 @@ class TradingTelegramBot:
 
             # Конвертируем цену
             price_rub = price_data.price.units + price_data.price.nano / 1_000_000_000
-
+            
             price_message = f"""
 💰 **{instrument.name}**
 
 📊 **Цена:** {price_rub:.2f} ₽
 🎯 **Тикер:** {ticker}
-🏛️ **Биржа:** {instrument.exchange}
-📋 **Тип:** {instrument.instrument_type}
-
 🔗 **FIGI:** `{instrument.figi}`
 
-⏰ **Время:** Актуально сейчас
-🏛️ **Источник:** Tinkoff Invest API (песочница)
-
-💡 **Попробуйте:** `/price GAZP` или `/accounts`
+⏰ Данные актуальны на: сейчас
+🏛️ Источник: Tinkoff Invest API (песочница)
             """
-
+            
             await update.message.reply_text(price_message, parse_mode='Markdown')
             logger.info(f"Цена {ticker} успешно получена: {price_rub:.2f} ₽")
-
+            
         except Exception as e:
             logger.error(f"Ошибка в команде price: {e}")
             ticker_name = context.args[0].upper() if context.args else 'акции'
