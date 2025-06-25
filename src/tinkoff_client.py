@@ -1,3 +1,4 @@
+
 import os
 from tinkoff.invest import Client
 from tinkoff.invest.constants import INVEST_GRPC_API_SANDBOX
@@ -68,7 +69,6 @@ class TinkoffClient:
             return None
 
 
-# Тестовая функция
 def test_connection():
     """Тестирование подключения"""
     print("🔄 Тестирование подключения к Tinkoff API...")
