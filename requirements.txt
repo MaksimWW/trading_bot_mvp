@@ -1,5 +1,5 @@
 
-tinkoff-invest==1.0.5
+tinkoff-investapi>=2.0.0
 python-dotenv>=1.0.0
 python-telegram-bot>=20.7
 openai>=1.6.0
