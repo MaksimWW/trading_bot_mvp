@@ -16,6 +16,7 @@ from telegram.ext import (
 
 from config import TELEGRAM_TOKEN
 from tinkoff_client import TinkoffClient
+from perplexity_client import PerplexityClient, PerplexityError
 
 # Настройка логирования
 logging.basicConfig(
@@ -31,6 +32,7 @@ class TradingTelegramBot:
         """Инициализация бота"""
         self.token = TELEGRAM_TOKEN
         self.tinkoff_client = TinkoffClient()
+        self.perplexity_client = PerplexityClient()
         self.application = None
         logger.info("🤖 Инициализация Trading Telegram Bot")
 
@@ -47,6 +49,7 @@ class TradingTelegramBot:
 • `/help` - список всех команд
 • `/status` - состояние системы
 • `/price SBER` - цена акции SBER
+• `/news SBER` - новости по акции SBER
 • `/accounts` - ваши торговые счета
 
 🛡️ **Безопасность:**
@@ -76,15 +79,16 @@ class TradingTelegramBot:
 
 💰 **Рыночные данные:**
 • `/price TICKER` - цена акции (например: `/price SBER`)
+• `/news TICKER` - новости по акции (например: `/news SBER`)
 • `/accounts` - список торговых счетов
 
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
+• `/news SBER` - новости по Сбербанку
 • `/price GAZP` - цена Газпрома
-• `/price YNDX` - цена Яндекса
+• `/news YNDX` - новости по Яндексу
 
 🚀 **Скоро добавим:**
-• 📰 Анализ новостей через OpenAI
 • 📈 Технические индикаторы (RSI, MACD)
 • 🎯 Торговые сигналы и стратегии
 • 🤖 Автоматизация сделок
@@ -273,6 +277,112 @@ class TradingTelegramBot:
                 parse_mode="Markdown",
             )
 
+    async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Команда /news TICKER - получение новостей по тикеру"""
+        try:
+            # Проверяем есть ли тикер в команде
+            if not context.args:
+                await update.message.reply_text(
+                    "📝 Укажите тикер акции. Пример: `/news SBER`",
+                    parse_mode="Markdown",
+                )
+                return
+
+            ticker = context.args[0].upper()
+            await update.message.reply_text(f"📰 Поиск новостей для {ticker}...")
+            logger.info(f"Запрос новостей для тикера: {ticker}")
+
+            # Получаем новости через Perplexity API
+            try:
+                news_list = self.perplexity_client.search_ticker_news(ticker, hours=24)
+                
+                if not news_list:
+                    await update.message.reply_text(
+                        f"📰 Новости по {ticker} не найдены за последние 24 часа.",
+                        parse_mode="Markdown"
+                    )
+                    logger.info(f"Новости для {ticker} не найдены")
+                    return
+
+                # Ограничиваем до первых 3 новостей
+                news_to_show = news_list[:3]
+                
+                news_message = f"📰 **Новости по {ticker} за 24 часа:**\n\n"
+                
+                for i, news_item in enumerate(news_to_show, 1):
+                    title = news_item.get('title', 'Без заголовка')
+                    content = news_item.get('content', 'Содержание недоступно')
+                    source = news_item.get('source', 'Неизвестный источник')
+                    url = news_item.get('url', '')
+                    timestamp = news_item.get('timestamp', '')
+                    news_type = news_item.get('type', 'news')
+                    
+                    # Обрезаем контент для краткости
+                    if len(content) > 300:
+                        content = content[:300] + "..."
+                    
+                    # Форматируем время
+                    time_str = ""
+                    if timestamp:
+                        try:
+                            from datetime import datetime
+                            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                            time_str = dt.strftime("%d.%m.%Y %H:%M")
+                        except:
+                            time_str = "сейчас"
+                    else:
+                        time_str = "сейчас"
+                    
+                    news_message += f"🔸 **{title}**\n"
+                    
+                    if news_type != "citation":  # Показываем контент только для основных новостей
+                        news_message += f"📄 {content}\n"
+                    
+                    news_message += f"🏢 Источник: {source}\n"
+                    
+                    if url and url.startswith('http'):
+                        news_message += f"🔗 [Читать полностью]({url})\n"
+                    
+                    news_message += f"⏰ Время: {time_str}\n\n"
+                    
+                    if i < len(news_to_show):
+                        news_message += "---\n\n"
+
+                # Дополнительная информация
+                if len(news_list) > 3:
+                    news_message += f"📊 Показано 3 из {len(news_list)} найденных новостей\n"
+                
+                news_message += f"🔄 Обновлено: сейчас\n"
+                news_message += f"🤖 Источник: Perplexity AI"
+
+                await update.message.reply_text(news_message, parse_mode="Markdown", disable_web_page_preview=True)
+                logger.info(f"Новости для {ticker} успешно отправлены: {len(news_to_show)} новостей")
+
+            except PerplexityError as e:
+                logger.error(f"Ошибка Perplexity API для {ticker}: {e}")
+                await update.message.reply_text(
+                    f"❌ Не удалось получить новости по {ticker}.\n"
+                    f"🔧 Причина: {str(e)}\n\n"
+                    f"💡 Попробуйте позже или проверьте `/status`",
+                    parse_mode="Markdown"
+                )
+                
+            except Exception as e:
+                logger.error(f"Неожиданная ошибка при получении новостей для {ticker}: {e}")
+                await update.message.reply_text(
+                    f"❌ Не удалось получить новости по {ticker}. Попробуйте позже.",
+                    parse_mode="Markdown"
+                )
+
+        except Exception as e:
+            logger.error(f"Ошибка в команде news: {e}")
+            ticker_name = context.args[0].upper() if context.args else "акции"
+            await update.message.reply_text(
+                f"❌ Ошибка при получении новостей {ticker_name}. "
+                f"Попробуйте позже.",
+                parse_mode="Markdown"
+            )
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработка неизвестных сообщений"""
         try:
@@ -307,6 +417,7 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("price", self.price_command))
+        self.application.add_handler(CommandHandler("news", self.news_command))
         self.application.add_handler(CommandHandler("accounts", self.accounts_command))
 
         # Обработка неизвестных сообщений
