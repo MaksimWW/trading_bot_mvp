@@ -1,5 +1,4 @@
 
-import os
 from tinkoff.invest import Client
 from tinkoff.invest.constants import INVEST_GRPC_API_SANDBOX
 from config import TINKOFF_TOKEN, TINKOFF_SANDBOX
