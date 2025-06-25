@@ -43,7 +43,7 @@ class PerplexityClient:
             raise ValueError("API ключ Perplexity не найден. Установите PERPLEXITY_API_KEY")
 
         self.base_url = "https://api.perplexity.ai"
-        self.model = "sonar-medium-online"
+        self.model = "sonar"
         self.timeout = 30
         self.max_retries = 3
         self.retry_delay = 1
