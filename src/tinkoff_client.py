@@ -90,7 +90,7 @@ def test_connection():
     print("\n🔍 Тест 2: Поиск акции SBER")
     sber = client.search_instrument("SBER")
     if sber:
-        print(f"✅ Успешно! Найдена акция:")
+        print("✅ Успешно! Найдена акция:")
         print(f"  - Название: {sber.name}")
         print(f"  - FIGI: {sber.figi}")
         print(f"  - Тикер: {sber.ticker}")
