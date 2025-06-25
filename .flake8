@@ -1,0 +1,21 @@
+[flake8]
+# Конфигурация flake8 для торгового бота
+max-line-length = 100
+max-complexity = 10
+
+# Игнорируем определенные ошибки (без комментариев в списке)
+ignore = E203,W503,E501
+
+# Исключаем определенные файлы
+exclude = 
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .venv,
+    venv,
+    .env
+
+# Коды ошибок:
+# E203 - whitespace before ':'
+# W503 - line break before binary operator  
+# E501 - line too long
