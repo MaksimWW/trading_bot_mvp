@@ -115,9 +115,7 @@ class TradingTelegramBot:
                 if accounts:
                     tinkoff_status = "✅ Подключен"
                     accounts_count = len(accounts)
-                    logger.info(
-                        f"Tinkoff API работает, найдено счетов: {accounts_count}"
-                    )
+                    logger.info(f"Tinkoff API работает, найдено счетов: {accounts_count}")
                 else:
                     logger.warning("Tinkoff API: счета не найдены")
             except Exception as e:
@@ -148,8 +146,7 @@ class TradingTelegramBot:
 
             if accounts_count == 0:
                 status_message += (
-                    "\n⚠️ **Рекомендация:** "
-                    "Проверьте настройки Tinkoff API в конфигурации."
+                    "\n⚠️ **Рекомендация:** " "Проверьте настройки Tinkoff API в конфигурации."
                 )
 
             await update.message.reply_text(status_message, parse_mode="Markdown")
@@ -179,9 +176,7 @@ class TradingTelegramBot:
             instrument = self.tinkoff_client.search_instrument(ticker)
 
             if not instrument:
-                await update.message.reply_text(
-                    f"❌ Акция {ticker} не найдена. Проверьте тикер."
-                )
+                await update.message.reply_text(f"❌ Акция {ticker} не найдена. Проверьте тикер.")
                 logger.warning(f"Инструмент {ticker} не найден")
                 return
 
@@ -219,9 +214,7 @@ class TradingTelegramBot:
                 f"❌ Ошибка при получении цены {ticker_name}. " f"Попробуйте позже."
             )
 
-    async def accounts_command(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    async def accounts_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /accounts - список торговых счетов"""
         try:
             await update.message.reply_text(
@@ -249,9 +242,7 @@ class TradingTelegramBot:
             for i, account in enumerate(accounts, 1):
                 account_id = account.id
                 account_name = account.name if account.name else f"Счет {i}"
-                account_type = (
-                    account.type.name if hasattr(account, "type") else "UNSPECIFIED"
-                )
+                account_type = account.type.name if hasattr(account, "type") else "UNSPECIFIED"
 
                 accounts_message += f"""
 **🏦 Счет {i}:**
@@ -278,8 +269,7 @@ class TradingTelegramBot:
         except Exception as e:
             logger.error(f"Ошибка в команде accounts: {e}")
             await update.message.reply_text(
-                "❌ **Ошибка при получении счетов**\n\n"
-                "Попробуйте позже или проверьте `/status`",
+                "❌ **Ошибка при получении счетов**\n\n" "Попробуйте позже или проверьте `/status`",
                 parse_mode="Markdown",
             )
 
