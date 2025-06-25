@@ -9,6 +9,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TINKOFF_TOKEN = os.getenv("TINKOFF_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 
 # Настройки Tinkoff API
 TINKOFF_SANDBOX = True  # True для песочницы, False для реальной торговли
