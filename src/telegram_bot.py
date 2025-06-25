@@ -1,25 +1,25 @@
-
 """
 Telegram Bot для управления торговым ботом
 Полная базовая версия с основными командами и интеграцией
 """
 
 import logging
+
 from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
     MessageHandler,
-    filters
+    filters,
 )
+
 from config import TELEGRAM_TOKEN
 from tinkoff_client import TinkoffClient
 
 # Настройка логирования
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class TradingTelegramBot:
 
 📋 **Доступные команды:**
 • `/help` - список всех команд
-• `/status` - состояние системы  
+• `/status` - состояние системы
 • `/price SBER` - цена акции SBER
 • `/accounts` - ваши торговые счета
 
@@ -56,7 +56,7 @@ class TradingTelegramBot:
 
 🚀 **Начните с команды** `/status` для проверки подключений!
             """
-            await update.message.reply_text(welcome_message, parse_mode='Markdown')
+            await update.message.reply_text(welcome_message, parse_mode="Markdown")
             logger.info(f"Пользователь {user_name} запустил бота")
 
         except Exception as e:
@@ -80,7 +80,7 @@ class TradingTelegramBot:
 
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
-• `/price GAZP` - цена Газпрома  
+• `/price GAZP` - цена Газпрома
 • `/price YNDX` - цена Яндекса
 
 🚀 **Скоро добавим:**
@@ -93,7 +93,7 @@ class TradingTelegramBot:
 
 ⚠️ **Помните:** Работаем в безопасной песочнице!
             """
-            await update.message.reply_text(help_message, parse_mode='Markdown')
+            await update.message.reply_text(help_message, parse_mode="Markdown")
             logger.info("Пользователь запросил справку")
 
         except Exception as e:
@@ -109,13 +109,15 @@ class TradingTelegramBot:
             # Проверяем подключение к Tinkoff API
             tinkoff_status = "❌ Ошибка"
             accounts_count = 0
-            
+
             try:
                 accounts = self.tinkoff_client.get_accounts()
                 if accounts:
                     tinkoff_status = "✅ Подключен"
                     accounts_count = len(accounts)
-                    logger.info(f"Tinkoff API работает, найдено счетов: {accounts_count}")
+                    logger.info(
+                        f"Tinkoff API работает, найдено счетов: {accounts_count}"
+                    )
                 else:
                     logger.warning("Tinkoff API: счета не найдены")
             except Exception as e:
@@ -145,9 +147,12 @@ class TradingTelegramBot:
             """
 
             if accounts_count == 0:
-                status_message += "\n⚠️ **Рекомендация:** Проверьте настройки Tinkoff API в конфигурации."
+                status_message += (
+                    "\n⚠️ **Рекомендация:** "
+                    "Проверьте настройки Tinkoff API в конфигурации."
+                )
 
-            await update.message.reply_text(status_message, parse_mode='Markdown')
+            await update.message.reply_text(status_message, parse_mode="Markdown")
 
         except Exception as e:
             logger.error(f"Ошибка в команде status: {e}")
@@ -161,28 +166,28 @@ class TradingTelegramBot:
             # Проверяем есть ли тикер в команде
             if not context.args:
                 await update.message.reply_text(
-                    "📝 Укажите тикер акции. Например: `/price SBER`", 
-                    parse_mode='Markdown'
+                    "📝 Укажите тикер акции. Например: `/price SBER`",
+                    parse_mode="Markdown",
                 )
                 return
-                
+
             ticker = context.args[0].upper()
             await update.message.reply_text(f"🔍 Ищу цену для {ticker}...")
             logger.info(f"Запрос цены для тикера: {ticker}")
-            
+
             # Ищем инструмент
             instrument = self.tinkoff_client.search_instrument(ticker)
-            
+
             if not instrument:
                 await update.message.reply_text(
                     f"❌ Акция {ticker} не найдена. Проверьте тикер."
                 )
                 logger.warning(f"Инструмент {ticker} не найден")
                 return
-                
+
             # Получаем цену
             price_data = self.tinkoff_client.get_last_price(instrument.figi)
-            
+
             if not price_data:
                 await update.message.reply_text(
                     f"❌ Не удалось получить цену для {ticker}. Попробуйте позже."
@@ -192,7 +197,7 @@ class TradingTelegramBot:
 
             # Конвертируем цену
             price_rub = price_data.price.units + price_data.price.nano / 1_000_000_000
-            
+
             price_message = f"""
 💰 **{instrument.name}**
 
@@ -203,21 +208,25 @@ class TradingTelegramBot:
 ⏰ Данные актуальны на: сейчас
 🏛️ Источник: Tinkoff Invest API (песочница)
             """
-            
-            await update.message.reply_text(price_message, parse_mode='Markdown')
+
+            await update.message.reply_text(price_message, parse_mode="Markdown")
             logger.info(f"Цена {ticker} успешно получена: {price_rub:.2f} ₽")
-            
+
         except Exception as e:
             logger.error(f"Ошибка в команде price: {e}")
-            ticker_name = context.args[0].upper() if context.args else 'акции'
+            ticker_name = context.args[0].upper() if context.args else "акции"
             await update.message.reply_text(
-                f"❌ Ошибка при получении цены {ticker_name}. Попробуйте позже."
+                f"❌ Ошибка при получении цены {ticker_name}. " f"Попробуйте позже."
             )
 
-    async def accounts_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def accounts_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         """Команда /accounts - список торговых счетов"""
         try:
-            await update.message.reply_text("🔍 Получаю информацию о торговых счетах...", parse_mode='Markdown')
+            await update.message.reply_text(
+                "🔍 Получаю информацию о торговых счетах...", parse_mode="Markdown"
+            )
             logger.info("Запрос списка торговых счетов")
 
             accounts = self.tinkoff_client.get_accounts()
@@ -230,7 +239,7 @@ class TradingTelegramBot:
                     "• Неверный токен API\n"
                     "• Счета не созданы в песочнице\n\n"
                     "💡 Попробуйте команду `/status` для диагностики",
-                    parse_mode='Markdown'
+                    parse_mode="Markdown",
                 )
                 logger.warning("Торговые счета не найдены")
                 return
@@ -240,7 +249,9 @@ class TradingTelegramBot:
             for i, account in enumerate(accounts, 1):
                 account_id = account.id
                 account_name = account.name if account.name else f"Счет {i}"
-                account_type = account.type.name if hasattr(account, 'type') else "UNSPECIFIED"
+                account_type = (
+                    account.type.name if hasattr(account, "type") else "UNSPECIFIED"
+                )
 
                 accounts_message += f"""
 **🏦 Счет {i}:**
@@ -261,7 +272,7 @@ class TradingTelegramBot:
 ⚠️ **Помните:** Это тестовые счета, реальные деньги не используются!
             """
 
-            await update.message.reply_text(accounts_message, parse_mode='Markdown')
+            await update.message.reply_text(accounts_message, parse_mode="Markdown")
             logger.info(f"Список счетов успешно отправлен: {len(accounts)} счетов")
 
         except Exception as e:
@@ -269,7 +280,7 @@ class TradingTelegramBot:
             await update.message.reply_text(
                 "❌ **Ошибка при получении счетов**\n\n"
                 "Попробуйте позже или проверьте `/status`",
-                parse_mode='Markdown'
+                parse_mode="Markdown",
             )
 
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -291,7 +302,7 @@ class TradingTelegramBot:
 
 🚀 Или напишите `/start` для знакомства с ботом.
             """
-            await update.message.reply_text(response_message, parse_mode='Markdown')
+            await update.message.reply_text(response_message, parse_mode="Markdown")
 
         except Exception as e:
             logger.error(f"Ошибка в обработке неизвестной команды: {e}")
@@ -319,8 +330,8 @@ class TradingTelegramBot:
         """Запуск бота"""
         try:
             if not self.token:
-                logger.error("❌ TELEGRAM_TOKEN не найден в переменных окружения")
-                print("❌ Ошибка: TELEGRAM_TOKEN не настроен в .env файле")
+                logger.error("❌ TELEGRAM_TOKEN не найден в " "переменных окружения")
+                print("❌ Ошибка: TELEGRAM_TOKEN не настроен " "в .env файле")
                 return
 
             # Создаем приложение
@@ -339,8 +350,7 @@ class TradingTelegramBot:
 
             # Запускаем бота
             self.application.run_polling(
-                allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True
+                allowed_updates=Update.ALL_TYPES, drop_pending_updates=True
             )
 
         except Exception as e:

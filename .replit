@@ -2,7 +2,7 @@ run = "python main.py"
 modules = ["python-3.11"]
 [nix]
 channel = "stable-24_05"
-packages = ["glibcLocales"]
+packages = ["glibcLocales", "python311Packages.flake8"]
 
 [deployment]
 run = ["sh", "-c", "python main.py"]
