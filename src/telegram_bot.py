@@ -272,7 +272,7 @@ class TradingTelegramBot:
                 summary.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             )
             source_escaped = source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            result_text += """<b>{i}. {title_escaped}</b>
+            result_text += f"""<b>{i}. {title_escaped}</b>
 📝 {summary_escaped}
 🌐 {source_escaped}
 """
