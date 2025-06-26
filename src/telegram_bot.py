@@ -217,7 +217,7 @@ class TradingTelegramBot:
                 f"❌ Ошибка при получении цены {ticker_name}. " f"Попробуйте позже."
             )
 
-    def _format_news_result(self, ticker: str, news_results: List) -> str:
+    async def _format_news_result(self, ticker: str, news_results: List) -> str:
         """Форматирование результатов новостей"""
         if not news_results:
             return f"""📰 <b>НОВОСТИ ПО {ticker}</b>
@@ -249,11 +249,10 @@ class TradingTelegramBot:
         sentiment_block = ""
         try:
             if len(news_results) > 0:
-                import asyncio
                 from openai_analyzer import OpenAIAnalyzer
                 
                 analyzer = OpenAIAnalyzer()
-                sentiment_result = asyncio.run(analyzer.analyze_sentiment(ticker, news_results[:3]))
+                sentiment_result = await analyzer.analyze_sentiment(ticker, news_results[:3])
                 
                 if sentiment_result:
                     emoji_map = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}
@@ -407,7 +406,7 @@ class TradingTelegramBot:
 
                 perplexity = PerplexityClient()
                 news_results = perplexity.search_ticker_news(ticker, hours=24)
-                result_text = self._format_news_result(ticker, news_results)
+                result_text = await self._format_news_result(ticker, news_results)
 
             except ImportError:
                 result_text = f"""❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
