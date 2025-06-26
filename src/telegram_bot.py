@@ -16,8 +16,8 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
-from tinkoff_client import TinkoffClient
 from technical_analysis import get_technical_analyzer
+from tinkoff_client import TinkoffClient
 
 # Настройка логирования
 logging.basicConfig(
@@ -393,29 +393,27 @@ class TradingTelegramBot:
                 "• `/analysis YNDX` - анализ Яндекса\n\n"
                 "📈 Включает: RSI, MACD, скользящие средние, Боллинджер\n"
                 "⏱️ Время обработки: 3-8 секунд",
-                parse_mode="Markdown"
+                parse_mode="Markdown",
             )
             return
 
         ticker = context.args[0].upper()
-        
+
         loading_msg = await update.message.reply_text(
             f"📊 Выполняю технический анализ *{ticker}*...\n"
             f"📈 Рассчитываю RSI, MACD, скользящие средние...",
-            parse_mode="Markdown"
+            parse_mode="Markdown",
         )
-        
+
         try:
             from technical_analysis import get_ticker_analysis_for_telegram
+
             result_text = await get_ticker_analysis_for_telegram(ticker)
-            
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode="Markdown"
-            )
-            
+
+            await loading_msg.edit_text(result_text, parse_mode="Markdown")
+
             logger.info(f"Технический анализ {ticker} завершен успешно")
-            
+
         except Exception as e:
             error_msg = f"❌ *Ошибка технического анализа {ticker}*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
@@ -423,11 +421,8 @@ class TradingTelegramBot:
             error_msg += f"• Проверить тикер (SBER, GAZP, YNDX)\n"
             error_msg += f"• Повторить запрос через несколько секунд\n"
             error_msg += f"• Использовать /status для проверки систем"
-            
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode="Markdown"
-            )
+
+            await loading_msg.edit_text(error_msg, parse_mode="Markdown")
             logger.error(f"Analysis command error for {ticker}: {e}")
 
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
