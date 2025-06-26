@@ -71,7 +71,8 @@ class TechnicalAnalyzer:
             # Необходимо добавить метод get_candles в TinkoffClient
             # Пример: candles = self.tinkoff.get_candles(figi, days)
             logger.warning(
-                "Используются тестовые данные для %s. Требуется реализация get_candles в TinkoffClient", ticker
+                "Используются тестовые данные для %s. Требуется реализация get_candles в TinkoffClient",
+                ticker,
             )
 
             # Генерируем тестовые данные для разработки
@@ -445,7 +446,7 @@ class TechnicalAnalyzer:
 
             # Анализ SMA 20/50
             sma_analysis = self._analyze_sma_crossover(ma_data, signals, descriptions)
-            
+
             # Анализ позиции цены относительно SMA 20
             price_analysis = self._analyze_price_vs_sma20(current_price, ma_data, descriptions)
 
@@ -486,7 +487,7 @@ class TechnicalAnalyzer:
             sma_20 = ma_data["sma_20"].dropna()
             if len(sma_20) > 0:
                 current_sma_20 = sma_20.iloc[-1]
-                price_change = ((current_price/current_sma_20 - 1) * 100)
+                price_change = (current_price / current_sma_20 - 1) * 100
                 if current_price > current_sma_20:
                     descriptions.append(f"Цена выше SMA 20 (+{price_change:.1f}%)")
                 else:
@@ -819,6 +820,7 @@ def main():
 
     print("Тестирование Technical Analyzer...")
     import asyncio
+
     asyncio.run(test_analysis())
 
 

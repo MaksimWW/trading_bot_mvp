@@ -168,10 +168,18 @@ class SignalGenerator:
                 print(f"DEBUG: signal = {signal}")
 
                 result = self._create_result(
-                    ticker, technical_result, signal, emoji, 
-                    combined_score, combined_confidence, tech_signal,
-                    technical_score, technical_confidence,
-                    news_result, news_score, news_confidence
+                    ticker,
+                    technical_result,
+                    signal,
+                    emoji,
+                    combined_score,
+                    combined_confidence,
+                    tech_signal,
+                    technical_score,
+                    technical_confidence,
+                    news_result,
+                    news_score,
+                    news_confidence,
                 )
 
                 print("DEBUG: Результат сформирован успешно")
@@ -295,10 +303,19 @@ class SignalGenerator:
         return signal, emoji
 
     def _create_result(
-        self, ticker: str, technical_result: Optional[Dict], signal: str, emoji: str, 
-        combined_score: float, combined_confidence: float, tech_signal: str,
-        technical_score: float, technical_confidence: float,
-        news_result: Optional[Dict], news_score: float, news_confidence: float
+        self,
+        ticker: str,
+        technical_result: Optional[Dict],
+        signal: str,
+        emoji: str,
+        combined_score: float,
+        combined_confidence: float,
+        tech_signal: str,
+        technical_score: float,
+        technical_confidence: float,
+        news_result: Optional[Dict],
+        news_score: float,
+        news_confidence: float,
     ) -> Dict:
         """Формирование результата."""
 
