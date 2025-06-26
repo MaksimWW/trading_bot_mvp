@@ -7,7 +7,6 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 try:
-    import numpy as np
     import pandas as pd
 
     from technical_analysis import TechnicalAnalyzer
