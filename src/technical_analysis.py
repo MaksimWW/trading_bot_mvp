@@ -46,7 +46,9 @@ class TechnicalAnalyzer:
 
     def calculate_rsi(self, prices, period=14):
         """Заглушка для расчета RSI"""
-        import pandas as pd; return pd.Series([50.0] * len(prices))
+        import pandas as pd
+
+        return pd.Series([50.0] * len(prices))
 
 
 # Функции-обертки для совместимости с существующим кодом
