@@ -345,7 +345,7 @@ class TradingTelegramBot:
 """
                     for i, news in enumerate(news_results[:3], 1):
                         title = news.get('title', 'Без заголовка')
-                        summary = news.get('summary', 'Описание отсутствует')
+                        summary = news.get('content', news.get('summary', 'Описание отсутствует'))
                         source = news.get('source', 'Неизвестный источник')
                         
                         # Обрезаем длинные тексты
