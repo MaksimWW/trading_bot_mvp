@@ -1,6 +1,7 @@
 """Test module for technical analysis functionality."""
 
 import pytest
+
 from src.technical_analysis import main
 
 

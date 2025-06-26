@@ -1,6 +1,7 @@
 """Test module for risk manager functionality."""
 
 import pytest
+
 from src.risk_manager import main
 
 
