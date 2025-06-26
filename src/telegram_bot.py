@@ -217,7 +217,7 @@ class TradingTelegramBot:
                     emoji = emoji_map.get(result.get("sentiment_label", "HOLD"), "⚪")
                     score = result.get("sentiment_score", 0.0)
                     summary = result.get("summary", "Анализ недоступен")
-                    return """
+                    return f"""
 🤖 **АНАЛИЗ НАСТРОЕНИЯ AI:**
 {emoji} **Рекомендация:** {result.get("sentiment_label", "HOLD")}
 📊 **Оценка:** {score:.2f} (от -1.0 до +1.0)
