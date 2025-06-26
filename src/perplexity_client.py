@@ -311,7 +311,7 @@ class PerplexityClient:
 def _check_api_key() -> str:
     """Проверка наличия API ключа"""
     import os
-    
+
     api_key = os.getenv("PERPLEXITY_API_KEY")
     if not api_key:
         print("❌ PERPLEXITY_API_KEY не найден в переменных окружения!")
@@ -319,6 +319,7 @@ def _check_api_key() -> str:
         print("   PERPLEXITY_API_KEY=your_api_key_here")
         return None
     return api_key
+
 
 def _initialize_client(api_key: str) -> PerplexityClient:
     """Инициализация и тестирование клиента"""
@@ -333,6 +334,7 @@ def _initialize_client(api_key: str) -> PerplexityClient:
     else:
         print("❌ Тест подключения не прошел!")
         return None
+
 
 def _test_ticker_news(client: PerplexityClient, ticker: str) -> None:
     """Тестирование поиска новостей для одного тикера"""
@@ -361,6 +363,7 @@ def _test_ticker_news(client: PerplexityClient, ticker: str) -> None:
         print(f"❌ Ошибка для {ticker}: {e}")
     except Exception as e:
         print(f"❌ Неожиданная ошибка для {ticker}: {e}")
+
 
 def main():
     """Функция для тестирования клиента"""
