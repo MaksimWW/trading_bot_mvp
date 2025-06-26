@@ -388,7 +388,7 @@ class TradingTelegramBot:
             logger.error(f"Ошибка в команде news: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
             await update.message.reply_text(
-                "❌ Ошибка при анализе новостей {ticker_name}. " "Попробуйте позже.",
+                f"❌ Ошибка при анализе новостей {ticker_name}. Попробуйте позже.",
                 parse_mode="HTML",
             )
 
