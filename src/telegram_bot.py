@@ -238,8 +238,10 @@ class TradingTelegramBot:
 ⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления."""
 
         # Форматируем найденные новости
-        sources = list(set(news.get('source', 'Неизвестно') for news in news_results if news.get('source')))
-        sources_text = ', '.join(sources[:3])
+        sources = list(
+            set(news.get("source", "Неизвестно") for news in news_results if news.get("source"))
+        )
+        sources_text = ", ".join(sources[:3])
         if len(sources) > 3:
             sources_text += f" и ещё {len(sources) - 3}"
 
@@ -254,9 +256,9 @@ class TradingTelegramBot:
 
 """
         for i, news in enumerate(news_results[:3], 1):
-            title = news.get('title', 'Без заголовка')
-            summary = news.get('content', news.get('summary', 'Описание отсутствует'))
-            source = news.get('source', 'Неизвестный источник')
+            title = news.get("title", "Без заголовка")
+            summary = news.get("content", news.get("summary", "Описание отсутствует"))
+            source = news.get("source", "Неизвестный источник")
 
             if len(title) > 80:
                 title = title[:77] + "..."
@@ -264,9 +266,11 @@ class TradingTelegramBot:
                 summary = summary[:147] + "..."
 
             # Экранируем HTML символы
-            title_escaped = title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            summary_escaped = summary.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            source_escaped = source.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            title_escaped = title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            summary_escaped = (
+                summary.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            )
+            source_escaped = source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
             result_text += f"""<b>{i}. {title_escaped}</b>
 📝 {summary_escaped}
