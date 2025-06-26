@@ -269,7 +269,7 @@ class TradingTelegramBot:
                     sentiment_block = f"""
 🤖 <b>АНАЛИЗ НАСТРОЕНИЯ AI:</b>
 {emoji} <b>Рекомендация:</b> {sentiment_result.get("sentiment_label", "HOLD")}
-📊 <b>Оценка:</b> {score:.2f} (от -1.0 до +1.0)  
+📊 <b>Оценка:</b> {score:.2f} (от -1.0 до +1.0)
 📝 <b>Анализ:</b> {summary}
 """
         except Exception as e:
