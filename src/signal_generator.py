@@ -94,20 +94,33 @@ class SignalGenerator:
             # Получение технического сигнала
             technical_score = 0
             technical_confidence = 0
-            if technical_result and technical_result.get('success'):
-                overall_signal = technical_result.get('overall_signal', {})
-                tech_signal = overall_signal.get('signal', 'UNKNOWN') if overall_signal else 'UNKNOWN'
-                technical_score = signal_values.get(tech_signal, 0)
-                technical_confidence = overall_signal.get('confidence', 0) if overall_signal else 0
+            try:
+                print("DEBUG: Обрабатываем технический результат...")
+                if technical_result and technical_result.get('success'):
+                    overall_signal = technical_result.get('overall_signal', {})
+                    tech_signal = overall_signal.get('signal', 'UNKNOWN') if overall_signal else 'UNKNOWN'
+                    technical_score = signal_values.get(tech_signal, 0)
+                    technical_confidence = overall_signal.get('confidence', 0) if overall_signal else 0
+                    print(f"DEBUG: Технический сигнал: {tech_signal}, score: {technical_score}")
+            except Exception as e:
+                print(f"DEBUG: Ошибка в техническом анализе: {e}")
+                raise
             
             # Получение новостного сигнала  
             news_score = 0
             news_confidence = 0
-            if news_result and news_result.get('success') and news_result.get('sentiment'):
-                sentiment = news_result.get('sentiment', {})
-                sentiment_score = sentiment.get('sentiment_score', 0) if sentiment else 0
-                news_score = sentiment_score * 2  # Преобразуем [-1,1] в [-2,2]
-                news_confidence = sentiment.get('confidence', 0) if sentiment else 0
+            try:
+                print("DEBUG: Обрабатываем новостной результат...")
+                if news_result and news_result.get('success') and news_result.get('sentiment'):
+                    sentiment = news_result.get('sentiment', {})
+                    if sentiment:
+                        sentiment_score = sentiment.get('sentiment_score', 0)
+                        news_score = sentiment_score * 2  # Преобразуем [-1,1] в [-2,2]
+                        news_confidence = sentiment.get('confidence', 0)
+                        print(f"DEBUG: Новостной сигнал: sentiment_score={sentiment_score}, news_score={news_score}")
+            except Exception as e:
+                print(f"DEBUG: Ошибка в новостном анализе: {e}")
+                raise
             
             # Взвешенное комбинирование
             combined_score = (
