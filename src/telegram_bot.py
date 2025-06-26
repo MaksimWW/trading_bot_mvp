@@ -1,3 +1,5 @@
+from datetime import datetime
+
 """
 Telegram Bot для управления торговым ботом
 Полная базовая версия с основными командами и интеграцией
@@ -277,7 +279,7 @@ class TradingTelegramBot:
 🌐 {source_escaped}
 """
         if len(news_results) > 3:
-            result_text += "📋 И ещё {len(news_results) - 3} новостей...\n\n"
+            result_text += f"📋 И ещё {len(news_results) - 3} новостей...\n\n"
         result_text += """🕐 <b>Время анализа:</b> {ticker} проанализирован
 💡 <b>Что дальше?</b>
 - <code>/price {ticker}</code> - текущая цена
@@ -447,49 +449,51 @@ class TradingTelegramBot:
         """Format risk analysis result text."""
         if not position_analysis.get("approved", False):
             result_text = f"❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
-            result_text += f"🚫 *Позиция отклонена*\n"
-            result_text += f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
-            result_text += f"💡 Рекомендации:\n"
-            result_text += f"• Снизьте размер позиции\n"
-            result_text += f"• Используйте более близкий стоп-лосс\n"
-            result_text += f"• Дождитесь лучших условий"
+            result_text += "🚫 *Позиция отклонена*\n"
+            result_text += (
+                f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
+            )
+            result_text += "💡 Рекомендации:\n"
+            result_text += "• Снизьте размер позиции\n"
+            result_text += "• Используйте более близкий стоп-лосс\n"
+            result_text += "• Дождитесь лучших условий"
             return result_text
 
         risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🟠", "EXTREME": "🔴"}
         emoji = risk_emoji.get(position_analysis["risk_level"], "⚪")
 
         result_text = f"⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
-        result_text += f"💰 *Параметры позиции:*\n"
+        result_text += "💰 *Параметры позиции:*\n"
         result_text += f"📈 Цена входа: {entry_price:.2f} ₽\n"
         result_text += f"🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
         result_text += f"🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
 
-        result_text += f"📊 *Рекомендуемая позиция:*\n"
+        result_text += "📊 *Рекомендуемая позиция:*\n"
         result_text += f"🔢 Количество акций: {position_analysis['shares_count']}\n"
         result_text += f"💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
         result_text += f"📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
 
-        result_text += f"⚖️ *Анализ рисков:*\n"
+        result_text += "⚖️ *Анализ рисков:*\n"
         result_text += f"{emoji} Уровень риска: {position_analysis['risk_level']}\n"
         result_text += f"💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
         result_text += f"📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
         result_text += f"⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
 
-        result_text += f"💡 *Рекомендация:*\n"
+        result_text += "💡 *Рекомендация:*\n"
         result_text += f"{position_analysis['recommendation']}\n\n"
 
-        result_text += f"📋 *Дополнительно:*\n"
+        result_text += "📋 *Дополнительно:*\n"
         result_text += f"• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
-        result_text += f"• Волатильность: Нормальная\n"
-        result_text += f"• Ликвидность: Высокая\n\n"
+        result_text += "• Волатильность: Нормальная\n"
+        result_text += "• Ликвидность: Высокая\n\n"
 
-        result_text += f"*🛠️ Дополнительные команды:*\n"
+        result_text += "*🛠️ Дополнительные команды:*\n"
         result_text += f"• `/price {ticker}` - текущая цена\n"
         result_text += f"• `/analysis {ticker}` - технический анализ\n"
         result_text += f"• `/news {ticker}` - анализ новостей\n\n"
 
-        result_text += f"⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
-        result_text += f"Скорректируйте размер позиции под ваш реальный депозит."
+        result_text += "⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
+        result_text += "Скорректируйте размер позиции под ваш реальный депозит."
 
         return result_text
 
@@ -609,8 +613,8 @@ class TradingTelegramBot:
 
             # Общая статистика
             result_text += "📈 *Общая статистика:*\n"
-            result_text += "🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
-            result_text += "⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
+            result_text += f"🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
+            result_text += f"⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
             result_text += (
                 "📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
             )
@@ -641,18 +645,18 @@ class TradingTelegramBot:
             if "sector_exposure" in portfolio_analysis:
                 result_text += "🏭 *Секторальное распределение:*\n"
                 for sector, exposure in portfolio_analysis["sector_exposure"].items():
-                    result_text += "• {sector}: {exposure:.1f}%\n"
+                    result_text += f"• {sector}: {exposure:.1f}%\n"
                 result_text += "\n"
 
             # Рекомендации
             result_text += "💡 *Рекомендации:*\n"
             for recommendation in portfolio_analysis["recommendations"]:
-                result_text += "• {recommendation}\n"
+                result_text += f"• {recommendation}\n"
             result_text += "\n"
 
             # Лимиты риск-менеджмента
             result_text += "⚙️ *Настройки риск-менеджмента:*\n"
-            result_text += "• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
+            result_text += f"• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
             result_text += "• Макс. позиция: 5.0% депозита\n"
             result_text += "• Макс. дневной убыток: 3.0%\n"
             result_text += "• Макс. сделок в день: 5\n\n"
@@ -698,17 +702,17 @@ class TradingTelegramBot:
 
             # Статус системы
             result_text += "⚙️ *Статус системы:*\n"
-            result_text += "🟢 Режим: {trading_engine.mode.value} (Виртуальная торговля)\n"
+            result_text += f"🟢 Режим: {trading_engine.mode.value} (Виртуальная торговля)\n"
             result_text += "📊 Анализ новостей: ✅ Активен\n"
             result_text += "📈 Технический анализ: ✅ Активен\n"
             result_text += "⚖️ Risk Management: ✅ Активен\n\n"
 
             # Настройки автоматизации
             result_text += "🎛️ *Настройки автоматизации:*\n"
-            result_text += "• Мин. сила сигнала: {trading_engine.min_signal_strength.value}\n"
-            result_text += "• Мин. уверенность: {trading_engine.min_confidence:.1f}\n"
-            result_text += "• Интервал сканирования: {trading_engine.scan_interval//60} мин\n"
-            result_text += "• Список наблюдения: {', '.join(trading_engine.watchlist)}\n\n"
+            result_text += f"• Мин. сила сигнала: {trading_engine.min_signal_strength.value}\n"
+            result_text += f"• Мин. уверенность: {trading_engine.min_confidence:.1f}\n"
+            result_text += f"• Интервал сканирования: {trading_engine.scan_interval//60} мин\n"
+            result_text += f"• Список наблюдения: {', '.join(trading_engine.watchlist)}\n\n"
 
             # Демонстрация сигнала
             if signal:
@@ -722,9 +726,9 @@ class TradingTelegramBot:
                 result_text += f"💪 Сила: {signal.strength.value}\n"
                 result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
                 result_text += f"💡 Обоснование: {signal.reasoning}\n"
-                result_text += "💰 Вход: {signal.entry_price:.2f} ₽\n"
-                result_text += "🛑 Стоп: {signal.stop_loss:.2f} ₽\n"
-                result_text += "🎯 Цель: {signal.take_profit:.2f} ₽\n\n"
+                result_text += f"💰 Вход: {signal.entry_price:.2f} ₽\n"
+                result_text += f"🛑 Стоп: {signal.stop_loss:.2f} ₽\n"
+                result_text += f"🎯 Цель: {signal.take_profit:.2f} ₽\n\n"
             else:
                 result_text += "📊 *Текущие сигналы:*\n"
                 result_text += "❌ Нет сильных сигналов в данный момент\n\n"
@@ -817,7 +821,7 @@ class TradingTelegramBot:
         """Format result when no signals found."""
         result_text = "📊 *РЕЗУЛЬТАТЫ СКАНИРОВАНИЯ:*\n"
         result_text += "❌ Сильных сигналов не обнаружено\n\n"
-        result_text += "📈 Проанализированы: {', '.join(quick_watchlist)}\n"
+        result_text += f"📈 Проанализированы: {', '.join(quick_watchlist)}\n"
         result_text += "⏳ Рекомендуется повторить сканирование через 30-60 минут\n\n"
 
         result_text += "💡 *Возможные причины:*\n"
@@ -839,9 +843,9 @@ class TradingTelegramBot:
             signals, quick_watchlist = await self._scan_tickers(trading_engine)
 
             result_text = "🔍 *СКАНИРОВАНИЕ РЫНКА*\n\n"
-            result_text += "⏰ Время сканирования: {datetime.now().strftime('%H:%M:%S')}\n"
-            result_text += "📊 Проанализировано тикеров: {len(quick_watchlist)}\n"
-            result_text += "🎯 Найдено сигналов: {len(signals)}\n\n"
+            result_text += f"⏰ Время сканирования: {datetime.now().strftime('%H:%M:%S')}\n"
+            result_text += f"📊 Проанализировано тикеров: {len(quick_watchlist)}\n"
+            result_text += f"🎯 Найдено сигналов: {len(signals)}\n\n"
 
             if signals:
                 result_text += self._format_scan_signals(signals)
