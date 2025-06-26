@@ -1,5 +1,4 @@
 
-tinkoff-investments
 python-dotenv>=1.0.0
 python-telegram-bot>=20.7
 openai>=1.6.0
@@ -10,3 +9,4 @@ beautifulsoup4>=4.12.0
 feedparser>=6.0.0
 schedule>=1.2.0
 python-telegram-bot>=20.7
+tinkoff-investments==0.2.0b108
