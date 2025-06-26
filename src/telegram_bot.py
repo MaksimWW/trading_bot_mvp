@@ -789,11 +789,11 @@ class TradingTelegramBot:
                 "🟢" if signal.direction == "BUY" else "🔴" if signal.direction == "SELL" else "🟡"
             )
 
-            result_text += "*{i}. {signal.ticker}*\n"
-            result_text += "{emoji} {signal.direction} • {signal.strength.value}\n"
-            result_text += "🎯 Уверенность: {signal.confidence:.0%}\n"
-            result_text += "💰 Цена: {signal.entry_price:.2f} ₽\n"
-            result_text += "📝 {signal.reasoning[:50]}...\n\n"
+            result_text += f"*{i}. {signal.ticker}*\n"
+            result_text += f"{emoji} {signal.direction} • {signal.strength.value}\n"
+            result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
+            result_text += f"💰 Цена: {signal.entry_price:.2f} ₽\n"
+            result_text += f"📝 {signal.reasoning[:50]}...\n\n"
 
         return result_text
 
