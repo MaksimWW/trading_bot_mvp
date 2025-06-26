@@ -250,16 +250,22 @@ class TradingTelegramBot:
         try:
             if len(news_results) > 0:
                 from openai_analyzer import OpenAIAnalyzer
-                
+
                 analyzer = OpenAIAnalyzer()
                 sentiment_result = await analyzer.analyze_sentiment(ticker, news_results[:3])
-                
+
                 if sentiment_result:
-                    emoji_map = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}
+                    emoji_map = {
+                        "STRONG_BUY": "💚",
+                        "BUY": "🟢",
+                        "HOLD": "🟡",
+                        "SELL": "🟠",
+                        "STRONG_SELL": "🔴",
+                    }
                     emoji = emoji_map.get(sentiment_result.get("sentiment_label", "HOLD"), "⚪")
                     score = sentiment_result.get("sentiment_score", 0.0)
                     summary = sentiment_result.get("summary", "Анализ недоступен")
-                    
+
                     sentiment_block = f"""
 🤖 <b>АНАЛИЗ НАСТРОЕНИЯ AI:</b>
 {emoji} <b>Рекомендация:</b> {sentiment_result.get("sentiment_label", "HOLD")}

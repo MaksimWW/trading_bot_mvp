@@ -4,7 +4,7 @@ OpenAI Analyzer для анализа тональности финансовы�
 
 import asyncio
 import logging
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 try:
     import openai
@@ -40,32 +40,32 @@ class OpenAIAnalyzer:
     async def analyze_sentiment(self, ticker: str, news_list: List[Dict]) -> Optional[Dict]:
         """
         Анализ тональности новостей для торговых решений.
-        
+
         Args:
             ticker: Тикер акции
             news_list: Список новостей
-            
+
         Returns:
             Результат анализа или None при ошибке
         """
         if not self.client:
             logger.warning("OpenAI клиент не инициализирован")
             return None
-        
+
         if not news_list:
             logger.warning(f"Нет новостей для анализа {ticker}")
             return None
-        
+
         try:
             # Формируем текст новостей для анализа
             news_text = ""
             for i, news in enumerate(news_list[:3], 1):
-                title = news.get('title', 'Без заголовка')
-                content = news.get('content', news.get('summary', 'Нет описания'))
-                
+                title = news.get("title", "Без заголовка")
+                content = news.get("content", news.get("summary", "Нет описания"))
+
                 news_text += f"{i}. {title}\n"
                 news_text += f"   Содержание: {content[:200]}...\n\n"
-            
+
             prompt = f"""
 Проанализируйте следующие новости о компании {ticker} и определите их влияние на цену акций.
 
@@ -79,29 +79,29 @@ class OpenAIAnalyzer:
     "summary": "Краткое объяснение влияния новостей (1-2 предложения)"
 }}
 """
-            
+
             response = await asyncio.to_thread(
                 self.client.chat.completions.create,
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "Вы - финансовый аналитик российского рынка."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 max_tokens=self.max_tokens,
-                temperature=self.temperature
+                temperature=self.temperature,
             )
-            
+
             content = response.choices[0].message.content.strip()
-            
+
             # Парсим JSON ответ с обработкой ошибок
             import json
             import re
-            
+
             try:
                 result = json.loads(content)
             except json.JSONDecodeError:
                 # Если не JSON, попробуем извлечь JSON из текста
-                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                json_match = re.search(r"\{.*\}", content, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group())
                 else:
@@ -109,23 +109,23 @@ class OpenAIAnalyzer:
                     logger.warning(f"OpenAI вернул не JSON для {ticker}: {content[:100]}")
                     result = {
                         "sentiment_score": 0.0,
-                        "sentiment_label": "HOLD", 
-                        "summary": "Анализ недоступен - некорректный формат ответа"
+                        "sentiment_label": "HOLD",
+                        "summary": "Анализ недоступен - некорректный формат ответа",
                     }
-            
+
             # Валидация результата
-            score = max(-1.0, min(1.0, float(result.get('sentiment_score', 0.0))))
-            label = result.get('sentiment_label', 'HOLD')
-            summary = result.get('summary', 'Анализ недоступен')
-            
+            score = max(-1.0, min(1.0, float(result.get("sentiment_score", 0.0))))
+            label = result.get("sentiment_label", "HOLD")
+            summary = result.get("summary", "Анализ недоступен")
+
             return {
-                'sentiment_score': score,
-                'sentiment_label': label,
-                'summary': summary,
-                'ticker': ticker,
-                'analyzed_news_count': len(news_list)
+                "sentiment_score": score,
+                "sentiment_label": label,
+                "summary": summary,
+                "ticker": ticker,
+                "analyzed_news_count": len(news_list),
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка анализа OpenAI для {ticker}: {e}")
             return None
