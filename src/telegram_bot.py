@@ -623,7 +623,7 @@ class TradingTelegramBot:
                 "EXTREME": "🔴 Критический",
             }
             risk_text = risk_emoji.get(portfolio_analysis["risk_level"], "⚪ Неизвестный")
-            result_text += "🎯 Уровень риска: {risk_text}\n\n"
+            result_text += f"🎯 Уровень риска: {risk_text}\n\n"
 
             # Текущие позиции
             if sample_positions:
