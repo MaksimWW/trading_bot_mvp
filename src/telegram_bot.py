@@ -17,6 +17,7 @@ from telegram.ext import (
 
 from config import TELEGRAM_TOKEN
 from tinkoff_client import TinkoffClient
+from signal_generator import get_trading_signal_for_telegram
 
 # Настройка логирования
 logging.basicConfig(
@@ -73,6 +74,7 @@ class TradingTelegramBot:
 • `/accounts` - список торговых счетов
 • `/news TICKER` - анализ новостей (в разработке)
 • `/analysis TICKER` - технический анализ акции
+• `/signal TICKER` - комбинированный торговый сигнал
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
 • `/price GAZP` - цена Газпрома
@@ -424,6 +426,56 @@ class TradingTelegramBot:
             await loading_msg.edit_text(error_msg, parse_mode="Markdown")
             logger.error(f"Analysis command error for {ticker}: {e}")
 
+    async def signal_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /signal TICKER."""
+        if not context.args:
+            await update.message.reply_text(
+                "🎯 *Комбинированный торговый сигнал*\n\n"
+                "Использование: `/signal TICKER`\n\n"
+                "Примеры:\n"
+                "• `/signal SBER` - сигнал для Сбербанка\n"
+                "• `/signal GAZP` - сигнал для Газпрома\n"
+                "• `/signal YNDX` - сигнал для Яндекса\n\n"
+                "🧠 Объединяет: технический анализ (60%) + новости (40%)\n"
+                "⏱️ Время обработки: 5-12 секунд",
+                parse_mode="Markdown"
+            )
+            return
+
+        ticker = context.args[0].upper()
+        
+        loading_msg = await update.message.reply_text(
+            f"🎯 Генерирую торговый сигнал для *{ticker}*...\n"
+            "📊 Анализирую техническую картину...\n"
+            "📰 Обрабатываю новостной фон...\n"
+            "🧠 Комбинирую результаты...",
+            parse_mode="Markdown"
+        )
+        
+        try:
+            result_text = await get_trading_signal_for_telegram(ticker)
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode="Markdown"
+            )
+            
+            logger.info(f"Торговый сигнал {ticker} сгенерирован успешно")
+            
+        except Exception as e:
+            error_msg = f"❌ *Ошибка генерации сигнала {ticker}*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += "💡 Попробуйте:\n"
+            error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
+            error_msg += f"• Использовать отдельно `/analysis {ticker}` и `/news {ticker}`\n"
+            error_msg += "• Повторить запрос через несколько секунд"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode="Markdown"
+            )
+            logger.error(f"Signal command error for {ticker}: {e}")
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработка неизвестных сообщений"""
         try:
@@ -455,6 +507,7 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("accounts", self.accounts_command))
         self.application.add_handler(CommandHandler("news", self.news_command))
         self.application.add_handler(CommandHandler("analysis", self.analysis_command))
+        self.application.add_handler(CommandHandler("signal", self.signal_command))
         # Обработка неизвестных сообщений
         self.application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.unknown_command)
