@@ -224,7 +224,7 @@ class TradingTelegramBot:
 📝 **Анализ:** {summary}
 """
         except Exception as e:
-            logger.warning("OpenAI анализ недоступен для {ticker}: {e}")
+            logger.warning(f"OpenAI анализ недоступен для {ticker}: {e}")
         return ""
 
     async def _format_news_result(self, ticker: str, news_results: List) -> str:
