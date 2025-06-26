@@ -1,7 +1,6 @@
 import asyncio
 
 
-
 async def detailed_debug():
     print("🔍 Детальная отладка TradingEngine...")
     engine = TradingEngine()
