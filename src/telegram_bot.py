@@ -446,50 +446,50 @@ class TradingTelegramBot:
     ):
         """Format risk analysis result text."""
         if not position_analysis.get("approved", False):
-            result_text = "❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
-            result_text += "🚫 *Позиция отклонена*\n"
-            result_text += "📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
-            result_text += "💡 Рекомендации:\n"
-            result_text += "• Снизьте размер позиции\n"
-            result_text += "• Используйте более близкий стоп-лосс\n"
-            result_text += "• Дождитесь лучших условий"
+            result_text = f"❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
+            result_text += f"🚫 *Позиция отклонена*\n"
+            result_text += f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
+            result_text += f"💡 Рекомендации:\n"
+            result_text += f"• Снизьте размер позиции\n"
+            result_text += f"• Используйте более близкий стоп-лосс\n"
+            result_text += f"• Дождитесь лучших условий"
             return result_text
 
         risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🟠", "EXTREME": "🔴"}
         emoji = risk_emoji.get(position_analysis["risk_level"], "⚪")
 
-        result_text = "⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
-        result_text += "💰 *Параметры позиции:*\n"
-        result_text += "📈 Цена входа: {entry_price:.2f} ₽\n"
-        result_text += "🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
-        result_text += "🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
+        result_text = f"⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
+        result_text += f"💰 *Параметры позиции:*\n"
+        result_text += f"📈 Цена входа: {entry_price:.2f} ₽\n"
+        result_text += f"🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
+        result_text += f"🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
 
-        result_text += "📊 *Рекомендуемая позиция:*\n"
-        result_text += "🔢 Количество акций: {position_analysis['shares_count']}\n"
-        result_text += "💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
-        result_text += "📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
+        result_text += f"📊 *Рекомендуемая позиция:*\n"
+        result_text += f"🔢 Количество акций: {position_analysis['shares_count']}\n"
+        result_text += f"💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
+        result_text += f"📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
 
-        result_text += "⚖️ *Анализ рисков:*\n"
-        result_text += "{emoji} Уровень риска: {position_analysis['risk_level']}\n"
-        result_text += "💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
-        result_text += "📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
-        result_text += "⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
+        result_text += f"⚖️ *Анализ рисков:*\n"
+        result_text += f"{emoji} Уровень риска: {position_analysis['risk_level']}\n"
+        result_text += f"💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
+        result_text += f"📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
+        result_text += f"⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
 
-        result_text += "💡 *Рекомендация:*\n"
-        result_text += "{position_analysis['recommendation']}\n\n"
+        result_text += f"💡 *Рекомендация:*\n"
+        result_text += f"{position_analysis['recommendation']}\n\n"
 
-        result_text += "📋 *Дополнительно:*\n"
-        result_text += "• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
-        result_text += "• Волатильность: Нормальная\n"
-        result_text += "• Ликвидность: Высокая\n\n"
+        result_text += f"📋 *Дополнительно:*\n"
+        result_text += f"• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
+        result_text += f"• Волатильность: Нормальная\n"
+        result_text += f"• Ликвидность: Высокая\n\n"
 
-        result_text += "*🛠️ Дополнительные команды:*\n"
-        result_text += "• `/price {ticker}` - текущая цена\n"
-        result_text += "• `/analysis {ticker}` - технический анализ\n"
-        result_text += "• `/news {ticker}` - анализ новостей\n\n"
+        result_text += f"*🛠️ Дополнительные команды:*\n"
+        result_text += f"• `/price {ticker}` - текущая цена\n"
+        result_text += f"• `/analysis {ticker}` - технический анализ\n"
+        result_text += f"• `/news {ticker}` - анализ новостей\n\n"
 
-        result_text += "⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
-        result_text += "Скорректируйте размер позиции под ваш реальный депозит."
+        result_text += f"⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
+        result_text += f"Скорректируйте размер позиции под ваш реальный депозит."
 
         return result_text
 
