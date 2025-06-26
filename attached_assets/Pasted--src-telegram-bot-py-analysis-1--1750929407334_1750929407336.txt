@@ -1,0 +1,64 @@
+В файле src/telegram_bot.py добавь новую команду /analysis для технического анализа:
+
+1. Добавь импорт в начало файла:
+from technical_analysis import get_technical_analyzer
+
+2. Добавь новый метод в класс TradingTelegramBot:
+
+async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /analysis TICKER."""
+    if not context.args:
+        await update.message.reply_text(
+            "📊 *Технический анализ акции*\n\n"
+            "Использование: `/analysis TICKER`\n\n"
+            "Примеры:\n"
+            "• `/analysis SBER` - анализ Сбербанка\n"
+            "• `/analysis GAZP` - анализ Газпрома\n"
+            "• `/analysis YNDX` - анализ Яндекса\n\n"
+            "📈 Включает: RSI, MACD, скользящие средние, Боллинджер\n"
+            "⏱️ Время обработки: 3-8 секунд",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    ticker = context.args[0].upper()
+    
+    loading_msg = await update.message.reply_text(
+        f"📊 Выполняю технический анализ *{ticker}*...\n"
+        f"📈 Рассчитываю RSI, MACD, скользящие средние...",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    
+    try:
+        from technical_analysis import get_ticker_analysis_for_telegram
+        result_text = await get_ticker_analysis_for_telegram(ticker)
+        
+        await loading_msg.edit_text(
+            result_text,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        logger.info(f"Технический анализ {ticker} завершен успешно")
+        
+    except Exception as e:
+        error_msg = f"❌ *Ошибка технического анализа {ticker}*\n\n"
+        error_msg += f"Причина: {str(e)}\n\n"
+        error_msg += f"💡 Попробуйте:\n"
+        error_msg += f"• Проверить тикер (SBER, GAZP, YNDX)\n"
+        error_msg += f"• Повторить запрос через несколько секунд\n"
+        error_msg += f"• Использовать /status для проверки систем"
+        
+        await loading_msg.edit_text(
+            error_msg,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        logger.error(f"Analysis command error for {ticker}: {e}")
+
+3. В методе setup_handlers добавь регистрацию команды:
+app.add_handler(CommandHandler("analysis", self.analysis_command))
+
+4. В методе help_command добавь описание новой команды в раздел аналитики:
+- `/analysis TICKER` - технический анализ акции
+
+5. В методе setup_bot_commands добавь команду в меню:
+BotCommand("analysis", "📊 Технический анализ акции"),
