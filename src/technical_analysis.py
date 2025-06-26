@@ -5,9 +5,9 @@ Technical Analysis - Заглушка для технического анали
 Полная версия будет создана в следующих итерациях.
 """
 
-import logging
-from typing import Dict, Optional
 import asyncio
+import logging
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class TechnicalAnalyzer:
             "macd_signal": "BUY",
             "trend_direction": "UP",
             "confidence": 0.6,
-            "analysis_timestamp": "2025-06-26T11:00:00"
+            "analysis_timestamp": "2025-06-26T11:00:00",
         }
 
 

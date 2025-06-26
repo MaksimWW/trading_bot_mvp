@@ -4,8 +4,8 @@ Telegram Bot для управления торговым ботом
 """
 
 import logging
-from typing import List
 from datetime import datetime
+from typing import List
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -18,9 +18,9 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
+from risk_manager import RiskManager
 from signal_generator import get_trading_signal_for_telegram
 from tinkoff_client import TinkoffClient
-from risk_manager import RiskManager, RiskSettings
 from trading_engine import TradingEngine, TradingMode
 
 # Настройка логирования
@@ -408,24 +408,24 @@ class TradingTelegramBot:
                 "• Расчет стоп-лосса и тейк-профита\n"
                 "• Оценка уровня риска\n"
                 "• Соотношение риск/доходность",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
         ticker = context.args[0].upper()
-        
+
         # Отправляем сообщение о начале анализа
         loading_msg = await update.message.reply_text(
             f"⚖️ Анализирую риски для *{ticker}*...\n"
             f"📊 Получаю данные и рассчитываю параметры...",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
 
         try:
             # Получаем текущую цену если не указана
             entry_price = None
             stop_loss_price = None
-            
+
             if len(context.args) >= 2:
                 try:
                     entry_price = float(context.args[1])
@@ -433,10 +433,10 @@ class TradingTelegramBot:
                     await loading_msg.edit_text(
                         f"❌ Неверный формат цены входа: {context.args[1]}\n"
                         f"Используйте число, например: `/risk SBER 100`",
-                        parse_mode=ParseMode.MARKDOWN
+                        parse_mode=ParseMode.MARKDOWN,
                     )
                     return
-            
+
             if len(context.args) >= 3:
                 try:
                     stop_loss_price = float(context.args[2])
@@ -444,7 +444,7 @@ class TradingTelegramBot:
                     await loading_msg.edit_text(
                         f"❌ Неверный формат стоп-лосса: {context.args[2]}\n"
                         f"Используйте число, например: `/risk SBER 100 93`",
-                        parse_mode=ParseMode.MARKDOWN
+                        parse_mode=ParseMode.MARKDOWN,
                     )
                     return
 
@@ -455,99 +455,95 @@ class TradingTelegramBot:
                     await loading_msg.edit_text(
                         f"❌ Акция с тикером *{ticker}* не найдена.\n\n"
                         "Попробуйте: SBER, GAZP, YNDX, LKOH, NVTK, ROSN",
-                        parse_mode=ParseMode.MARKDOWN
+                        parse_mode=ParseMode.MARKDOWN,
                     )
                     return
-                
+
                 price_data = self.tinkoff_client.get_last_price(instrument.figi)
                 if not price_data:
                     await loading_msg.edit_text(
-                        f"❌ Не удалось получить цену для {ticker}",
-                        parse_mode=ParseMode.MARKDOWN
+                        f"❌ Не удалось получить цену для {ticker}", parse_mode=ParseMode.MARKDOWN
                     )
                     return
-                
+
                 entry_price = price_data.price.units + price_data.price.nano / 1_000_000_000
 
             # Создаем risk manager
             risk_manager = RiskManager()
-            
+
             # Рассчитываем стоп-лосс если не указан
             if stop_loss_price is None:
                 sl_tp = risk_manager.calculate_stop_loss_take_profit(
-                    ticker=ticker,
-                    entry_price=entry_price,
-                    signal_direction="BUY"
+                    ticker=ticker, entry_price=entry_price, signal_direction="BUY"
                 )
                 stop_loss_price = sl_tp["stop_loss_price"]
-            
+
             # Примерный баланс счета (в реальности получаем из API)
             account_balance = 100000.0  # 100k рублей для примера
-            
+
             # Рассчитываем позицию
             position_analysis = risk_manager.calculate_position_size(
                 ticker=ticker,
                 entry_price=entry_price,
                 stop_loss_price=stop_loss_price,
                 account_balance=account_balance,
-                confidence_score=0.6  # Средняя уверенность
+                confidence_score=0.6,  # Средняя уверенность
             )
-            
+
             # Рассчитываем стоп-лосс и тейк-профит
             sl_tp_analysis = risk_manager.calculate_stop_loss_take_profit(
-                ticker=ticker,
-                entry_price=entry_price,
-                signal_direction="BUY"
+                ticker=ticker, entry_price=entry_price, signal_direction="BUY"
             )
 
             # Форматируем результат
             if not position_analysis.get("approved", False):
                 result_text = f"❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
                 result_text += f"🚫 *Позиция отклонена*\n"
-                result_text += f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
+                result_text += (
+                    f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
+                )
                 result_text += f"💡 Рекомендации:\n"
                 result_text += f"• Снизьте размер позиции\n"
                 result_text += f"• Используйте более близкий стоп-лосс\n"
                 result_text += f"• Дождитесь лучших условий"
             else:
                 # Эмодзи для уровня риска
-                risk_emoji = {
-                    "LOW": "🟢",
-                    "MEDIUM": "🟡", 
-                    "HIGH": "🟠",
-                    "EXTREME": "🔴"
-                }
-                
+                risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🟠", "EXTREME": "🔴"}
+
                 emoji = risk_emoji.get(position_analysis["risk_level"], "⚪")
-                
+
                 result_text = f"⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
-                
+
                 # Основные параметры
                 result_text += f"💰 *Параметры позиции:*\n"
                 result_text += f"📈 Цена входа: {entry_price:.2f} ₽\n"
                 result_text += f"🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
                 result_text += f"🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
-                
+
                 # Расчет позиции
                 result_text += f"📊 *Рекомендуемая позиция:*\n"
                 result_text += f"🔢 Количество акций: {position_analysis['shares_count']}\n"
                 result_text += f"💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
                 result_text += f"📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
-                
+
                 # Анализ рисков
                 result_text += f"⚖️ *Анализ рисков:*\n"
                 result_text += f"{emoji} Уровень риска: {position_analysis['risk_level']}\n"
-                result_text += f"💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
+                result_text += (
+                    f"💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
+                )
                 result_text += f"📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
                 result_text += f"⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
-                
+
                 # Рекомендация
                 result_text += f"💡 *Рекомендация:*\n"
                 result_text += f"{position_analysis['recommendation']}\n\n"
-                
+
                 # Дополнительная информация
                 result_text += f"📋 *Дополнительно:*\n"
-                result_text += f"• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
+                result_text += (
+                    f"• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
+                )
                 result_text += f"• Волатильность: Нормальная\n"
                 result_text += f"• Ликвидность: Высокая\n\n"
 
@@ -556,16 +552,15 @@ class TradingTelegramBot:
             result_text += f"• `/price {ticker}` - текущая цена\n"
             result_text += f"• `/analysis {ticker}` - технический анализ\n"
             result_text += f"• `/news {ticker}` - анализ новостей\n\n"
-            
+
             result_text += f"⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
             result_text += f"Скорректируйте размер позиции под ваш реальный депозит."
 
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
+            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
+            logger.info(
+                f"Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%"
             )
-            
-            logger.info(f"Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%")
 
         except Exception as e:
             error_msg = f"❌ *Ошибка анализа рисков {ticker}*\n\n"
@@ -574,25 +569,21 @@ class TradingTelegramBot:
             error_msg += f"• Проверить правильность тикера\n"
             error_msg += f"• Использовать `/risk SBER 100 93` с параметрами\n"
             error_msg += f"• Повторить запрос через несколько секунд"
-            
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode=ParseMode.MARKDOWN
-            )
+
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Risk command error for {ticker}: {e}")
 
     async def portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /portfolio."""
         loading_msg = await update.message.reply_text(
-            "📊 Анализирую портфель...\n"
-            "🔍 Оцениваю риски и составляю рекомендации...",
-            parse_mode=ParseMode.MARKDOWN
+            "📊 Анализирую портфель...\n" "🔍 Оцениваю риски и составляю рекомендации...",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
         try:
             # Создаем risk manager
             risk_manager = RiskManager()
-            
+
             # Примерные позиции для демонстрации
             sample_positions = [
                 {
@@ -601,94 +592,94 @@ class TradingTelegramBot:
                     "entry_price": 95.0,
                     "current_price": 99.95,
                     "risk_percent": 2.1,
-                    "sector": "Финансы"
+                    "sector": "Финансы",
                 },
                 {
-                    "ticker": "GAZP", 
+                    "ticker": "GAZP",
                     "shares": 50,
                     "entry_price": 180.0,
                     "current_price": 175.0,
                     "risk_percent": 1.8,
-                    "sector": "Энергетика"
-                }
+                    "sector": "Энергетика",
+                },
             ]
-            
+
             # Анализ портфеля
             portfolio_analysis = risk_manager.assess_portfolio_risk(sample_positions)
-            
+
             # Форматируем результат
             result_text = f"📊 *АНАЛИЗ ПОРТФЕЛЯ*\n\n"
-            
+
             # Общая статистика
             result_text += f"📈 *Общая статистика:*\n"
             result_text += f"🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
             result_text += f"⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
-            result_text += f"📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
-            
+            result_text += (
+                f"📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
+            )
+
             # Уровень риска с эмодзи
             risk_emoji = {
                 "LOW": "🟢 Низкий",
                 "MEDIUM": "🟡 Средний",
-                "HIGH": "🟠 Высокий", 
-                "EXTREME": "🔴 Критический"
+                "HIGH": "🟠 Высокий",
+                "EXTREME": "🔴 Критический",
             }
-            risk_text = risk_emoji.get(portfolio_analysis['risk_level'], "⚪ Неизвестный")
+            risk_text = risk_emoji.get(portfolio_analysis["risk_level"], "⚪ Неизвестный")
             result_text += f"🎯 Уровень риска: {risk_text}\n\n"
-            
+
             # Текущие позиции
             if sample_positions:
                 result_text += f"💼 *Текущие позиции:*\n"
                 for pos in sample_positions:
-                    pnl = ((pos['current_price'] - pos['entry_price']) / pos['entry_price']) * 100
+                    pnl = ((pos["current_price"] - pos["entry_price"]) / pos["entry_price"]) * 100
                     pnl_emoji = "📈" if pnl >= 0 else "📉"
                     result_text += f"• *{pos['ticker']}*: {pos['shares']} шт.\n"
-                    result_text += f"  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
+                    result_text += (
+                        f"  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
+                    )
                 result_text += "\n"
-            
+
             # Секторальное распределение
-            if 'sector_exposure' in portfolio_analysis:
+            if "sector_exposure" in portfolio_analysis:
                 result_text += f"🏭 *Секторальное распределение:*\n"
-                for sector, exposure in portfolio_analysis['sector_exposure'].items():
+                for sector, exposure in portfolio_analysis["sector_exposure"].items():
                     result_text += f"• {sector}: {exposure:.1f}%\n"
                 result_text += "\n"
-            
+
             # Рекомендации
             result_text += f"💡 *Рекомендации:*\n"
-            for recommendation in portfolio_analysis['recommendations']:
+            for recommendation in portfolio_analysis["recommendations"]:
                 result_text += f"• {recommendation}\n"
             result_text += "\n"
-            
+
             # Лимиты риск-менеджмента
             result_text += f"⚙️ *Настройки риск-менеджмента:*\n"
             result_text += f"• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
             result_text += f"• Макс. позиция: 5.0% депозита\n"
             result_text += f"• Макс. дневной убыток: 3.0%\n"
             result_text += f"• Макс. сделок в день: 5\n\n"
-            
+
             # Подсказки
             result_text += f"*🛠️ Управление портфелем:*\n"
             result_text += f"• `/risk TICKER` - анализ новой позиции\n"
             result_text += f"• `/settings` - настройки риск-менеджмента\n\n"
-            
+
             result_text += f"⚠️ *Примечание:* Показаны демонстрационные данные. "
             result_text += f"В боевом режиме будут использоваться реальные позиции."
 
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
+            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
+            logger.info(
+                f"Анализ портфеля завершен: риск {portfolio_analysis['total_risk_percent']:.1f}%"
             )
-            
-            logger.info(f"Анализ портфеля завершен: риск {portfolio_analysis['total_risk_percent']:.1f}%")
 
         except Exception as e:
             error_msg = f"❌ *Ошибка анализа портфеля*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
             error_msg += f"💡 Попробуйте повторить запрос через несколько секунд"
-            
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode=ParseMode.MARKDOWN
-            )
+
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Portfolio command error: {e}")
 
     async def automation_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -696,35 +687,39 @@ class TradingTelegramBot:
         loading_msg = await update.message.reply_text(
             "🤖 Анализирую возможности автоматизации...\n"
             "⚙️ Проверяю настройки торговой системы...",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
 
         try:
             # Создаем торговый движок
             trading_engine = TradingEngine(mode=TradingMode.PAPER)
-            
+
             # Генерируем сигнал для демонстрации
             signal = await trading_engine.generate_trading_signal("SBER")
-            
+
             result_text = f"🤖 *АВТОМАТИЗАЦИЯ ТОРГОВЛИ*\n\n"
-            
+
             # Статус системы
             result_text += f"⚙️ *Статус системы:*\n"
             result_text += f"🟢 Режим: {trading_engine.mode.value} (Виртуальная торговля)\n"
             result_text += f"📊 Анализ новостей: ✅ Активен\n"
             result_text += f"📈 Технический анализ: ✅ Активен\n"
             result_text += f"⚖️ Risk Management: ✅ Активен\n\n"
-            
+
             # Настройки автоматизации
             result_text += f"🎛️ *Настройки автоматизации:*\n"
             result_text += f"• Мин. сила сигнала: {trading_engine.min_signal_strength.value}\n"
             result_text += f"• Мин. уверенность: {trading_engine.min_confidence:.1f}\n"
             result_text += f"• Интервал сканирования: {trading_engine.scan_interval//60} мин\n"
             result_text += f"• Список наблюдения: {', '.join(trading_engine.watchlist)}\n\n"
-            
+
             # Демонстрация сигнала
             if signal:
-                emoji = "🟢" if signal.direction == "BUY" else "🔴" if signal.direction == "SELL" else "🟡"
+                emoji = (
+                    "🟢"
+                    if signal.direction == "BUY"
+                    else "🔴" if signal.direction == "SELL" else "🟡"
+                )
                 result_text += f"🎯 *Демо-сигнал {signal.ticker}:*\n"
                 result_text += f"{emoji} Направление: {signal.direction}\n"
                 result_text += f"💪 Сила: {signal.strength.value}\n"
@@ -736,64 +731,57 @@ class TradingTelegramBot:
             else:
                 result_text += f"📊 *Текущие сигналы:*\n"
                 result_text += f"❌ Нет сильных сигналов в данный момент\n\n"
-            
+
             # Возможности автоматизации
             result_text += f"🚀 *Доступные режимы:*\n"
             result_text += f"📝 *MANUAL* - Ручные рекомендации\n"
             result_text += f"🔄 *SEMI_AUTO* - Полуавтоматический режим\n"
             result_text += f"📊 *PAPER* - Виртуальная торговля (текущий)\n"
             result_text += f"🤖 *AUTO* - Полная автоматизация (скоро)\n\n"
-            
+
             # Статистика
             result_text += f"📈 *Потенциал автоматизации:*\n"
             result_text += f"• Экономия времени: 2-4 часа/день\n"
             result_text += f"• Дисциплина: Устранение эмоций\n"
             result_text += f"• Скорость: Реакция за секунды\n"
             result_text += f"• Контроль: 24/7 мониторинг\n\n"
-            
+
             # Команды управления
             result_text += f"*Команды управления:*\n"
             result_text += f"• `/scan` - сканирование рынка\n"
             result_text += f"• `/morning_brief` - утренний анализ\n"
             result_text += f"• `/settings` - настройки автоматизации\n\n"
-            
+
             result_text += f"⚠️ *Важно:* Автоматизация работает в тестовом режиме. "
             result_text += f"Переход на реальную торговлю только после полного тестирования."
 
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
             logger.info("Команда /automation выполнена успешно")
 
         except Exception as e:
             error_msg = f"❌ *Ошибка системы автоматизации*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
             error_msg += f"💡 Попробуйте повторить запрос через несколько секунд"
-            
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode=ParseMode.MARKDOWN
-            )
+
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Automation command error: {e}")
 
     async def scan_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /scan."""
         loading_msg = await update.message.reply_text(
-            "🔍 Запускаю сканирование рынка...\n"
-            "📊 Анализирую тикеры из списка наблюдения...",
-            parse_mode=ParseMode.MARKDOWN
+            "🔍 Запускаю сканирование рынка...\n" "📊 Анализирую тикеры из списка наблюдения...",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
         try:
             # Создаем торговый движок
             trading_engine = TradingEngine(mode=TradingMode.PAPER)
-            
+
             # Сканируем рынок (ограничиваем до 3 тикеров для быстроты)
             quick_watchlist = trading_engine.watchlist[:3]
             signals = []
-            
+
             for ticker in quick_watchlist:
                 try:
                     signal = await trading_engine.generate_trading_signal(ticker)
@@ -802,73 +790,71 @@ class TradingTelegramBot:
                 except Exception as e:
                     logger.error(f"Ошибка сканирования {ticker}: {e}")
                     continue
-            
+
             # Форматируем результаты
             result_text = f"🔍 *СКАНИРОВАНИЕ РЫНКА*\n\n"
             result_text += f"⏰ Время сканирования: {datetime.now().strftime('%H:%M:%S')}\n"
             result_text += f"📊 Проанализировано тикеров: {len(quick_watchlist)}\n"
             result_text += f"🎯 Найдено сигналов: {len(signals)}\n\n"
-            
+
             if signals:
                 result_text += f"📈 *НАЙДЕННЫЕ СИГНАЛЫ:*\n\n"
-                
+
                 for i, signal in enumerate(signals, 1):
-                    emoji = "🟢" if signal.direction == "BUY" else "🔴" if signal.direction == "SELL" else "🟡"
-                    
+                    emoji = (
+                        "🟢"
+                        if signal.direction == "BUY"
+                        else "🔴" if signal.direction == "SELL" else "🟡"
+                    )
+
                     result_text += f"*{i}. {signal.ticker}*\n"
                     result_text += f"{emoji} {signal.direction} • {signal.strength.value}\n"
                     result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
                     result_text += f"💰 Цена: {signal.entry_price:.2f} ₽\n"
                     result_text += f"📝 {signal.reasoning[:50]}...\n\n"
-                
+
                 # Рекомендации
                 result_text += f"💡 *Рекомендации:*\n"
                 buy_signals = [s for s in signals if s.direction == "BUY"]
                 sell_signals = [s for s in signals if s.direction == "SELL"]
-                
+
                 if buy_signals:
                     best_buy = max(buy_signals, key=lambda x: x.confidence)
                     result_text += f"• Лучший сигнал на покупку: {best_buy.ticker}\n"
-                
+
                 if sell_signals:
                     best_sell = max(sell_signals, key=lambda x: x.confidence)
                     result_text += f"• Лучший сигнал на продажу: {best_sell.ticker}\n"
-                
+
             else:
                 result_text += f"📊 *РЕЗУЛЬТАТЫ СКАНИРОВАНИЯ:*\n"
                 result_text += f"❌ Сильных сигналов не обнаружено\n\n"
                 result_text += f"📈 Проанализированы: {', '.join(quick_watchlist)}\n"
                 result_text += f"⏳ Рекомендуется повторить сканирование через 30-60 минут\n\n"
-                
+
                 result_text += f"💡 *Возможные причины:*\n"
                 result_text += f"• Рынок в консолидации\n"
                 result_text += f"• Слабые технические сигналы\n"
                 result_text += f"• Нейтральный новостной фон\n"
-            
+
             result_text += f"\n*🔄 Следующие действия:*\n"
             result_text += f"• `/risk TICKER` - анализ рисков\n"
             result_text += f"• `/automation` - настройки автоматизации\n"
             result_text += f"• `/portfolio` - текущий портфель\n\n"
-            
+
             result_text += f"⚠️ *Примечание:* Сканирование в демо-режиме. "
             result_text += f"Проведите дополнительный анализ перед принятием решений."
 
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
             logger.info(f"Сканирование завершено: найдено {len(signals)} сигналов")
 
         except Exception as e:
             error_msg = f"❌ *Ошибка сканирования рынка*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
             error_msg += f"💡 Попробуйте повторить сканирование через несколько секунд"
-            
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode=ParseMode.MARKDOWN
-            )
+
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Scan command error: {e}")
 
     async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

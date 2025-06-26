@@ -4,9 +4,9 @@ News Analyzer - Заглушка для анализа новостей.
 Временная реализация для совместимости с TradingEngine.
 """
 
+import asyncio
 import logging
 from typing import Dict
-import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +36,15 @@ class NewsAnalyzer:
         return {
             "success": True,
             "ticker": ticker,
-            "sentiment": {
-                "sentiment_score": 0.2,  # Умеренно позитивный
-                "sentiment_label": "BUY",
-                "confidence": 0.7
-            } if include_sentiment else None
+            "sentiment": (
+                {
+                    "sentiment_score": 0.2,  # Умеренно позитивный
+                    "sentiment_label": "BUY",
+                    "confidence": 0.7,
+                }
+                if include_sentiment
+                else None
+            ),
         }
 
 
@@ -65,6 +69,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 # Функция-обертка для совместимости
 def get_news_analyzer():
     """Получение глобального экземпляра анализатора новостей."""
