@@ -1,7 +1,5 @@
 """Test module for news analyzer functionality."""
 
-import pytest
-
 from src.news_analyzer import main
 
 
