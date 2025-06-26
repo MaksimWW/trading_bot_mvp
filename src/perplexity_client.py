@@ -184,7 +184,10 @@ class PerplexityClient:
             logger.debug(f"Отправка запроса к {self.base_url}/chat/completions")
 
             response = requests.post(
-                f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=self.timeout
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=self.timeout,
             )
 
             self._handle_response_errors(response)
