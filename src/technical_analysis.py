@@ -16,6 +16,7 @@ class TechnicalAnalyzer:
     """Базовый класс технического анализа (заглушка)."""
 
     def __init__(self):
+        self.default_periods = {"rsi": 14, "sma": 20, "ema": 12}
         """Инициализация анализатора."""
         logger.info("TechnicalAnalyzer инициализирован")
 
