@@ -631,9 +631,9 @@ class TradingTelegramBot:
                 for pos in sample_positions:
                     pnl = ((pos["current_price"] - pos["entry_price"]) / pos["entry_price"]) * 100
                     pnl_emoji = "📈" if pnl >= 0 else "📉"
-                    result_text += "• *{pos['ticker']}*: {pos['shares']} шт.\n"
+                    result_text += f"• *{pos['ticker']}*: {pos['shares']} шт.\n"
                     result_text += (
-                        "  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
+                        f"  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
                     )
                 result_text += "\n"
 
