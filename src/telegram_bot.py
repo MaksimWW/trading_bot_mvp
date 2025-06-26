@@ -182,14 +182,13 @@ class TradingTelegramBot:
                 return
             # Конвертируем цену
             price_rub = price_data.price.units + price_data.price.nano / 1_000_000_000
-            price_message = """
+            price_message = f"""
 💰 **{instrument.name}**
 📊 **Цена:** {price_rub:.2f} ₽
 🎯 **Тикер:** {ticker}
 🔗 **FIGI:** `{instrument.figi}`
 ⏰ Данные актуальны на: сейчас
-🏛️ Источник: Tinkoff Invest API (песочница)
-            """
+"""
             await update.message.reply_text(price_message, parse_mode="Markdown")
             logger.info("Цена {ticker} успешно получена: {price_rub:.2f} ₽")
         except Exception as e:
