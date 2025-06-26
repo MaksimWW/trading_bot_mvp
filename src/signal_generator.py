@@ -95,17 +95,19 @@ class SignalGenerator:
             technical_score = 0
             technical_confidence = 0
             if technical_result and technical_result.get('success'):
-                tech_signal = technical_result.get('overall_signal', {}).get('signal', 'UNKNOWN')
+                overall_signal = technical_result.get('overall_signal', {})
+                tech_signal = overall_signal.get('signal', 'UNKNOWN') if overall_signal else 'UNKNOWN'
                 technical_score = signal_values.get(tech_signal, 0)
-                technical_confidence = technical_result.get('overall_signal', {}).get('confidence', 0)
+                technical_confidence = overall_signal.get('confidence', 0) if overall_signal else 0
             
             # Получение новостного сигнала  
             news_score = 0
             news_confidence = 0
             if news_result and news_result.get('success') and news_result.get('sentiment'):
-                sentiment_score = news_result['sentiment'].get('sentiment_score', 0)
+                sentiment = news_result.get('sentiment', {})
+                sentiment_score = sentiment.get('sentiment_score', 0) if sentiment else 0
                 news_score = sentiment_score * 2  # Преобразуем [-1,1] в [-2,2]
-                news_confidence = news_result['sentiment'].get('confidence', 0)
+                news_confidence = sentiment.get('confidence', 0) if sentiment else 0
             
             # Взвешенное комбинирование
             combined_score = (
@@ -155,7 +157,7 @@ class SignalGenerator:
                 'components': {
                     'technical': {
                         'available': technical_result is not None and technical_result.get('success', False),
-                        'signal': technical_result.get('overall_signal', {}).get('signal', 'UNKNOWN') if technical_result else 'UNKNOWN',
+                        'signal': overall_signal.get('signal', 'UNKNOWN') if technical_result and overall_signal else 'UNKNOWN',
                         'score': technical_score,
                         'confidence': technical_confidence,
                         'weight': self.weights['technical']
