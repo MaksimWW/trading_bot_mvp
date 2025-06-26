@@ -148,7 +148,7 @@ class TradingEngine:
             confidence = self._calculate_confidence(technical_result, news_result)
             
             # Если сигнал слишком слабый, не создаем
-            if strength.value in ["VERY_WEAK", "WEAK"] or confidence < self.min_confidence:
+            if self._is_signal_too_weak(strength) or confidence < self.min_confidence:
                 logger.info(f"{ticker}: сигнал слишком слабый ({strength.value}, confidence: {confidence:.2f})")
                 return None
             
@@ -371,6 +371,18 @@ class TradingEngine:
         
         # Ограничиваем диапазон
         return max(0.0, min(1.0, confidence))
+    
+    def _is_signal_too_weak(self, strength: SignalStrength) -> bool:
+        """Проверка является ли сигнал слишком слабым."""
+        strength_order = {
+            SignalStrength.VERY_WEAK: 0,
+            SignalStrength.WEAK: 1,
+            SignalStrength.MODERATE: 2,
+            SignalStrength.STRONG: 3,
+            SignalStrength.VERY_STRONG: 4
+        }
+        
+        return strength_order[strength] < strength_order[self.min_signal_strength]
     
     def _calculate_levels(self, entry_price: float, direction: str, strength: SignalStrength) -> Tuple[float, float]:
         """Расчет уровней стоп-лосса и тейк-профита."""
