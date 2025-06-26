@@ -5,6 +5,7 @@ Telegram Bot для управления торговым ботом
 
 import logging
 from typing import List
+from datetime import datetime
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -20,6 +21,7 @@ from config import TELEGRAM_TOKEN
 from signal_generator import get_trading_signal_for_telegram
 from tinkoff_client import TinkoffClient
 from risk_manager import RiskManager, RiskSettings
+from trading_engine import TradingEngine, TradingMode
 
 # Настройка логирования
 logging.basicConfig(
@@ -80,6 +82,9 @@ class TradingTelegramBot:
 ⚖️ **Управление рисками:**
 • `/risk TICKER` - анализ рисков позиции
 • `/portfolio` - анализ портфеля и рисков
+🤖 **Автоматизация:**
+• `/automation` - настройки автоматизации
+• `/scan` - сканирование рынка на сигналы
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
 • `/price GAZP` - цена Газпрома
@@ -686,6 +691,186 @@ class TradingTelegramBot:
             )
             logger.error(f"Portfolio command error: {e}")
 
+    async def automation_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /automation."""
+        loading_msg = await update.message.reply_text(
+            "🤖 Анализирую возможности автоматизации...\n"
+            "⚙️ Проверяю настройки торговой системы...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+        try:
+            # Создаем торговый движок
+            trading_engine = TradingEngine(mode=TradingMode.PAPER)
+            
+            # Генерируем сигнал для демонстрации
+            signal = await trading_engine.generate_trading_signal("SBER")
+            
+            result_text = f"🤖 *АВТОМАТИЗАЦИЯ ТОРГОВЛИ*\n\n"
+            
+            # Статус системы
+            result_text += f"⚙️ *Статус системы:*\n"
+            result_text += f"🟢 Режим: {trading_engine.mode.value} (Виртуальная торговля)\n"
+            result_text += f"📊 Анализ новостей: ✅ Активен\n"
+            result_text += f"📈 Технический анализ: ✅ Активен\n"
+            result_text += f"⚖️ Risk Management: ✅ Активен\n\n"
+            
+            # Настройки автоматизации
+            result_text += f"🎛️ *Настройки автоматизации:*\n"
+            result_text += f"• Мин. сила сигнала: {trading_engine.min_signal_strength.value}\n"
+            result_text += f"• Мин. уверенность: {trading_engine.min_confidence:.1f}\n"
+            result_text += f"• Интервал сканирования: {trading_engine.scan_interval//60} мин\n"
+            result_text += f"• Список наблюдения: {', '.join(trading_engine.watchlist)}\n\n"
+            
+            # Демонстрация сигнала
+            if signal:
+                emoji = "🟢" if signal.direction == "BUY" else "🔴" if signal.direction == "SELL" else "🟡"
+                result_text += f"🎯 *Демо-сигнал {signal.ticker}:*\n"
+                result_text += f"{emoji} Направление: {signal.direction}\n"
+                result_text += f"💪 Сила: {signal.strength.value}\n"
+                result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
+                result_text += f"💡 Обоснование: {signal.reasoning}\n"
+                result_text += f"💰 Вход: {signal.entry_price:.2f} ₽\n"
+                result_text += f"🛑 Стоп: {signal.stop_loss:.2f} ₽\n"
+                result_text += f"🎯 Цель: {signal.take_profit:.2f} ₽\n\n"
+            else:
+                result_text += f"📊 *Текущие сигналы:*\n"
+                result_text += f"❌ Нет сильных сигналов в данный момент\n\n"
+            
+            # Возможности автоматизации
+            result_text += f"🚀 *Доступные режимы:*\n"
+            result_text += f"📝 **MANUAL** - Ручные рекомендации\n"
+            result_text += f"🔄 **SEMI_AUTO** - Полуавтоматический режим\n"
+            result_text += f"📊 **PAPER** - Виртуальная торговля (текущий)\n"
+            result_text += f"🤖 **AUTO** - Полная автоматизация (скоро)\n\n"
+            
+            # Статистика
+            result_text += f"📈 *Потенциал автоматизации:*\n"
+            result_text += f"• Экономия времени: 2-4 часа/день\n"
+            result_text += f"• Дисциплина: Устранение эмоций\n"
+            result_text += f"• Скорость: Реакция за секунды\n"
+            result_text += f"• Контроль: 24/7 мониторинг\n\n"
+            
+            # Команды управления
+            result_text += f"*🛠️ Команды управления:*\n"
+            result_text += f"• `/scan` - сканирование рынка\n"
+            result_text += f"• `/morning_brief` - утренний анализ\n"
+            result_text += f"• `/settings` - настройки автоматизации\n\n"
+            
+            result_text += f"⚠️ *Важно:* Автоматизация работает в тестовом режиме. "
+            result_text += f"Переход на реальную торговлю только после полного тестирования."
+
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info("Команда /automation выполнена успешно")
+
+        except Exception as e:
+            error_msg = f"❌ *Ошибка системы автоматизации*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте повторить запрос через несколько секунд"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Automation command error: {e}")
+
+    async def scan_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /scan."""
+        loading_msg = await update.message.reply_text(
+            "🔍 Запускаю сканирование рынка...\n"
+            "📊 Анализирую тикеры из списка наблюдения...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+        try:
+            # Создаем торговый движок
+            trading_engine = TradingEngine(mode=TradingMode.PAPER)
+            
+            # Сканируем рынок (ограничиваем до 3 тикеров для быстроты)
+            quick_watchlist = trading_engine.watchlist[:3]
+            signals = []
+            
+            for ticker in quick_watchlist:
+                try:
+                    signal = await trading_engine.generate_trading_signal(ticker)
+                    if signal:
+                        signals.append(signal)
+                except Exception as e:
+                    logger.error(f"Ошибка сканирования {ticker}: {e}")
+                    continue
+            
+            # Форматируем результаты
+            result_text = f"🔍 *СКАНИРОВАНИЕ РЫНКА*\n\n"
+            result_text += f"⏰ Время сканирования: {datetime.now().strftime('%H:%M:%S')}\n"
+            result_text += f"📊 Проанализировано тикеров: {len(quick_watchlist)}\n"
+            result_text += f"🎯 Найдено сигналов: {len(signals)}\n\n"
+            
+            if signals:
+                result_text += f"📈 *НАЙДЕННЫЕ СИГНАЛЫ:*\n\n"
+                
+                for i, signal in enumerate(signals, 1):
+                    emoji = "🟢" if signal.direction == "BUY" else "🔴" if signal.direction == "SELL" else "🟡"
+                    
+                    result_text += f"*{i}. {signal.ticker}*\n"
+                    result_text += f"{emoji} {signal.direction} • {signal.strength.value}\n"
+                    result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
+                    result_text += f"💰 Цена: {signal.entry_price:.2f} ₽\n"
+                    result_text += f"📝 {signal.reasoning[:50]}...\n\n"
+                
+                # Рекомендации
+                result_text += f"💡 *Рекомендации:*\n"
+                buy_signals = [s for s in signals if s.direction == "BUY"]
+                sell_signals = [s for s in signals if s.direction == "SELL"]
+                
+                if buy_signals:
+                    best_buy = max(buy_signals, key=lambda x: x.confidence)
+                    result_text += f"• Лучший сигнал на покупку: {best_buy.ticker}\n"
+                
+                if sell_signals:
+                    best_sell = max(sell_signals, key=lambda x: x.confidence)
+                    result_text += f"• Лучший сигнал на продажу: {best_sell.ticker}\n"
+                
+            else:
+                result_text += f"📊 *РЕЗУЛЬТАТЫ СКАНИРОВАНИЯ:*\n"
+                result_text += f"❌ Сильных сигналов не обнаружено\n\n"
+                result_text += f"📈 Проанализированы: {', '.join(quick_watchlist)}\n"
+                result_text += f"⏳ Рекомендуется повторить сканирование через 30-60 минут\n\n"
+                
+                result_text += f"💡 *Возможные причины:*\n"
+                result_text += f"• Рынок в консолидации\n"
+                result_text += f"• Слабые технические сигналы\n"
+                result_text += f"• Нейтральный новостной фон\n"
+            
+            result_text += f"\n*🔄 Следующие действия:*\n"
+            result_text += f"• `/risk TICKER` - анализ рисков\n"
+            result_text += f"• `/automation` - настройки автоматизации\n"
+            result_text += f"• `/portfolio` - текущий портфель\n\n"
+            
+            result_text += f"⚠️ *Примечание:* Сканирование в демо-режиме. "
+            result_text += f"Проведите дополнительный анализ перед принятием решений."
+
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"Сканирование завершено: найдено {len(signals)} сигналов")
+
+        except Exception as e:
+            error_msg = f"❌ *Ошибка сканирования рынка*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте повторить сканирование через несколько секунд"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Scan command error: {e}")
+
     async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /analysis TICKER."""
         if not context.args:
@@ -809,6 +994,9 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("portfolio", self.portfolio_command))
         self.application.add_handler(CommandHandler("analysis", self.analysis_command))
         self.application.add_handler(CommandHandler("signal", self.signal_command))
+        # Автоматизация
+        self.application.add_handler(CommandHandler("automation", self.automation_command))
+        self.application.add_handler(CommandHandler("scan", self.scan_command))
         # Обработка неизвестных сообщений
         self.application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.unknown_command)
