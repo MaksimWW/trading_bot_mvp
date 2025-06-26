@@ -93,9 +93,25 @@ class OpenAIAnalyzer:
             
             content = response.choices[0].message.content.strip()
             
-            # Парсим JSON ответ
+            # Парсим JSON ответ с обработкой ошибок
             import json
-            result = json.loads(content)
+            import re
+            
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                # Если не JSON, попробуем извлечь JSON из текста
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                else:
+                    # Создаем базовый результат если JSON не найден
+                    logger.warning(f"OpenAI вернул не JSON для {ticker}: {content[:100]}")
+                    result = {
+                        "sentiment_score": 0.0,
+                        "sentiment_label": "HOLD", 
+                        "summary": "Анализ недоступен - некорректный формат ответа"
+                    }
             
             # Валидация результата
             score = max(-1.0, min(1.0, float(result.get('sentiment_score', 0.0))))
