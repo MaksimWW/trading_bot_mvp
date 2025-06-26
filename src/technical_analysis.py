@@ -25,7 +25,7 @@ except ImportError:
     np = None
 
 from tinkoff_client import TinkoffClient
-from config import get_ticker_info
+# from config import get_ticker_info  # Функция отсутствует
 
 
 logger = logging.getLogger(__name__)
@@ -412,7 +412,7 @@ class TechnicalAnalyzer:
             # Формирование результата
             result = {
                 'ticker': ticker,
-                'company_name': get_ticker_info(ticker).get('name', f'Акция {ticker}'),
+                'company_name': {'name': f'Акция {ticker}', 'sector': 'Неизвестно'}.get('name', f'Акция {ticker}'),
                 'analysis_timestamp': datetime.now().isoformat(),
                 'success': True,
                 'error_message': None,
@@ -646,7 +646,7 @@ class TechnicalAnalyzer:
         """Создание результата с ошибкой."""
         return {
             'ticker': ticker,
-            'company_name': get_ticker_info(ticker).get('name', f'Акция {ticker}'),
+            'company_name': {'name': f'Акция {ticker}', 'sector': 'Неизвестно'}.get('name', f'Акция {ticker}'),
             'analysis_timestamp': datetime.now().isoformat(),
             'success': False,
             'error_message': error_message,
