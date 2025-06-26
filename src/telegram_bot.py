@@ -17,6 +17,7 @@ from telegram.ext import (
 
 from config import TELEGRAM_TOKEN
 from tinkoff_client import TinkoffClient
+from technical_analysis import get_technical_analyzer
 
 # Настройка логирования
 logging.basicConfig(
@@ -72,11 +73,13 @@ class TradingTelegramBot:
 • `/price TICKER` - цена акции (например: `/price SBER`)
 • `/accounts` - список торговых счетов
 • `/news TICKER` - анализ новостей (в разработке)
+• `/analysis TICKER` - технический анализ акции
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
 • `/price GAZP` - цена Газпрома
 • `/price YNDX` - цена Яндекса
 • `/news SBER` - новости о Сбербанке
+• `/analysis SBER` - технический анализ Сбербанка
 🚀 **Скоро добавим:**
 • 📰 Анализ новостей через OpenAI
 • 📈 Технические индикаторы (RSI, MACD)
@@ -378,6 +381,55 @@ class TradingTelegramBot:
                 parse_mode="HTML",
             )
 
+    async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /analysis TICKER."""
+        if not context.args:
+            await update.message.reply_text(
+                "📊 *Технический анализ акции*\n\n"
+                "Использование: `/analysis TICKER`\n\n"
+                "Примеры:\n"
+                "• `/analysis SBER` - анализ Сбербанка\n"
+                "• `/analysis GAZP` - анализ Газпрома\n"
+                "• `/analysis YNDX` - анализ Яндекса\n\n"
+                "📈 Включает: RSI, MACD, скользящие средние, Боллинджер\n"
+                "⏱️ Время обработки: 3-8 секунд",
+                parse_mode="Markdown"
+            )
+            return
+
+        ticker = context.args[0].upper()
+        
+        loading_msg = await update.message.reply_text(
+            f"📊 Выполняю технический анализ *{ticker}*...\n"
+            f"📈 Рассчитываю RSI, MACD, скользящие средние...",
+            parse_mode="Markdown"
+        )
+        
+        try:
+            from technical_analysis import get_ticker_analysis_for_telegram
+            result_text = await get_ticker_analysis_for_telegram(ticker)
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode="Markdown"
+            )
+            
+            logger.info(f"Технический анализ {ticker} завершен успешно")
+            
+        except Exception as e:
+            error_msg = f"❌ *Ошибка технического анализа {ticker}*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте:\n"
+            error_msg += f"• Проверить тикер (SBER, GAZP, YNDX)\n"
+            error_msg += f"• Повторить запрос через несколько секунд\n"
+            error_msg += f"• Использовать /status для проверки систем"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode="Markdown"
+            )
+            logger.error(f"Analysis command error for {ticker}: {e}")
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработка неизвестных сообщений"""
         try:
@@ -408,6 +460,7 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("price", self.price_command))
         self.application.add_handler(CommandHandler("accounts", self.accounts_command))
         self.application.add_handler(CommandHandler("news", self.news_command))
+        self.application.add_handler(CommandHandler("analysis", self.analysis_command))
         # Обработка неизвестных сообщений
         self.application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.unknown_command)
