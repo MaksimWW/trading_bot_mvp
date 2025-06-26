@@ -307,7 +307,7 @@ class TradingTelegramBot:
                 from perplexity_client import PerplexityClient
                 
                 perplexity = PerplexityClient()
-                news_results = await perplexity.search_ticker_news(ticker, hours=24)
+                news_results = perplexity.search_ticker_news(ticker, hours=24)
                 
                 if not news_results:
                     result_text = f"""📰 **НОВОСТИ ПО {ticker}**
