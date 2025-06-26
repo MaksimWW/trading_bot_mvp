@@ -217,6 +217,32 @@ class TradingTelegramBot:
                 f"❌ Ошибка при получении цены {ticker_name}. " f"Попробуйте позже."
             )
 
+    async def _get_sentiment_analysis(self, ticker: str, news_results: List) -> str:
+        """Получение блока sentiment анализа"""
+        try:
+            if len(news_results) > 0:
+                from openai_analyzer import OpenAIAnalyzer
+                
+                analyzer = OpenAIAnalyzer()
+                result = await analyzer.analyze_sentiment(ticker, news_results[:3])
+                
+                if result:
+                    emoji_map = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}
+                    emoji = emoji_map.get(result.get("sentiment_label", "HOLD"), "⚪")
+                    score = result.get("sentiment_score", 0.0)
+                    summary = result.get("summary", "Анализ недоступен")
+                    
+                    return f"""
+🤖 **АНАЛИЗ НАСТРОЕНИЯ AI:**
+{emoji} **Рекомендация:** {result.get("sentiment_label", "HOLD")}
+📊 **Оценка:** {score:.2f} (от -1.0 до +1.0)
+📝 **Анализ:** {summary}
+"""
+        except Exception as e:
+            logger.warning(f"OpenAI анализ недоступен для {ticker}: {e}")
+        
+        return ""
+
     async def _format_news_result(self, ticker: str, news_results: List) -> str:
         """Форматирование результатов новостей"""
         if not news_results:
