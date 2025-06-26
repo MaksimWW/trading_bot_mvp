@@ -195,7 +195,7 @@ class TradingTelegramBot:
             logger.error(f"Ошибка в команде price: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
             await update.message.reply_text(
-                "❌ Ошибка при получении цены {ticker_name}. " "Попробуйте позже."
+                f"❌ Ошибка при получении цены {ticker_name}. Попробуйте позже."
             )
 
     async def _get_sentiment_analysis(self, ticker: str, news_results: List) -> str:
