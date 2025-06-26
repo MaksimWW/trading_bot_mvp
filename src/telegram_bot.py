@@ -805,11 +805,11 @@ class TradingTelegramBot:
 
         if buy_signals:
             best_buy = max(buy_signals, key=lambda x: x.confidence)
-            result_text += "• Лучший сигнал на покупку: {best_buy.ticker}\n"
+            result_text += f"• Лучший сигнал на покупку: {best_buy.ticker}\n"
 
         if sell_signals:
             best_sell = max(sell_signals, key=lambda x: x.confidence)
-            result_text += "• Лучший сигнал на продажу: {best_sell.ticker}\n"
+            result_text += f"• Лучший сигнал на продажу: {best_sell.ticker}\n"
 
         return result_text
 
