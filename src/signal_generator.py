@@ -101,28 +101,34 @@ class SignalGenerator:
             # Получение технического и новостного анализа
             tech_data = self._process_technical_analysis(technical_result)
             news_data = self._process_news_analysis(news_result)
-            
+
             # Взвешенное комбинирование
             combined_score = (
-                tech_data["score"] * self.weights["technical"] + 
-                news_data["score"] * self.weights["news"]
+                tech_data["score"] * self.weights["technical"]
+                + news_data["score"] * self.weights["news"]
             )
-            
+
             combined_confidence = (
-                tech_data["confidence"] * self.weights["technical"] +
-                news_data["confidence"] * self.weights["news"]
+                tech_data["confidence"] * self.weights["technical"]
+                + news_data["confidence"] * self.weights["news"]
             )
-            
+
             # Преобразование в итоговый сигнал
             signal, emoji = self._get_signal_and_emoji(combined_score)
-            
+
             # Формирование итогового результата
             return self._create_final_result(
-                ticker, technical_result, news_result, 
-                signal, emoji, combined_score, combined_confidence,
-                tech_data, news_data
+                ticker,
+                technical_result,
+                news_result,
+                signal,
+                emoji,
+                combined_score,
+                combined_confidence,
+                tech_data,
+                news_data,
             )
-            
+
         except Exception as e:
             logger.error(f"Ошибка комбинирования сигналов: {e}")
             return self._create_error_signal(ticker, f"Ошибка комбинирования: {str(e)}")
@@ -130,14 +136,20 @@ class SignalGenerator:
     def _process_technical_analysis(self, technical_result: Optional[Dict]) -> Dict:
         """Обработка результатов технического анализа."""
         signal_values = {
-            "STRONG_BUY": 2, "BUY": 1, "NEUTRAL_BULLISH": 0.5, "HOLD": 0,
-            "NEUTRAL_BEARISH": -0.5, "SELL": -1, "STRONG_SELL": -2, "UNKNOWN": 0,
+            "STRONG_BUY": 2,
+            "BUY": 1,
+            "NEUTRAL_BULLISH": 0.5,
+            "HOLD": 0,
+            "NEUTRAL_BEARISH": -0.5,
+            "SELL": -1,
+            "STRONG_SELL": -2,
+            "UNKNOWN": 0,
         }
-        
+
         score = 0
         confidence = 0
         signal = "UNKNOWN"
-        
+
         try:
             print("DEBUG: Обрабатываем технический результат...")
             if technical_result and technical_result.get("success"):
@@ -149,14 +161,14 @@ class SignalGenerator:
         except Exception as e:
             print("DEBUG: Ошибка в техническом анализе:", e)
             raise
-            
+
         return {"signal": signal, "score": score, "confidence": confidence}
 
     def _process_news_analysis(self, news_result: Optional[Dict]) -> Dict:
         """Обработка результатов анализа новостей."""
         score = 0
         confidence = 0
-        
+
         try:
             print("DEBUG: Обрабатываем новостной результат...")
             if news_result and news_result.get("success") and news_result.get("sentiment"):
@@ -165,17 +177,27 @@ class SignalGenerator:
                     sentiment_score = sentiment.get("sentiment_score", 0)
                     score = sentiment_score * 2  # Преобразуем [-1,1] в [-2,2]
                     confidence = sentiment.get("confidence", 0)
-                    print(f"DEBUG: Новостной сигнал: sentiment_score={sentiment_score}, news_score={score}")
+                    print(
+                        f"DEBUG: Новостной сигнал: sentiment_score={sentiment_score}, news_score={score}"
+                    )
         except Exception as e:
             print("DEBUG: Ошибка в новостном анализе:", e)
             raise
-            
+
         return {"score": score, "confidence": confidence}
 
-    def _create_final_result(self, ticker: str, technical_result: Optional[Dict], 
-                           news_result: Optional[Dict], signal: str, emoji: str,
-                           combined_score: float, combined_confidence: float,
-                           tech_data: Dict, news_data: Dict) -> Dict:
+    def _create_final_result(
+        self,
+        ticker: str,
+        technical_result: Optional[Dict],
+        news_result: Optional[Dict],
+        signal: str,
+        emoji: str,
+        combined_score: float,
+        combined_confidence: float,
+        tech_data: Dict,
+        news_data: Dict,
+    ) -> Dict:
         """Формирование итогового результата."""
         try:
             print("DEBUG: Формируем итоговый результат...")
@@ -183,9 +205,18 @@ class SignalGenerator:
             print(f"DEBUG: signal = {signal}")
 
             result = self._create_result(
-                ticker, technical_result, signal, emoji, combined_score, combined_confidence,
-                tech_data["signal"], tech_data["score"], tech_data["confidence"],
-                news_result, news_data["score"], news_data["confidence"]
+                ticker,
+                technical_result,
+                signal,
+                emoji,
+                combined_score,
+                combined_confidence,
+                tech_data["signal"],
+                tech_data["score"],
+                tech_data["confidence"],
+                news_result,
+                news_data["score"],
+                news_data["confidence"],
             )
 
             print("DEBUG: Результат сформирован успешно")
