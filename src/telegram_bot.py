@@ -311,7 +311,7 @@ class TradingTelegramBot:
                 account_id = account.id
                 account_name = account.name if account.name else "Счет {i}"
                 account_type = account.type.name if hasattr(account, "type") else "UNSPECIFIED"
-                accounts_message += """
+                accounts_message += f"""
 **🏦 Счет {i}:**
 📝 Название: {account_name}
 🆔 ID: `{account_id}`
