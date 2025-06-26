@@ -1,0 +1,65 @@
+В файле src/telegram_bot.py добавь команду /signal для комбинированных торговых сигналов:
+
+1. Добавь импорт в начало файла (после строки "from news_analyzer import get_news_analyzer"):
+from signal_generator import get_trading_signal_for_telegram
+
+2. Добавь новый метод signal_command в класс TradingTelegramBot (после метода news_command):
+
+async def signal_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /signal TICKER."""
+    if not context.args:
+        await update.message.reply_text(
+            "🎯 *Комбинированный торговый сигнал*\n\n"
+            "Использование: `/signal TICKER`\n\n"
+            "Примеры:\n"
+            "• `/signal SBER` - сигнал для Сбербанка\n"
+            "• `/signal GAZP` - сигнал для Газпрома\n"
+            "• `/signal YNDX` - сигнал для Яндекса\n\n"
+            "🧠 Объединяет: технический анализ (60%) + новости (40%)\n"
+            "⏱️ Время обработки: 5-12 секунд",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+
+    ticker = context.args[0].upper()
+    
+    loading_msg = await update.message.reply_text(
+        f"🎯 Генерирую торговый сигнал для *{ticker}*...\n"
+        "📊 Анализирую техническую картину...\n"
+        "📰 Обрабатываю новостной фон...\n"
+        "🧠 Комбинирую результаты...",
+        parse_mode=ParseMode.MARKDOWN
+    )
+    
+    try:
+        result_text = await get_trading_signal_for_telegram(ticker)
+        
+        await loading_msg.edit_text(
+            result_text,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        logger.info(f"Торговый сигнал {ticker} сгенерирован успешно")
+        
+    except Exception as e:
+        error_msg = f"❌ *Ошибка генерации сигнала {ticker}*\n\n"
+        error_msg += f"Причина: {str(e)}\n\n"
+        error_msg += "💡 Попробуйте:\n"
+        error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
+        error_msg += f"• Использовать отдельно `/analysis {ticker}` и `/news {ticker}`\n"
+        error_msg += "• Повторить запрос через несколько секунд"
+        
+        await loading_msg.edit_text(
+            error_msg,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        logger.error(f"Signal command error for {ticker}: {e}")
+
+3. В методе setup_handlers добавь регистрацию команды (найди строку с analysis и добавь после неё):
+app.add_handler(CommandHandler("signal", self.signal_command))
+
+4. В методе help_command найди раздел с /analysis и добавь новую строку:
+- `/signal TICKER` - комбинированный торговый сигнал
+
+5. В методе setup_bot_commands добавь команду в меню (найди строку с analysis и добавь после неё):
+BotCommand("signal", "🎯 Комбинированный торговый сигнал"),
