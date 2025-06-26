@@ -106,8 +106,8 @@ class TradingEngine:
         # Настройки
         self.watchlist = ["SBER", "GAZP", "YNDX", "LKOH", "NVTK"]
         self.scan_interval = 300  # 5 минут
-        self.min_signal_strength = SignalStrength.MODERATE
-        self.min_confidence = 0.6
+        self.min_signal_strength = SignalStrength.WEAK
+        self.min_confidence = 0.5
         
         logger.info(f"TradingEngine инициализирован в режиме {mode.value}")
     
