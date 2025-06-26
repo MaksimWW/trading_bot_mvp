@@ -134,6 +134,43 @@ class PerplexityClient:
         logger.debug(f"Построен запрос для {ticker}: {query[:100]}...")
         return query
 
+    def _prepare_headers(self) -> Dict[str, str]:
+        """Подготовка заголовков для запроса"""
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+    def _prepare_payload(self, query: str) -> Dict:
+        """Подготовка данных для запроса"""
+        return {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": query
+                }
+            ],
+            "return_citations": True,
+            "temperature": 0.1,
+            "max_tokens": 2000
+        }
+
+    def _handle_response_errors(self, response) -> None:
+        """Обработка ошибок ответа API"""
+        if response.status_code == 401:
+            raise PerplexityError("❌ Неверный API ключ Perplexity (401)")
+        elif response.status_code == 429:
+            raise PerplexityError("⏰ Превышен лимит запросов Perplexity API (429)")
+        elif response.status_code >= 400:
+            error_msg = f"Ошибка API {response.status_code}"
+            try:
+                error_detail = response.json().get("error", {}).get("message", response.text)
+                error_msg += f": {error_detail}"
+            except Exception:
+                error_msg += f": {response.text}"
+            raise PerplexityError(error_msg)
+
     def _make_request(self, query: str) -> Dict:
         """
         Выполнение запроса к Perplexity API
@@ -147,23 +184,8 @@ class PerplexityClient:
         Raises:
             PerplexityError: При ошибках API
         """
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": query
-                }
-            ],
-            "return_citations": True,
-            "temperature": 0.1,
-            "max_tokens": 2000
-        }
+        headers = self._prepare_headers()
+        payload = self._prepare_payload(query)
 
         try:
             logger.debug(f"Отправка запроса к {self.base_url}/chat/completions")
@@ -175,20 +197,7 @@ class PerplexityClient:
                 timeout=self.timeout
             )
 
-            # Обработка различных статус кодов
-            if response.status_code == 401:
-                raise PerplexityError("❌ Неверный API ключ Perplexity (401)")
-            elif response.status_code == 429:
-                raise PerplexityError("⏰ Превышен лимит запросов Perplexity API (429)")
-            elif response.status_code >= 400:
-                error_msg = f"Ошибка API {response.status_code}"
-                try:
-                    error_detail = response.json().get("error", {}).get("message", response.text)
-                    error_msg += f": {error_detail}"
-                except Exception as e:
-                    error_msg += f": {response.text}"
-                raise PerplexityError(error_msg)
-
+            self._handle_response_errors(response)
             response.raise_for_status()
             return response.json()
 
@@ -267,7 +276,7 @@ class PerplexityClient:
             from urllib.parse import urlparse
             parsed = urlparse(url)
             return parsed.netloc or "Неизвестный источник"
-        except Exception as e:
+        except Exception:
             return "Неизвестный источник"
 
     def test_connection(self) -> bool:
@@ -299,9 +308,62 @@ class PerplexityClient:
             return False
 
 
+def _check_api_key() -> str:
+    """Проверка наличия API ключа"""
+    import os
+    
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    if not api_key:
+        print("❌ PERPLEXITY_API_KEY не найден в переменных окружения!")
+        print("💡 Добавьте ключ в .env файл:")
+        print("   PERPLEXITY_API_KEY=your_api_key_here")
+        return None
+    return api_key
+
+def _initialize_client(api_key: str) -> PerplexityClient:
+    """Инициализация и тестирование клиента"""
+    print("🔧 Инициализация клиента...")
+    client = PerplexityClient(api_key)
+    print("✅ Клиент инициализирован")
+
+    print("\n🔌 Тестирование подключения...")
+    if client.test_connection():
+        print("✅ Тест подключения прошел успешно!")
+        return client
+    else:
+        print("❌ Тест подключения не прошел!")
+        return None
+
+def _test_ticker_news(client: PerplexityClient, ticker: str) -> None:
+    """Тестирование поиска новостей для одного тикера"""
+    print(f"\n📰 Тестирование поиска новостей для {ticker}...")
+    try:
+        news = client.search_ticker_news(ticker, hours=24)
+
+        if news:
+            print(f"✅ Найдено {len(news)} новостей для {ticker}!")
+
+            # Показываем первую новость
+            first_news = news[0]
+            print(f"   📋 Заголовок: {first_news['title']}")
+            print(f"   🏢 Источник: {first_news['source']}")
+            print(f"   📄 Содержание: {first_news['content'][:150]}...")
+            print(f"   🔗 URL: {first_news.get('url', 'Нет URL')}")
+            print(f"   📅 Время: {first_news['timestamp']}")
+            print(f"   🏷️ Тип: {first_news['type']}")
+
+            if len(news) > 1:
+                print(f"   📊 Всего элементов: {len(news)} (основной + {len(news)-1} источников)")
+        else:
+            print(f"⚠️ Новости для {ticker} не найдены")
+
+    except PerplexityError as e:
+        print(f"❌ Ошибка для {ticker}: {e}")
+    except Exception as e:
+        print(f"❌ Неожиданная ошибка для {ticker}: {e}")
+
 def main():
     """Функция для тестирования клиента"""
-    import os
     from dotenv import load_dotenv
 
     # Загружаем переменные окружения
@@ -311,56 +373,20 @@ def main():
     print("=" * 50)
 
     # Проверяем наличие API ключа
-    api_key = os.getenv("PERPLEXITY_API_KEY")
+    api_key = _check_api_key()
     if not api_key:
-        print("❌ PERPLEXITY_API_KEY не найден в переменных окружения!")
-        print("💡 Добавьте ключ в .env файл:")
-        print("   PERPLEXITY_API_KEY=your_api_key_here")
         return
 
     try:
-        # Инициализация клиента
-        print("🔧 Инициализация клиента...")
-        client = PerplexityClient(api_key)
-        print("✅ Клиент инициализирован")
-
-        # Тест подключения
-        print("\n🔌 Тестирование подключения...")
-        if client.test_connection():
-            print("✅ Тест подключения прошел успешно!")
-        else:
-            print("❌ Тест подключения не прошел!")
+        # Инициализация и тестирование клиента
+        client = _initialize_client(api_key)
+        if not client:
             return
 
         # Тест поиска новостей для разных тикеров
         test_tickers = ["SBER", "GAZP", "YNDX"]
-
         for ticker in test_tickers:
-            print(f"\n📰 Тестирование поиска новостей для {ticker}...")
-            try:
-                news = client.search_ticker_news(ticker, hours=24)
-
-                if news:
-                    print(f"✅ Найдено {len(news)} новостей для {ticker}!")
-
-                    # Показываем первую новость
-                    first_news = news[0]
-                    print(f"   📋 Заголовок: {first_news['title']}")
-                    print(f"   🏢 Источник: {first_news['source']}")
-                    print(f"   📄 Содержание: {first_news['content'][:150]}...")
-                    print(f"   🔗 URL: {first_news.get('url', 'Нет URL')}")
-                    print(f"   📅 Время: {first_news['timestamp']}")
-                    print(f"   🏷️ Тип: {first_news['type']}")
-
-                    if len(news) > 1:
-                        print(f"   📊 Всего элементов: {len(news)} (основной + {len(news)-1} источников)")
-                else:
-                    print(f"⚠️ Новости для {ticker} не найдены")
-
-            except PerplexityError as e:
-                print(f"❌ Ошибка для {ticker}: {e}")
-            except Exception as e:
-                print(f"❌ Неожиданная ошибка для {ticker}: {e}")
+            _test_ticker_news(client, ticker)
 
         print("\n🎉 Тестирование завершено!")
         print("=" * 50)
