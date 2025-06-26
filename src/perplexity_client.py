@@ -12,7 +12,6 @@ from typing import Dict, List, Optional
 
 import requests
 
-from config import OPENAI_API_KEY
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -35,10 +34,10 @@ class PerplexityClient:
             api_key: API ключ Perplexity (если не указан, берется из переменных окружения)
         """
         import os
-        
+
         # Используем переданный ключ или берем из окружения
         self.api_key = api_key or os.getenv("PERPLEXITY_API_KEY")
-        
+
         if not self.api_key:
             raise ValueError("API ключ Perplexity не найден. Установите PERPLEXITY_API_KEY")
 
@@ -335,15 +334,15 @@ def main():
 
         # Тест поиска новостей для разных тикеров
         test_tickers = ["SBER", "GAZP", "YNDX"]
-        
+
         for ticker in test_tickers:
             print(f"\n📰 Тестирование поиска новостей для {ticker}...")
             try:
                 news = client.search_ticker_news(ticker, hours=24)
-                
+
                 if news:
                     print(f"✅ Найдено {len(news)} новостей для {ticker}!")
-                    
+
                     # Показываем первую новость
                     first_news = news[0]
                     print(f"   📋 Заголовок: {first_news['title']}")
@@ -352,12 +351,12 @@ def main():
                     print(f"   🔗 URL: {first_news.get('url', 'Нет URL')}")
                     print(f"   📅 Время: {first_news['timestamp']}")
                     print(f"   🏷️ Тип: {first_news['type']}")
-                    
+
                     if len(news) > 1:
                         print(f"   📊 Всего элементов: {len(news)} (основной + {len(news)-1} источников)")
                 else:
                     print(f"⚠️ Новости для {ticker} не найдены")
-                    
+
             except PerplexityError as e:
                 print(f"❌ Ошибка для {ticker}: {e}")
             except Exception as e:
