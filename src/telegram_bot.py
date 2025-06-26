@@ -5,7 +5,7 @@ Telegram Bot для управления торговым ботом
 
 import logging
 
-from telegram import Update, BotCommand
+from telegram import BotCommand, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -289,26 +289,25 @@ class TradingTelegramBot:
                     "• <code>/news YNDX</code> - новости о Яндексе\n\n"
                     "🤖 Анализ выполняется с помощью ИИ\n"
                     "⏱️ Время обработки: 3-7 секунд",
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
                 return
 
             ticker = context.args[0].upper()
-            
+
             # Отправляем сообщение о начале анализа
             loading_msg = await update.message.reply_text(
-                f"🔍 Ищу новости о <b>{ticker}</b>...\n"
-                f"🤖 Анализирую через Perplexity AI...",
-                parse_mode="HTML"
+                f"🔍 Ищу новости о <b>{ticker}</b>...\n" f"🤖 Анализирую через Perplexity AI...",
+                parse_mode="HTML",
             )
-            
+
             # Получаем новости через perplexity_client
             try:
                 from perplexity_client import PerplexityClient
-                
+
                 perplexity = PerplexityClient()
                 news_results = perplexity.search_ticker_news(ticker, hours=24)
-                
+
                 if not news_results:
                     result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
 
@@ -328,11 +327,17 @@ class TradingTelegramBot:
 ⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления."""
                 else:
                     # Форматируем найденные новости
-                    sources = list(set(news.get('source', 'Неизвестно') for news in news_results if news.get('source')))
-                    sources_text = ', '.join(sources[:3])
+                    sources = list(
+                        set(
+                            news.get("source", "Неизвестно")
+                            for news in news_results
+                            if news.get("source")
+                        )
+                    )
+                    sources_text = ", ".join(sources[:3])
                     if len(sources) > 3:
                         sources_text += f" и ещё {len(sources) - 3}"
-                    
+
                     result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
 
 🏢 <b>Компания:</b> {ticker}
@@ -344,30 +349,36 @@ class TradingTelegramBot:
 
 """
                     for i, news in enumerate(news_results[:3], 1):
-                        title = news.get('title', 'Без заголовка')
-                        summary = news.get('content', news.get('summary', 'Описание отсутствует'))
-                        source = news.get('source', 'Неизвестный источник')
-                        
+                        title = news.get("title", "Без заголовка")
+                        summary = news.get("content", news.get("summary", "Описание отсутствует"))
+                        source = news.get("source", "Неизвестный источник")
+
                         # Обрезаем длинные тексты
                         if len(title) > 80:
                             title = title[:77] + "..."
                         if len(summary) > 150:
                             summary = summary[:147] + "..."
-                        
+
                         # Экранируем HTML символы
-                        title_escaped = title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                        summary_escaped = summary.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                        source_escaped = source.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                        
+                        title_escaped = (
+                            title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        )
+                        summary_escaped = (
+                            summary.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        )
+                        source_escaped = (
+                            source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        )
+
                         result_text += f"""<b>{i}. {title_escaped}</b>
 📝 {summary_escaped}
 🌐 {source_escaped}
 
 """
-                    
+
                     if len(news_results) > 3:
                         result_text += f"📋 И ещё {len(news_results) - 3} новостей...\n\n"
-                    
+
                     result_text += f"""🕐 <b>Время анализа:</b> {ticker} проанализирован
 
 💡 <b>Что дальше?</b>
@@ -376,7 +387,7 @@ class TradingTelegramBot:
 - <code>/status</code> - состояние системы
 
 ⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления. Не является инвестиционной рекомендацией."""
-                
+
             except ImportError:
                 result_text = f"""❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
 
@@ -386,7 +397,7 @@ class TradingTelegramBot:
 - <code>/price {ticker}</code> - текущая цена акции
 - <code>/accounts</code> - торговые счета
 - <code>/status</code> - состояние систем"""
-            
+
             except Exception as api_error:
                 logger.error(f"Ошибка Perplexity API для {ticker}: {api_error}")
                 result_text = f"""❌ <b>ОШИБКА ПОЛУЧЕНИЯ НОВОСТЕЙ {ticker}</b>
@@ -402,17 +413,16 @@ class TradingTelegramBot:
 🔄 Альтернативы:
 - <code>/price {ticker}</code> - текущая цена
 - <code>/accounts</code> - торговые счета"""
-            
+
             await loading_msg.edit_text(result_text, parse_mode="HTML")
             logger.info(f"Команда news выполнена для {ticker}")
-            
+
         except Exception as e:
             logger.error(f"Ошибка в команде news: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
             await update.message.reply_text(
-                f"❌ Ошибка при анализе новостей {ticker_name}. "
-                f"Попробуйте позже.",
-                parse_mode="HTML"
+                f"❌ Ошибка при анализе новостей {ticker_name}. " f"Попробуйте позже.",
+                parse_mode="HTML",
             )
 
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
