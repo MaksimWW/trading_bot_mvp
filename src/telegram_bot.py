@@ -4,8 +4,9 @@ Telegram Bot для управления торговым ботом
 """
 
 import logging
+from typing import List
 
-from telegram import BotCommand, Update
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -216,6 +217,77 @@ class TradingTelegramBot:
                 f"❌ Ошибка при получении цены {ticker_name}. " f"Попробуйте позже."
             )
 
+    def _format_news_result(self, ticker: str, news_results: List) -> str:
+        """Форматирование результатов новостей"""
+        if not news_results:
+            return f"""📰 <b>НОВОСТИ ПО {ticker}</b>
+
+🏢 <b>Компания:</b> {ticker}
+❌ За последние 24 часа новостей не найдено.
+
+💡 Возможные причины:
+- Нет значимых новостей о компании
+- Временные проблемы с источниками данных
+- Тикер может быть неактивным
+
+🔄 Попробуйте:
+- Повторить запрос через несколько минут
+- Проверить другие тикеры: GAZP, YNDX, LKOH
+- Использовать <code>/price {ticker}</code> для проверки цены
+
+⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления."""
+
+        # Форматируем найденные новости
+        sources = list(set(news.get('source', 'Неизвестно') for news in news_results if news.get('source')))
+        sources_text = ', '.join(sources[:3])
+        if len(sources) > 3:
+            sources_text += f" и ещё {len(sources) - 3}"
+
+        result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
+
+🏢 <b>Компания:</b> {ticker}
+🔍 <b>Найдено новостей:</b> {len(news_results)}
+⏰ <b>Период:</b> Последние 24 часа
+🌐 <b>Источники:</b> {sources_text}
+
+📋 <b>ТОП-{min(3, len(news_results))} НОВОСТЕЙ:</b>
+
+"""
+        for i, news in enumerate(news_results[:3], 1):
+            title = news.get('title', 'Без заголовка')
+            summary = news.get('content', news.get('summary', 'Описание отсутствует'))
+            source = news.get('source', 'Неизвестный источник')
+
+            if len(title) > 80:
+                title = title[:77] + "..."
+            if len(summary) > 150:
+                summary = summary[:147] + "..."
+
+            # Экранируем HTML символы
+            title_escaped = title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            summary_escaped = summary.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            source_escaped = source.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+            result_text += f"""<b>{i}. {title_escaped}</b>
+📝 {summary_escaped}
+🌐 {source_escaped}
+
+"""
+
+        if len(news_results) > 3:
+            result_text += f"📋 И ещё {len(news_results) - 3} новостей...\n\n"
+
+        result_text += f"""🕐 <b>Время анализа:</b> {ticker} проанализирован
+
+💡 <b>Что дальше?</b>
+- <code>/price {ticker}</code> - текущая цена
+- <code>/accounts</code> - торговые счета
+- <code>/status</code> - состояние системы
+
+⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления. Не является инвестиционной рекомендацией."""
+
+        return result_text
+
     async def accounts_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /accounts - список торговых счетов"""
         try:
@@ -301,92 +373,12 @@ class TradingTelegramBot:
                 parse_mode="HTML",
             )
 
-            # Получаем новости через perplexity_client
             try:
                 from perplexity_client import PerplexityClient
 
                 perplexity = PerplexityClient()
                 news_results = perplexity.search_ticker_news(ticker, hours=24)
-
-                if not news_results:
-                    result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
-
-🏢 <b>Компания:</b> {ticker}
-❌ За последние 24 часа новостей не найдено.
-
-💡 Возможные причины:
-- Нет значимых новостей о компании
-- Временные проблемы с источниками данных
-- Тикер может быть неактивным
-
-🔄 Попробуйте:
-- Повторить запрос через несколько минут
-- Проверить другие тикеры: GAZP, YNDX, LKOH
-- Использовать <code>/price {ticker}</code> для проверки цены
-
-⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления."""
-                else:
-                    # Форматируем найденные новости
-                    sources = list(
-                        set(
-                            news.get("source", "Неизвестно")
-                            for news in news_results
-                            if news.get("source")
-                        )
-                    )
-                    sources_text = ", ".join(sources[:3])
-                    if len(sources) > 3:
-                        sources_text += f" и ещё {len(sources) - 3}"
-
-                    result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
-
-🏢 <b>Компания:</b> {ticker}
-🔍 <b>Найдено новостей:</b> {len(news_results)}
-⏰ <b>Период:</b> Последние 24 часа
-🌐 <b>Источники:</b> {sources_text}
-
-📋 <b>ТОП-{min(3, len(news_results))} НОВОСТЕЙ:</b>
-
-"""
-                    for i, news in enumerate(news_results[:3], 1):
-                        title = news.get("title", "Без заголовка")
-                        summary = news.get("content", news.get("summary", "Описание отсутствует"))
-                        source = news.get("source", "Неизвестный источник")
-
-                        # Обрезаем длинные тексты
-                        if len(title) > 80:
-                            title = title[:77] + "..."
-                        if len(summary) > 150:
-                            summary = summary[:147] + "..."
-
-                        # Экранируем HTML символы
-                        title_escaped = (
-                            title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                        )
-                        summary_escaped = (
-                            summary.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                        )
-                        source_escaped = (
-                            source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                        )
-
-                        result_text += f"""<b>{i}. {title_escaped}</b>
-📝 {summary_escaped}
-🌐 {source_escaped}
-
-"""
-
-                    if len(news_results) > 3:
-                        result_text += f"📋 И ещё {len(news_results) - 3} новостей...\n\n"
-
-                    result_text += f"""🕐 <b>Время анализа:</b> {ticker} проанализирован
-
-💡 <b>Что дальше?</b>
-- <code>/price {ticker}</code> - текущая цена
-- <code>/accounts</code> - торговые счета
-- <code>/status</code> - состояние системы
-
-⚠️ <b>Дисклеймер:</b> Анализ предназначен для ознакомления. Не является инвестиционной рекомендацией."""
+                result_text = self._format_news_result(ticker, news_results)
 
             except ImportError:
                 result_text = f"""❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
