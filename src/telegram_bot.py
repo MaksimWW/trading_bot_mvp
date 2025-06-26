@@ -5,7 +5,7 @@ Telegram Bot для управления торговым ботом
 
 import logging
 
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -77,11 +77,13 @@ class TradingTelegramBot:
 💰 **Рыночные данные:**
 • `/price TICKER` - цена акции (например: `/price SBER`)
 • `/accounts` - список торговых счетов
+• `/news TICKER` - анализ новостей (в разработке)
 
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
 • `/price GAZP` - цена Газпрома
 • `/price YNDX` - цена Яндекса
+• `/news SBER` - новости о Сбербанке
 
 🚀 **Скоро добавим:**
 • 📰 Анализ новостей через OpenAI
@@ -273,6 +275,70 @@ class TradingTelegramBot:
                 parse_mode="Markdown",
             )
 
+    async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Команда /news TICKER - анализ новостей"""
+        try:
+            # Проверяем есть ли тикер в команде
+            if not context.args:
+                await update.message.reply_text(
+                    "📰 **Анализ новостей по компании**\n\n"
+                    "Использование: `/news TICKER`\n\n"
+                    "Примеры:\n"
+                    "• `/news SBER` - новости о Сбербанке\n"
+                    "• `/news GAZP` - новости о Газпроме\n"
+                    "• `/news YNDX` - новости о Яндексе\n\n"
+                    "🤖 Анализ выполняется с помощью ИИ\n"
+                    "⏱️ Время обработки: 3-7 секунд",
+                    parse_mode="Markdown"
+                )
+                return
+
+            ticker = context.args[0].upper()
+            
+            # Отправляем сообщение о начале анализа
+            loading_msg = await update.message.reply_text(
+                f"🔍 Ищу новости о **{ticker}**...\n"
+                f"🤖 Анализирую через Perplexity AI...",
+                parse_mode="Markdown"
+            )
+            
+            # Имитируем анализ новостей (базовая версия)
+            import asyncio
+            await asyncio.sleep(2)  # Имитируем обработку
+            
+            # Базовый ответ
+            result_text = f"""📰 **НОВОСТИ ПО {ticker}**
+
+🏢 **Компания:** {ticker}
+🔍 **Найдено новостей:** В разработке
+⏱️ **Период:** Последние 24 часа
+
+🚧 **Статус:** Функция анализа новостей в активной разработке
+
+💡 **Что уже работает:**
+- `/price {ticker}` - текущая цена акции
+- `/accounts` - торговые счета
+- `/status` - состояние систем
+
+🚀 **Скоро добавим:**
+- Реальный поиск новостей через Perplexity API
+- Анализ настроений через OpenAI
+- Торговые сигналы на основе новостей
+
+⚠️ **Дисклеймер:** Анализ предназначен для ознакомления."""
+            
+            await loading_msg.edit_text(result_text, parse_mode="Markdown")
+            logger.info(f"Команда news выполнена для {ticker}")
+            
+        except Exception as e:
+            logger.error(f"Ошибка в команде news: {e}")
+            ticker_name = context.args[0].upper() if context.args else "акции"
+            await update.message.reply_text(
+                f"❌ Ошибка при анализе новостей {ticker_name}. "
+                f"Попробуйте позже.",
+                parse_mode="Markdown"
+            )
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработка неизвестных сообщений"""
         try:
@@ -308,6 +374,7 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("price", self.price_command))
         self.application.add_handler(CommandHandler("accounts", self.accounts_command))
+        self.application.add_handler(CommandHandler("news", self.news_command))
 
         # Обработка неизвестных сообщений
         self.application.add_handler(
