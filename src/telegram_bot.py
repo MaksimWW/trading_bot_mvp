@@ -251,7 +251,7 @@ class TradingTelegramBot:
             sources_text += " и ещё {len(sources) - 3}"
         # Добавляем sentiment анализ через OpenAI
         sentiment_block = await self._get_sentiment_analysis(ticker, news_results)
-        result_text = """📰 <b>НОВОСТИ ПО {ticker}</b>
+        result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
 🏢 <b>Компания:</b> {ticker}
 🔍 <b>Найдено новостей:</b> {len(news_results)}
 ⏰ <b>Период:</b> Последние 24 часа
