@@ -7,6 +7,7 @@ import logging
 from typing import List
 
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -18,6 +19,7 @@ from telegram.ext import (
 from config import TELEGRAM_TOKEN
 from signal_generator import get_trading_signal_for_telegram
 from tinkoff_client import TinkoffClient
+from risk_manager import RiskManager, RiskSettings
 
 # Настройка логирования
 logging.basicConfig(
@@ -75,12 +77,17 @@ class TradingTelegramBot:
 • `/news TICKER` - анализ новостей (в разработке)
 • `/analysis TICKER` - технический анализ акции
 • `/signal TICKER` - комбинированный торговый сигнал
+⚖️ **Управление рисками:**
+• `/risk TICKER` - анализ рисков позиции
+• `/portfolio` - анализ портфеля и рисков
 📊 **Примеры использования:**
 • `/price SBER` - цена Сбербанка
 • `/price GAZP` - цена Газпрома
 • `/price YNDX` - цена Яндекса
 • `/news SBER` - новости о Сбербанке
 • `/analysis SBER` - технический анализ Сбербанка
+• `/risk SBER` - анализ рисков позиции Сбербанка
+• `/portfolio` - анализ всего портфеля
 🚀 **Скоро добавим:**
 • 📰 Анализ новостей через OpenAI
 • 📈 Технические индикаторы (RSI, MACD)
@@ -382,6 +389,303 @@ class TradingTelegramBot:
                 parse_mode="HTML",
             )
 
+    async def risk_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /risk TICKER."""
+        if not context.args:
+            await update.message.reply_text(
+                "⚖️ *Анализ рисков позиции*\n\n"
+                "Использование: `/risk TICKER [ЦЕНА_ВХОДА] [СТОП_ЛОСС]`\n\n"
+                "Примеры:\n"
+                "• `/risk SBER` - анализ риска по текущей цене\n"
+                "• `/risk SBER 100 93` - анализ с заданными параметрами\n\n"
+                "📊 Анализ включает:\n"
+                "• Рекомендуемый размер позиции\n"
+                "• Расчет стоп-лосса и тейк-профита\n"
+                "• Оценка уровня риска\n"
+                "• Соотношение риск/доходность",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+
+        ticker = context.args[0].upper()
+        
+        # Отправляем сообщение о начале анализа
+        loading_msg = await update.message.reply_text(
+            f"⚖️ Анализирую риски для *{ticker}*...\n"
+            f"📊 Получаю данные и рассчитываю параметры...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+        try:
+            # Получаем текущую цену если не указана
+            entry_price = None
+            stop_loss_price = None
+            
+            if len(context.args) >= 2:
+                try:
+                    entry_price = float(context.args[1])
+                except ValueError:
+                    await loading_msg.edit_text(
+                        f"❌ Неверный формат цены входа: {context.args[1]}\n"
+                        f"Используйте число, например: `/risk SBER 100`",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return
+            
+            if len(context.args) >= 3:
+                try:
+                    stop_loss_price = float(context.args[2])
+                except ValueError:
+                    await loading_msg.edit_text(
+                        f"❌ Неверный формат стоп-лосса: {context.args[2]}\n"
+                        f"Используйте число, например: `/risk SBER 100 93`",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return
+
+            # Если цена не указана, получаем текущую
+            if entry_price is None:
+                instrument = self.tinkoff_client.search_instrument(ticker)
+                if not instrument:
+                    await loading_msg.edit_text(
+                        f"❌ Акция с тикером *{ticker}* не найдена.\n\n"
+                        "Попробуйте: SBER, GAZP, YNDX, LKOH, NVTK, ROSN",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return
+                
+                price_data = self.tinkoff_client.get_last_price(instrument.figi)
+                if not price_data:
+                    await loading_msg.edit_text(
+                        f"❌ Не удалось получить цену для {ticker}",
+                        parse_mode=ParseMode.MARKDOWN
+                    )
+                    return
+                
+                entry_price = price_data.price.units + price_data.price.nano / 1_000_000_000
+
+            # Создаем risk manager
+            risk_manager = RiskManager()
+            
+            # Рассчитываем стоп-лосс если не указан
+            if stop_loss_price is None:
+                sl_tp = risk_manager.calculate_stop_loss_take_profit(
+                    ticker=ticker,
+                    entry_price=entry_price,
+                    signal_direction="BUY"
+                )
+                stop_loss_price = sl_tp["stop_loss_price"]
+            
+            # Примерный баланс счета (в реальности получаем из API)
+            account_balance = 100000.0  # 100k рублей для примера
+            
+            # Рассчитываем позицию
+            position_analysis = risk_manager.calculate_position_size(
+                ticker=ticker,
+                entry_price=entry_price,
+                stop_loss_price=stop_loss_price,
+                account_balance=account_balance,
+                confidence_score=0.6  # Средняя уверенность
+            )
+            
+            # Рассчитываем стоп-лосс и тейк-профит
+            sl_tp_analysis = risk_manager.calculate_stop_loss_take_profit(
+                ticker=ticker,
+                entry_price=entry_price,
+                signal_direction="BUY"
+            )
+
+            # Форматируем результат
+            if not position_analysis.get("approved", False):
+                result_text = f"❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
+                result_text += f"🚫 *Позиция отклонена*\n"
+                result_text += f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
+                result_text += f"💡 Рекомендации:\n"
+                result_text += f"• Снизьте размер позиции\n"
+                result_text += f"• Используйте более близкий стоп-лосс\n"
+                result_text += f"• Дождитесь лучших условий"
+            else:
+                # Эмодзи для уровня риска
+                risk_emoji = {
+                    "LOW": "🟢",
+                    "MEDIUM": "🟡", 
+                    "HIGH": "🟠",
+                    "EXTREME": "🔴"
+                }
+                
+                emoji = risk_emoji.get(position_analysis["risk_level"], "⚪")
+                
+                result_text = f"⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
+                
+                # Основные параметры
+                result_text += f"💰 *Параметры позиции:*\n"
+                result_text += f"📈 Цена входа: {entry_price:.2f} ₽\n"
+                result_text += f"🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
+                result_text += f"🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
+                
+                # Расчет позиции
+                result_text += f"📊 *Рекомендуемая позиция:*\n"
+                result_text += f"🔢 Количество акций: {position_analysis['shares_count']}\n"
+                result_text += f"💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
+                result_text += f"📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
+                
+                # Анализ рисков
+                result_text += f"⚖️ *Анализ рисков:*\n"
+                result_text += f"{emoji} Уровень риска: {position_analysis['risk_level']}\n"
+                result_text += f"💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
+                result_text += f"📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
+                result_text += f"⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
+                
+                # Рекомендация
+                result_text += f"💡 *Рекомендация:*\n"
+                result_text += f"{position_analysis['recommendation']}\n\n"
+                
+                # Дополнительная информация
+                result_text += f"📋 *Дополнительно:*\n"
+                result_text += f"• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
+                result_text += f"• Волатильность: Нормальная\n"
+                result_text += f"• Ликвидность: Высокая\n\n"
+
+            # Подсказки
+            result_text += f"*🛠️ Дополнительные команды:*\n"
+            result_text += f"• `/price {ticker}` - текущая цена\n"
+            result_text += f"• `/analysis {ticker}` - технический анализ\n"
+            result_text += f"• `/news {ticker}` - анализ новостей\n\n"
+            
+            result_text += f"⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
+            result_text += f"Скорректируйте размер позиции под ваш реальный депозит."
+
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%")
+
+        except Exception as e:
+            error_msg = f"❌ *Ошибка анализа рисков {ticker}*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте:\n"
+            error_msg += f"• Проверить правильность тикера\n"
+            error_msg += f"• Использовать `/risk SBER 100 93` с параметрами\n"
+            error_msg += f"• Повторить запрос через несколько секунд"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Risk command error for {ticker}: {e}")
+
+    async def portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /portfolio."""
+        loading_msg = await update.message.reply_text(
+            "📊 Анализирую портфель...\n"
+            "🔍 Оцениваю риски и составляю рекомендации...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+        try:
+            # Создаем risk manager
+            risk_manager = RiskManager()
+            
+            # Примерные позиции для демонстрации
+            sample_positions = [
+                {
+                    "ticker": "SBER",
+                    "shares": 100,
+                    "entry_price": 95.0,
+                    "current_price": 99.95,
+                    "risk_percent": 2.1,
+                    "sector": "Финансы"
+                },
+                {
+                    "ticker": "GAZP", 
+                    "shares": 50,
+                    "entry_price": 180.0,
+                    "current_price": 175.0,
+                    "risk_percent": 1.8,
+                    "sector": "Энергетика"
+                }
+            ]
+            
+            # Анализ портфеля
+            portfolio_analysis = risk_manager.assess_portfolio_risk(sample_positions)
+            
+            # Форматируем результат
+            result_text = f"📊 *АНАЛИЗ ПОРТФЕЛЯ*\n\n"
+            
+            # Общая статистика
+            result_text += f"📈 *Общая статистика:*\n"
+            result_text += f"🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
+            result_text += f"⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
+            result_text += f"📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
+            
+            # Уровень риска с эмодзи
+            risk_emoji = {
+                "LOW": "🟢 Низкий",
+                "MEDIUM": "🟡 Средний",
+                "HIGH": "🟠 Высокий", 
+                "EXTREME": "🔴 Критический"
+            }
+            risk_text = risk_emoji.get(portfolio_analysis['risk_level'], "⚪ Неизвестный")
+            result_text += f"🎯 Уровень риска: {risk_text}\n\n"
+            
+            # Текущие позиции
+            if sample_positions:
+                result_text += f"💼 *Текущие позиции:*\n"
+                for pos in sample_positions:
+                    pnl = ((pos['current_price'] - pos['entry_price']) / pos['entry_price']) * 100
+                    pnl_emoji = "📈" if pnl >= 0 else "📉"
+                    result_text += f"• *{pos['ticker']}*: {pos['shares']} шт.\n"
+                    result_text += f"  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
+                result_text += "\n"
+            
+            # Секторальное распределение
+            if 'sector_exposure' in portfolio_analysis:
+                result_text += f"🏭 *Секторальное распределение:*\n"
+                for sector, exposure in portfolio_analysis['sector_exposure'].items():
+                    result_text += f"• {sector}: {exposure:.1f}%\n"
+                result_text += "\n"
+            
+            # Рекомендации
+            result_text += f"💡 *Рекомендации:*\n"
+            for recommendation in portfolio_analysis['recommendations']:
+                result_text += f"• {recommendation}\n"
+            result_text += "\n"
+            
+            # Лимиты риск-менеджмента
+            result_text += f"⚙️ *Настройки риск-менеджмента:*\n"
+            result_text += f"• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
+            result_text += f"• Макс. позиция: 5.0% депозита\n"
+            result_text += f"• Макс. дневной убыток: 3.0%\n"
+            result_text += f"• Макс. сделок в день: 5\n\n"
+            
+            # Подсказки
+            result_text += f"*🛠️ Управление портфелем:*\n"
+            result_text += f"• `/risk TICKER` - анализ новой позиции\n"
+            result_text += f"• `/settings` - настройки риск-менеджмента\n\n"
+            
+            result_text += f"⚠️ *Примечание:* Показаны демонстрационные данные. "
+            result_text += f"В боевом режиме будут использоваться реальные позиции."
+
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"Анализ портфеля завершен: риск {portfolio_analysis['total_risk_percent']:.1f}%")
+
+        except Exception as e:
+            error_msg = f"❌ *Ошибка анализа портфеля*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте повторить запрос через несколько секунд"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Portfolio command error: {e}")
+
     async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /analysis TICKER."""
         if not context.args:
@@ -499,7 +803,10 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("price", self.price_command))
         self.application.add_handler(CommandHandler("accounts", self.accounts_command))
+        # Аналитика и риски
         self.application.add_handler(CommandHandler("news", self.news_command))
+        self.application.add_handler(CommandHandler("risk", self.risk_command))
+        self.application.add_handler(CommandHandler("portfolio", self.portfolio_command))
         self.application.add_handler(CommandHandler("analysis", self.analysis_command))
         self.application.add_handler(CommandHandler("signal", self.signal_command))
         # Обработка неизвестных сообщений
