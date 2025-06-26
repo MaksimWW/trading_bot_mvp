@@ -44,6 +44,11 @@ class TechnicalAnalyzer:
             "analysis_timestamp": "2025-06-26T11:00:00",
         }
 
+    def calculate_rsi(self, prices, period=14):
+        """Заглушка для расчета RSI"""
+        # Временная заглушка - всегда возвращаем нейтральное значение
+        return 50.0
+
 
 # Функции-обертки для совместимости с существующим кодом
 def get_technical_analyzer() -> TechnicalAnalyzer:
