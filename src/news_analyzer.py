@@ -65,3 +65,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+# Функция-обертка для совместимости
+def get_news_analyzer():
+    """Получение глобального экземпляра анализатора новостей."""
+    return NewsAnalyzer()
