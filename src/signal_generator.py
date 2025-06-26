@@ -48,6 +48,8 @@ class SignalGenerator:
             ticker = ticker.upper()
             logger.info(f"Генерация комбинированного сигнала для {ticker}")
             
+            print("DEBUG: Начинаем получение данных...")
+            
             # Параллельное получение технического и новостного анализа
             technical_task = self.technical_analyzer.get_technical_analysis(ticker)
             news_task = self.news_analyzer.analyze_ticker_news(ticker, include_sentiment=True)
@@ -56,22 +58,35 @@ class SignalGenerator:
                 technical_task, news_task, return_exceptions=True
             )
             
+            print("DEBUG: Данные получены, проверяем результаты...")
+            
             # Обработка результатов с проверкой на ошибки
             if isinstance(technical_result, Exception):
+                print(f"DEBUG: Ошибка технического анализа: {technical_result}")
                 logger.error(f"Ошибка технического анализа: {technical_result}")
                 technical_result = None
                 
             if isinstance(news_result, Exception):
+                print(f"DEBUG: Ошибка анализа новостей: {news_result}")
                 logger.error(f"Ошибка анализа новостей: {news_result}")
                 news_result = None
             
+            print("DEBUG: Вызываем _combine_signals...")
             # Генерация комбинированного сигнала
             combined_signal = self._combine_signals(ticker, technical_result, news_result)
             
-            logger.info(f"Комбинированный сигнал {ticker}: {combined_signal['signal']}")
+            print("DEBUG: _combine_signals завершен успешно")
+            print(f"DEBUG: Тип результата: {type(combined_signal)}")
+            print(f"DEBUG: Ключи результата: {list(combined_signal.keys()) if isinstance(combined_signal, dict) else 'НЕ СЛОВАРЬ'}")
+            
+            logger.info(f"Комбинированный сигнал {ticker}: {combined_signal.get('combined_signal', {}).get('signal', 'UNKNOWN')}")
             return combined_signal
             
         except Exception as e:
+            print(f"DEBUG: Основная ошибка в generate_combined_signal: {e}")
+            print(f"DEBUG: Тип ошибки: {type(e)}")
+            import traceback
+            traceback.print_exc()
             logger.error(f"Ошибка генерации сигнала для {ticker}: {e}")
             return self._create_error_signal(ticker, str(e))
     
