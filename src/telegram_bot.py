@@ -245,12 +245,37 @@ class TradingTelegramBot:
         if len(sources) > 3:
             sources_text += f" и ещё {len(sources) - 3}"
 
+        # Добавляем sentiment анализ через OpenAI
+        sentiment_block = ""
+        try:
+            if len(news_results) > 0:
+                import asyncio
+                from openai_analyzer import OpenAIAnalyzer
+                
+                analyzer = OpenAIAnalyzer()
+                sentiment_result = asyncio.run(analyzer.analyze_sentiment(ticker, news_results[:3]))
+                
+                if sentiment_result:
+                    emoji_map = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}
+                    emoji = emoji_map.get(sentiment_result.get("sentiment_label", "HOLD"), "⚪")
+                    score = sentiment_result.get("sentiment_score", 0.0)
+                    summary = sentiment_result.get("summary", "Анализ недоступен")
+                    
+                    sentiment_block = f"""
+🤖 <b>АНАЛИЗ НАСТРОЕНИЯ AI:</b>
+{emoji} <b>Рекомендация:</b> {sentiment_result.get("sentiment_label", "HOLD")}
+📊 <b>Оценка:</b> {score:.2f} (от -1.0 до +1.0)  
+📝 <b>Анализ:</b> {summary}
+"""
+        except Exception as e:
+            logger.warning(f"OpenAI анализ недоступен для {ticker}: {e}")
+
         result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
 
 🏢 <b>Компания:</b> {ticker}
 🔍 <b>Найдено новостей:</b> {len(news_results)}
 ⏰ <b>Период:</b> Последние 24 часа
-🌐 <b>Источники:</b> {sources_text}
+🌐 <b>Источники:</b> {sources_text}{sentiment_block}
 
 📋 <b>ТОП-{min(3, len(news_results))} НОВОСТЕЙ:</b>
 
