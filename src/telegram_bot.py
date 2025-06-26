@@ -4,7 +4,6 @@ Telegram Bot для управления торговым ботом
 """
 
 import logging
-from datetime import datetime
 from typing import List
 
 from telegram import Update
@@ -59,7 +58,7 @@ class TradingTelegramBot:
 🚀 **Начните с команды** `/status` для проверки подключений!
             """
             await update.message.reply_text(welcome_message, parse_mode="Markdown")
-            logger.info(f"Пользователь {user_name} запустил бота")
+            logger.info("Пользователь {user_name} запустил бота")
         except Exception as e:
             logger.error(f"Ошибка в команде start: {e}")
             await update.message.reply_text("❌ Ошибка при запуске. Попробуйте позже.")
@@ -165,25 +164,25 @@ class TradingTelegramBot:
                 )
                 return
             ticker = context.args[0].upper()
-            await update.message.reply_text(f"🔍 Ищу цену для {ticker}...")
-            logger.info(f"Запрос цены для тикера: {ticker}")
+            await update.message.reply_text("🔍 Ищу цену для {ticker}...")
+            logger.info("Запрос цены для тикера: {ticker}")
             # Ищем инструмент
             instrument = self.tinkoff_client.search_instrument(ticker)
             if not instrument:
-                await update.message.reply_text(f"❌ Акция {ticker} не найдена. Проверьте тикер.")
-                logger.warning(f"Инструмент {ticker} не найден")
+                await update.message.reply_text("❌ Акция {ticker} не найдена. Проверьте тикер.")
+                logger.warning("Инструмент {ticker} не найден")
                 return
             # Получаем цену
             price_data = self.tinkoff_client.get_last_price(instrument.figi)
             if not price_data:
                 await update.message.reply_text(
-                    f"❌ Не удалось получить цену для {ticker}. Попробуйте позже."
+                    "❌ Не удалось получить цену для {ticker}. Попробуйте позже."
                 )
-                logger.error(f"Не удалось получить цену для {ticker}")
+                logger.error("Не удалось получить цену для {ticker}")
                 return
             # Конвертируем цену
             price_rub = price_data.price.units + price_data.price.nano / 1_000_000_000
-            price_message = f"""
+            price_message = """
 💰 **{instrument.name}**
 📊 **Цена:** {price_rub:.2f} ₽
 🎯 **Тикер:** {ticker}
@@ -192,12 +191,12 @@ class TradingTelegramBot:
 🏛️ Источник: Tinkoff Invest API (песочница)
             """
             await update.message.reply_text(price_message, parse_mode="Markdown")
-            logger.info(f"Цена {ticker} успешно получена: {price_rub:.2f} ₽")
+            logger.info("Цена {ticker} успешно получена: {price_rub:.2f} ₽")
         except Exception as e:
             logger.error(f"Ошибка в команде price: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
             await update.message.reply_text(
-                f"❌ Ошибка при получении цены {ticker_name}. " f"Попробуйте позже."
+                "❌ Ошибка при получении цены {ticker_name}. " "Попробуйте позже."
             )
 
     async def _get_sentiment_analysis(self, ticker: str, news_results: List) -> str:
@@ -219,20 +218,20 @@ class TradingTelegramBot:
                     emoji = emoji_map.get(result.get("sentiment_label", "HOLD"), "⚪")
                     score = result.get("sentiment_score", 0.0)
                     summary = result.get("summary", "Анализ недоступен")
-                    return f"""
+                    return """
 🤖 **АНАЛИЗ НАСТРОЕНИЯ AI:**
 {emoji} **Рекомендация:** {result.get("sentiment_label", "HOLD")}
 📊 **Оценка:** {score:.2f} (от -1.0 до +1.0)
 📝 **Анализ:** {summary}
 """
         except Exception as e:
-            logger.warning(f"OpenAI анализ недоступен для {ticker}: {e}")
+            logger.warning("OpenAI анализ недоступен для {ticker}: {e}")
         return ""
 
     async def _format_news_result(self, ticker: str, news_results: List) -> str:
         """Форматирование результатов новостей"""
         if not news_results:
-            return f"""📰 <b>НОВОСТИ ПО {ticker}</b>
+            return """📰 <b>НОВОСТИ ПО {ticker}</b>
 🏢 <b>Компания:</b> {ticker}
 ❌ За последние 24 часа новостей не найдено.
 💡 Возможные причины:
@@ -250,10 +249,10 @@ class TradingTelegramBot:
         )
         sources_text = ", ".join(sources[:3])
         if len(sources) > 3:
-            sources_text += f" и ещё {len(sources) - 3}"
+            sources_text += " и ещё {len(sources) - 3}"
         # Добавляем sentiment анализ через OpenAI
         sentiment_block = await self._get_sentiment_analysis(ticker, news_results)
-        result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
+        result_text = """📰 <b>НОВОСТИ ПО {ticker}</b>
 🏢 <b>Компания:</b> {ticker}
 🔍 <b>Найдено новостей:</b> {len(news_results)}
 ⏰ <b>Период:</b> Последние 24 часа
@@ -274,13 +273,13 @@ class TradingTelegramBot:
                 summary.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             )
             source_escaped = source.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            result_text += f"""<b>{i}. {title_escaped}</b>
+            result_text += """<b>{i}. {title_escaped}</b>
 📝 {summary_escaped}
 🌐 {source_escaped}
 """
         if len(news_results) > 3:
-            result_text += f"📋 И ещё {len(news_results) - 3} новостей...\n\n"
-        result_text += f"""🕐 <b>Время анализа:</b> {ticker} проанализирован
+            result_text += "📋 И ещё {len(news_results) - 3} новостей...\n\n"
+        result_text += """🕐 <b>Время анализа:</b> {ticker} проанализирован
 💡 <b>Что дальше?</b>
 - <code>/price {ticker}</code> - текущая цена
 - <code>/accounts</code> - торговые счета
@@ -308,12 +307,12 @@ class TradingTelegramBot:
                 )
                 logger.warning("Торговые счета не найдены")
                 return
-            accounts_message = f"💼 **Ваши торговые счета** ({len(accounts)} шт.)\n\n"
+            accounts_message = "💼 **Ваши торговые счета** ({len(accounts)} шт.)\n\n"
             for i, account in enumerate(accounts, 1):
                 account_id = account.id
-                account_name = account.name if account.name else f"Счет {i}"
+                account_name = account.name if account.name else "Счет {i}"
                 account_type = account.type.name if hasattr(account, "type") else "UNSPECIFIED"
-                accounts_message += f"""
+                accounts_message += """
 **🏦 Счет {i}:**
 📝 Название: {account_name}
 🆔 ID: `{account_id}`
@@ -321,14 +320,14 @@ class TradingTelegramBot:
 🏛️ Режим: Песочница
 ---
                 """
-            accounts_message += f"""
+            accounts_message += """
 ✅ **Всего активных счетов:** {len(accounts)}
 🛡️ **Безопасность:** Все операции в песочнице
 💡 **Следующий шаг:** Попробуйте `/price SBER`
 ⚠️ **Помните:** Это тестовые счета, реальные деньги не используются!
             """
             await update.message.reply_text(accounts_message, parse_mode="Markdown")
-            logger.info(f"Список счетов успешно отправлен: {len(accounts)} счетов")
+            logger.info("Список счетов успешно отправлен: {len(accounts)} счетов")
         except Exception as e:
             logger.error(f"Ошибка в команде accounts: {e}")
             await update.message.reply_text(
@@ -356,7 +355,7 @@ class TradingTelegramBot:
             ticker = context.args[0].upper()
             # Отправляем сообщение о начале анализа
             loading_msg = await update.message.reply_text(
-                f"🔍 Ищу новости о <b>{ticker}</b>...\n" f"🤖 Анализирую через Perplexity AI...",
+                "🔍 Ищу новости о <b>{ticker}</b>...\n" "🤖 Анализирую через Perplexity AI...",
                 parse_mode="HTML",
             )
             try:
@@ -366,15 +365,15 @@ class TradingTelegramBot:
                 news_results = perplexity.search_ticker_news(ticker, hours=24)
                 result_text = await self._format_news_result(ticker, news_results)
             except ImportError:
-                result_text = f"""❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
+                result_text = """❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
 🔧 Необходимо создать файл <code>perplexity_client.py</code>
 💡 Пока что используйте:
 - <code>/price {ticker}</code> - текущая цена акции
 - <code>/accounts</code> - торговые счета
 - <code>/status</code> - состояние систем"""
             except Exception as api_error:
-                logger.error(f"Ошибка Perplexity API для {ticker}: {api_error}")
-                result_text = f"""❌ <b>ОШИБКА ПОЛУЧЕНИЯ НОВОСТЕЙ {ticker}</b>
+                logger.error("Ошибка Perplexity API для {ticker}: {api_error}")
+                result_text = """❌ <b>ОШИБКА ПОЛУЧЕНИЯ НОВОСТЕЙ {ticker}</b>
 🔍 Причина: {str(api_error)}
 💡 Попробуйте:
 - Повторить запрос через несколько секунд
@@ -385,12 +384,12 @@ class TradingTelegramBot:
 - <code>/price {ticker}</code> - текущая цена
 - <code>/accounts</code> - торговые счета"""
             await loading_msg.edit_text(result_text, parse_mode="HTML")
-            logger.info(f"Команда news выполнена для {ticker}")
+            logger.info("Команда news выполнена для {ticker}")
         except Exception as e:
             logger.error(f"Ошибка в команде news: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
             await update.message.reply_text(
-                f"❌ Ошибка при анализе новостей {ticker_name}. " f"Попробуйте позже.",
+                "❌ Ошибка при анализе новостей {ticker_name}. " "Попробуйте позже.",
                 parse_mode="HTML",
             )
 
@@ -404,8 +403,8 @@ class TradingTelegramBot:
                 entry_price = float(args[1])
             except ValueError:
                 await loading_msg.edit_text(
-                    f"❌ Неверный формат цены входа: {args[1]}\n"
-                    f"Используйте число, например: `/risk SBER 100`",
+                    "❌ Неверный формат цены входа: {args[1]}\n"
+                    "Используйте число, например: `/risk SBER 100`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return None, None
@@ -415,8 +414,8 @@ class TradingTelegramBot:
                 stop_loss_price = float(args[2])
             except ValueError:
                 await loading_msg.edit_text(
-                    f"❌ Неверный формат стоп-лосса: {args[2]}\n"
-                    f"Используйте число, например: `/risk SBER 100 93`",
+                    "❌ Неверный формат стоп-лосса: {args[2]}\n"
+                    "Используйте число, например: `/risk SBER 100 93`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return None, None
@@ -428,7 +427,7 @@ class TradingTelegramBot:
         instrument = self.tinkoff_client.search_instrument(ticker)
         if not instrument:
             await loading_msg.edit_text(
-                f"❌ Акция с тикером *{ticker}* не найдена.\n\n"
+                "❌ Акция с тикером *{ticker}* не найдена.\n\n"
                 "Попробуйте: SBER, GAZP, YNDX, LKOH, NVTK, ROSN",
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -437,18 +436,20 @@ class TradingTelegramBot:
         price_data = self.tinkoff_client.get_last_price(instrument.figi)
         if not price_data:
             await loading_msg.edit_text(
-                f"❌ Не удалось получить цену для {ticker}", parse_mode=ParseMode.MARKDOWN
+                "❌ Не удалось получить цену для {ticker}", parse_mode=ParseMode.MARKDOWN
             )
             return None
 
         return price_data.price.units + price_data.price.nano / 1_000_000_000
 
-    def _format_risk_result(self, ticker, position_analysis, sl_tp_analysis, entry_price, stop_loss_price):
+    def _format_risk_result(
+        self, ticker, position_analysis, sl_tp_analysis, entry_price, stop_loss_price
+    ):
         """Format risk analysis result text."""
         if not position_analysis.get("approved", False):
-            result_text = f"❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
+            result_text = "❌ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
             result_text += "🚫 *Позиция отклонена*\n"
-            result_text += f"📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
+            result_text += "📝 Причина: {position_analysis.get('reason', 'Неизвестная ошибка')}\n\n"
             result_text += "💡 Рекомендации:\n"
             result_text += "• Снизьте размер позиции\n"
             result_text += "• Используйте более близкий стоп-лосс\n"
@@ -458,35 +459,35 @@ class TradingTelegramBot:
         risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🟠", "EXTREME": "🔴"}
         emoji = risk_emoji.get(position_analysis["risk_level"], "⚪")
 
-        result_text = f"⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
+        result_text = "⚖️ *АНАЛИЗ РИСКОВ {ticker}*\n\n"
         result_text += "💰 *Параметры позиции:*\n"
-        result_text += f"📈 Цена входа: {entry_price:.2f} ₽\n"
-        result_text += f"🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
-        result_text += f"🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
+        result_text += "📈 Цена входа: {entry_price:.2f} ₽\n"
+        result_text += "🛑 Стоп-лосс: {stop_loss_price:.2f} ₽\n"
+        result_text += "🎯 Тейк-профит: {sl_tp_analysis['take_profit_price']:.2f} ₽\n\n"
 
         result_text += "📊 *Рекомендуемая позиция:*\n"
-        result_text += f"🔢 Количество акций: {position_analysis['shares_count']}\n"
-        result_text += f"💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
-        result_text += f"📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
+        result_text += "🔢 Количество акций: {position_analysis['shares_count']}\n"
+        result_text += "💵 Сумма позиции: {position_analysis['position_amount']:,.0f} ₽\n"
+        result_text += "📈 Доля портфеля: {position_analysis['position_percent']:.1f}%\n\n"
 
         result_text += "⚖️ *Анализ рисков:*\n"
-        result_text += f"{emoji} Уровень риска: {position_analysis['risk_level']}\n"
-        result_text += f"💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
-        result_text += f"📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
-        result_text += f"⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
+        result_text += "{emoji} Уровень риска: {position_analysis['risk_level']}\n"
+        result_text += "💸 Потенциальный убыток: {position_analysis['risk_amount']:,.0f} ₽\n"
+        result_text += "📉 Риск от депозита: {position_analysis['risk_percent']:.2f}%\n"
+        result_text += "⚖️ Риск/Доходность: 1:{sl_tp_analysis['risk_reward_ratio']:.1f}\n\n"
 
         result_text += "💡 *Рекомендация:*\n"
-        result_text += f"{position_analysis['recommendation']}\n\n"
+        result_text += "{position_analysis['recommendation']}\n\n"
 
         result_text += "📋 *Дополнительно:*\n"
-        result_text += f"• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
+        result_text += "• Трейлинг стоп: {sl_tp_analysis['trailing_stop_distance']:.2f} ₽\n"
         result_text += "• Волатильность: Нормальная\n"
         result_text += "• Ликвидность: Высокая\n\n"
 
         result_text += "*🛠️ Дополнительные команды:*\n"
-        result_text += f"• `/price {ticker}` - текущая цена\n"
-        result_text += f"• `/analysis {ticker}` - технический анализ\n"
-        result_text += f"• `/news {ticker}` - анализ новостей\n\n"
+        result_text += "• `/price {ticker}` - текущая цена\n"
+        result_text += "• `/analysis {ticker}` - технический анализ\n"
+        result_text += "• `/news {ticker}` - анализ новостей\n\n"
 
         result_text += "⚠️ *Внимание:* Анализ основан на примерном депозите 100,000 ₽. "
         result_text += "Скорректируйте размер позиции под ваш реальный депозит."
@@ -513,13 +514,14 @@ class TradingTelegramBot:
 
         ticker = context.args[0].upper()
         loading_msg = await update.message.reply_text(
-            f"⚖️ Анализирую риски для *{ticker}*...\n"
-            "📊 Получаю данные и рассчитываю параметры...",
+            "⚖️ Анализирую риски для *{ticker}*...\n" "📊 Получаю данные и рассчитываю параметры...",
             parse_mode=ParseMode.MARKDOWN,
         )
 
         try:
-            entry_price, stop_loss_price = await self._parse_risk_params(context.args, loading_msg, ticker)
+            entry_price, stop_loss_price = await self._parse_risk_params(
+                context.args, loading_msg, ticker
+            )
             if entry_price is None and len(context.args) >= 2:
                 return  # Error already handled
 
@@ -554,14 +556,16 @@ class TradingTelegramBot:
             )
 
             await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
-            logger.info(f"Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%")
+            logger.info(
+                "Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%"
+            )
 
         except Exception as e:
-            error_msg = f"❌ *Ошибка анализа рисков {ticker}*\n\n"
-            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg = "❌ *Ошибка анализа рисков {ticker}*\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Проверить правильность тикера\n"
-            error_msg += f"• Использовать `/risk SBER 100 93` с параметрами\n"
+            error_msg += "• Использовать `/risk SBER 100 93` с параметрами\n"
             error_msg += "• Повторить запрос через несколько секунд"
 
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
@@ -602,14 +606,14 @@ class TradingTelegramBot:
             portfolio_analysis = risk_manager.assess_portfolio_risk(sample_positions)
 
             # Форматируем результат
-            result_text = f"📊 *АНАЛИЗ ПОРТФЕЛЯ*\n\n"
+            result_text = "📊 *АНАЛИЗ ПОРТФЕЛЯ*\n\n"
 
             # Общая статистика
-            result_text += f"📈 *Общая статистика:*\n"
-            result_text += f"🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
-            result_text += f"⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
+            result_text += "📈 *Общая статистика:*\n"
+            result_text += "🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
+            result_text += "⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
             result_text += (
-                f"📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
+                "📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
             )
 
             # Уровень риска с эмодзи
@@ -620,58 +624,58 @@ class TradingTelegramBot:
                 "EXTREME": "🔴 Критический",
             }
             risk_text = risk_emoji.get(portfolio_analysis["risk_level"], "⚪ Неизвестный")
-            result_text += f"🎯 Уровень риска: {risk_text}\n\n"
+            result_text += "🎯 Уровень риска: {risk_text}\n\n"
 
             # Текущие позиции
             if sample_positions:
-                result_text += f"💼 *Текущие позиции:*\n"
+                result_text += "💼 *Текущие позиции:*\n"
                 for pos in sample_positions:
                     pnl = ((pos["current_price"] - pos["entry_price"]) / pos["entry_price"]) * 100
                     pnl_emoji = "📈" if pnl >= 0 else "📉"
-                    result_text += f"• *{pos['ticker']}*: {pos['shares']} шт.\n"
+                    result_text += "• *{pos['ticker']}*: {pos['shares']} шт.\n"
                     result_text += (
-                        f"  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
+                        "  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
                     )
                 result_text += "\n"
 
             # Секторальное распределение
             if "sector_exposure" in portfolio_analysis:
-                result_text += f"🏭 *Секторальное распределение:*\n"
+                result_text += "🏭 *Секторальное распределение:*\n"
                 for sector, exposure in portfolio_analysis["sector_exposure"].items():
-                    result_text += f"• {sector}: {exposure:.1f}%\n"
+                    result_text += "• {sector}: {exposure:.1f}%\n"
                 result_text += "\n"
 
             # Рекомендации
-            result_text += f"💡 *Рекомендации:*\n"
+            result_text += "💡 *Рекомендации:*\n"
             for recommendation in portfolio_analysis["recommendations"]:
-                result_text += f"• {recommendation}\n"
+                result_text += "• {recommendation}\n"
             result_text += "\n"
 
             # Лимиты риск-менеджмента
-            result_text += f"⚙️ *Настройки риск-менеджмента:*\n"
-            result_text += f"• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
-            result_text += f"• Макс. позиция: 5.0% депозита\n"
-            result_text += f"• Макс. дневной убыток: 3.0%\n"
-            result_text += f"• Макс. сделок в день: 5\n\n"
+            result_text += "⚙️ *Настройки риск-менеджмента:*\n"
+            result_text += "• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
+            result_text += "• Макс. позиция: 5.0% депозита\n"
+            result_text += "• Макс. дневной убыток: 3.0%\n"
+            result_text += "• Макс. сделок в день: 5\n\n"
 
             # Подсказки
-            result_text += f"*🛠️ Управление портфелем:*\n"
-            result_text += f"• `/risk TICKER` - анализ новой позиции\n"
-            result_text += f"• `/settings` - настройки риск-менеджмента\n\n"
+            result_text += "*🛠️ Управление портфелем:*\n"
+            result_text += "• `/risk TICKER` - анализ новой позиции\n"
+            result_text += "• `/settings` - настройки риск-менеджмента\n\n"
 
-            result_text += f"⚠️ *Примечание:* Показаны демонстрационные данные. "
-            result_text += f"В боевом режиме будут использоваться реальные позиции."
+            result_text += "⚠️ *Примечание:* Показаны демонстрационные данные. "
+            result_text += "В боевом режиме будут использоваться реальные позиции."
 
             await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
 
             logger.info(
-                f"Анализ портфеля завершен: риск {portfolio_analysis['total_risk_percent']:.1f}%"
+                "Анализ портфеля завершен: риск {portfolio_analysis['total_risk_percent']:.1f}%"
             )
 
         except Exception as e:
-            error_msg = f"❌ *Ошибка анализа портфеля*\n\n"
-            error_msg += f"Причина: {str(e)}\n\n"
-            error_msg += f"💡 Попробуйте повторить запрос через несколько секунд"
+            error_msg = "❌ *Ошибка анализа портфеля*\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
+            error_msg += "💡 Попробуйте повторить запрос через несколько секунд"
 
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Portfolio command error: {e}")
@@ -691,21 +695,21 @@ class TradingTelegramBot:
             # Генерируем сигнал для демонстрации
             signal = await trading_engine.generate_trading_signal("SBER")
 
-            result_text = f"🤖 *АВТОМАТИЗАЦИЯ ТОРГОВЛИ*\n\n"
+            result_text = "🤖 *АВТОМАТИЗАЦИЯ ТОРГОВЛИ*\n\n"
 
             # Статус системы
-            result_text += f"⚙️ *Статус системы:*\n"
-            result_text += f"🟢 Режим: {trading_engine.mode.value} (Виртуальная торговля)\n"
-            result_text += f"📊 Анализ новостей: ✅ Активен\n"
-            result_text += f"📈 Технический анализ: ✅ Активен\n"
-            result_text += f"⚖️ Risk Management: ✅ Активен\n\n"
+            result_text += "⚙️ *Статус системы:*\n"
+            result_text += "🟢 Режим: {trading_engine.mode.value} (Виртуальная торговля)\n"
+            result_text += "📊 Анализ новостей: ✅ Активен\n"
+            result_text += "📈 Технический анализ: ✅ Активен\n"
+            result_text += "⚖️ Risk Management: ✅ Активен\n\n"
 
             # Настройки автоматизации
-            result_text += f"🎛️ *Настройки автоматизации:*\n"
-            result_text += f"• Мин. сила сигнала: {trading_engine.min_signal_strength.value}\n"
-            result_text += f"• Мин. уверенность: {trading_engine.min_confidence:.1f}\n"
-            result_text += f"• Интервал сканирования: {trading_engine.scan_interval//60} мин\n"
-            result_text += f"• Список наблюдения: {', '.join(trading_engine.watchlist)}\n\n"
+            result_text += "🎛️ *Настройки автоматизации:*\n"
+            result_text += "• Мин. сила сигнала: {trading_engine.min_signal_strength.value}\n"
+            result_text += "• Мин. уверенность: {trading_engine.min_confidence:.1f}\n"
+            result_text += "• Интервал сканирования: {trading_engine.scan_interval//60} мин\n"
+            result_text += "• Список наблюдения: {', '.join(trading_engine.watchlist)}\n\n"
 
             # Демонстрация сигнала
             if signal:
@@ -714,34 +718,34 @@ class TradingTelegramBot:
                     if signal.direction == "BUY"
                     else "🔴" if signal.direction == "SELL" else "🟡"
                 )
-                result_text += f"🎯 *Демо-сигнал {signal.ticker}:*\n"
-                result_text += f"{emoji} Направление: {signal.direction}\n"
-                result_text += f"💪 Сила: {signal.strength.value}\n"
-                result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
-                result_text += f"💡 Обоснование: {signal.reasoning}\n"
-                result_text += f"💰 Вход: {signal.entry_price:.2f} ₽\n"
-                result_text += f"🛑 Стоп: {signal.stop_loss:.2f} ₽\n"
-                result_text += f"🎯 Цель: {signal.take_profit:.2f} ₽\n\n"
+                result_text += "🎯 *Демо-сигнал {signal.ticker}:*\n"
+                result_text += "{emoji} Направление: {signal.direction}\n"
+                result_text += "💪 Сила: {signal.strength.value}\n"
+                result_text += "🎯 Уверенность: {signal.confidence:.0%}\n"
+                result_text += "💡 Обоснование: {signal.reasoning}\n"
+                result_text += "💰 Вход: {signal.entry_price:.2f} ₽\n"
+                result_text += "🛑 Стоп: {signal.stop_loss:.2f} ₽\n"
+                result_text += "🎯 Цель: {signal.take_profit:.2f} ₽\n\n"
             else:
-                result_text += f"📊 *Текущие сигналы:*\n"
-                result_text += f"❌ Нет сильных сигналов в данный момент\n\n"
+                result_text += "📊 *Текущие сигналы:*\n"
+                result_text += "❌ Нет сильных сигналов в данный момент\n\n"
 
             # Возможности автоматизации
-            result_text += f"🚀 *Доступные режимы:*\n"
-            result_text += f"📝 *MANUAL* - Ручные рекомендации\n"
-            result_text += f"🔄 *SEMI_AUTO* - Полуавтоматический режим\n"
-            result_text += f"📊 *PAPER* - Виртуальная торговля (текущий)\n"
-            result_text += f"🤖 *AUTO* - Полная автоматизация (скоро)\n\n"
+            result_text += "🚀 *Доступные режимы:*\n"
+            result_text += "📝 *MANUAL* - Ручные рекомендации\n"
+            result_text += "🔄 *SEMI_AUTO* - Полуавтоматический режим\n"
+            result_text += "📊 *PAPER* - Виртуальная торговля (текущий)\n"
+            result_text += "🤖 *AUTO* - Полная автоматизация (скоро)\n\n"
 
             # Статистика
-            result_text += f"📈 *Потенциал автоматизации:*\n"
+            result_text += "📈 *Потенциал автоматизации:*\n"
             result_text += "• Экономия времени: 2-4 часа/день\n"
             result_text += "• Дисциплина: Устранение эмоций\n"
             result_text += "• Скорость: Реакция за секунды\n"
             result_text += "• Контроль: 24/7 мониторинг\n\n"
 
             # Команды управления
-            result_text += f"*Команды управления:*\n"
+            result_text += "*Команды управления:*\n"
             result_text += "• `/scan` - сканирование рынка\n"
             result_text += "• `/morning_brief` - утренний анализ\n"
             result_text += "• `/settings` - настройки автоматизации\n\n"
@@ -754,9 +758,9 @@ class TradingTelegramBot:
             logger.info("Команда /automation выполнена успешно")
 
         except Exception as e:
-            error_msg = f"❌ *Ошибка системы автоматизации*\n\n"
-            error_msg += f"Причина: {str(e)}\n\n"
-            error_msg += f"💡 Попробуйте повторить запрос через несколько секунд"
+            error_msg = "❌ *Ошибка системы автоматизации*\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
+            error_msg += "💡 Попробуйте повторить запрос через несколько секунд"
 
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Automation command error: {e}")
@@ -783,15 +787,14 @@ class TradingTelegramBot:
 
         for i, signal in enumerate(signals, 1):
             emoji = (
-                "🟢" if signal.direction == "BUY"
-                else "🔴" if signal.direction == "SELL" else "🟡"
+                "🟢" if signal.direction == "BUY" else "🔴" if signal.direction == "SELL" else "🟡"
             )
 
-            result_text += f"*{i}. {signal.ticker}*\n"
-            result_text += f"{emoji} {signal.direction} • {signal.strength.value}\n"
-            result_text += f"🎯 Уверенность: {signal.confidence:.0%}\n"
-            result_text += f"💰 Цена: {signal.entry_price:.2f} ₽\n"
-            result_text += f"📝 {signal.reasoning[:50]}...\n\n"
+            result_text += "*{i}. {signal.ticker}*\n"
+            result_text += "{emoji} {signal.direction} • {signal.strength.value}\n"
+            result_text += "🎯 Уверенность: {signal.confidence:.0%}\n"
+            result_text += "💰 Цена: {signal.entry_price:.2f} ₽\n"
+            result_text += "📝 {signal.reasoning[:50]}...\n\n"
 
         return result_text
 
@@ -803,11 +806,11 @@ class TradingTelegramBot:
 
         if buy_signals:
             best_buy = max(buy_signals, key=lambda x: x.confidence)
-            result_text += f"• Лучший сигнал на покупку: {best_buy.ticker}\n"
+            result_text += "• Лучший сигнал на покупку: {best_buy.ticker}\n"
 
         if sell_signals:
             best_sell = max(sell_signals, key=lambda x: x.confidence)
-            result_text += f"• Лучший сигнал на продажу: {best_sell.ticker}\n"
+            result_text += "• Лучший сигнал на продажу: {best_sell.ticker}\n"
 
         return result_text
 
@@ -815,7 +818,7 @@ class TradingTelegramBot:
         """Format result when no signals found."""
         result_text = "📊 *РЕЗУЛЬТАТЫ СКАНИРОВАНИЯ:*\n"
         result_text += "❌ Сильных сигналов не обнаружено\n\n"
-        result_text += f"📈 Проанализированы: {', '.join(quick_watchlist)}\n"
+        result_text += "📈 Проанализированы: {', '.join(quick_watchlist)}\n"
         result_text += "⏳ Рекомендуется повторить сканирование через 30-60 минут\n\n"
 
         result_text += "💡 *Возможные причины:*\n"
@@ -828,8 +831,7 @@ class TradingTelegramBot:
     async def scan_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /scan."""
         loading_msg = await update.message.reply_text(
-            "🔍 Запускаю сканирование рынка...\n"
-            "📊 Анализирую тикеры из списка наблюдения...",
+            "🔍 Запускаю сканирование рынка...\n" "📊 Анализирую тикеры из списка наблюдения...",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -838,9 +840,9 @@ class TradingTelegramBot:
             signals, quick_watchlist = await self._scan_tickers(trading_engine)
 
             result_text = "🔍 *СКАНИРОВАНИЕ РЫНКА*\n\n"
-            result_text += f"⏰ Время сканирования: {datetime.now().strftime('%H:%M:%S')}\n"
-            result_text += f"📊 Проанализировано тикеров: {len(quick_watchlist)}\n"
-            result_text += f"🎯 Найдено сигналов: {len(signals)}\n\n"
+            result_text += "⏰ Время сканирования: {datetime.now().strftime('%H:%M:%S')}\n"
+            result_text += "📊 Проанализировано тикеров: {len(quick_watchlist)}\n"
+            result_text += "🎯 Найдено сигналов: {len(signals)}\n\n"
 
             if signals:
                 result_text += self._format_scan_signals(signals)
@@ -857,11 +859,11 @@ class TradingTelegramBot:
             result_text += "Проведите дополнительный анализ перед принятием решений."
 
             await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
-            logger.info(f"Сканирование завершено: найдено {len(signals)} сигналов")
+            logger.info("Сканирование завершено: найдено {len(signals)} сигналов")
 
         except Exception as e:
             error_msg = "❌ *Ошибка сканирования рынка*\n\n"
-            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте повторить сканирование через несколько секунд"
 
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
@@ -886,8 +888,8 @@ class TradingTelegramBot:
         ticker = context.args[0].upper()
 
         loading_msg = await update.message.reply_text(
-            f"📊 Выполняю технический анализ *{ticker}*...\n"
-            f"📈 Рассчитываю RSI, MACD, скользящие средние...",
+            "📊 Выполняю технический анализ *{ticker}*...\n"
+            "📈 Рассчитываю RSI, MACD, скользящие средние...",
             parse_mode="Markdown",
         )
 
@@ -898,11 +900,11 @@ class TradingTelegramBot:
 
             await loading_msg.edit_text(result_text, parse_mode="Markdown")
 
-            logger.info(f"Технический анализ {ticker} завершен успешно")
+            logger.info("Технический анализ {ticker} завершен успешно")
 
         except Exception as e:
-            error_msg = f"❌ *Ошибка технического анализа {ticker}*\n\n"
-            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg = "❌ *Ошибка технического анализа {ticker}*\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
             error_msg += "• Повторить запрос через несколько секунд\n"
@@ -930,7 +932,7 @@ class TradingTelegramBot:
         ticker = context.args[0].upper()
 
         loading_msg = await update.message.reply_text(
-            f"🎯 Генерирую торговый сигнал для *{ticker}*...\n"
+            "🎯 Генерирую торговый сигнал для *{ticker}*...\n"
             "📊 Анализирую техническую картину...\n"
             "📰 Обрабатываю новостной фон...\n"
             "🧠 Комбинирую результаты...",
@@ -942,14 +944,14 @@ class TradingTelegramBot:
 
             await loading_msg.edit_text(result_text, parse_mode="Markdown")
 
-            logger.info(f"Торговый сигнал {ticker} сгенерирован успешно")
+            logger.info("Торговый сигнал {ticker} сгенерирован успешно")
 
         except Exception as e:
-            error_msg = f"❌ *Ошибка генерации сигнала {ticker}*\n\n"
-            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg = "❌ *Ошибка генерации сигнала {ticker}*\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
-            error_msg += f"• Использовать отдельно `/analysis {ticker}` и `/news {ticker}`\n"
+            error_msg += "• Использовать отдельно `/analysis {ticker}` и `/news {ticker}`\n"
             error_msg += "• Повторить запрос через несколько секунд"
 
             await loading_msg.edit_text(error_msg, parse_mode="Markdown")
@@ -959,7 +961,7 @@ class TradingTelegramBot:
         """Обработка неизвестных сообщений"""
         try:
             message_text = update.message.text
-            logger.info(f"Получено неизвестное сообщение: {message_text}")
+            logger.info("Получено неизвестное сообщение: {message_text}")
             response_message = """
 ❓ **Не понимаю эту команду**
 📋 **Попробуйте:**
@@ -1022,7 +1024,7 @@ class TradingTelegramBot:
             )
         except Exception as e:
             logger.error(f"❌ Критическая ошибка запуска бота: {e}")
-            print(f"❌ Ошибка запуска: {e}")
+            print("❌ Ошибка запуска: {e}")
             print("💡 Проверьте TELEGRAM_TOKEN в .env файле")
 
 
