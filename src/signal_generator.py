@@ -79,16 +79,6 @@ class SignalGenerator:
                         news_result: Optional[Dict]) -> Dict:
         """Комбинирование технического и новостного анализа."""
         try:
-            # Отладочная информация
-            print(f"DEBUG: technical_result type: {type(technical_result)}")
-            print(f"DEBUG: technical_result success: {technical_result.get('success') if technical_result else None}")
-            if technical_result and 'overall_signal' in technical_result:
-                print(f"DEBUG: overall_signal keys: {list(technical_result['overall_signal'].keys())}")
-            
-            print(f"DEBUG: news_result type: {type(news_result)}")
-            print(f"DEBUG: news_result success: {news_result.get('success') if news_result else None}")
-            if news_result and 'sentiment' in news_result:
-                print(f"DEBUG: sentiment keys: {list(news_result['sentiment'].keys()) if news_result['sentiment'] else 'None'}")
             # Преобразование сигналов в числовые значения
             signal_values = {
                 'STRONG_BUY': 2,
