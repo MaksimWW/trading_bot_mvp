@@ -371,8 +371,8 @@ class TradingTelegramBot:
 - <code>/accounts</code> - торговые счета
 - <code>/status</code> - состояние систем"""
             except Exception as api_error:
-                logger.error("Ошибка Perplexity API для {ticker}: {api_error}")
-                result_text = """❌ <b>ОШИБКА ПОЛУЧЕНИЯ НОВОСТЕЙ {ticker}</b>
+                logger.error(f"Ошибка Perplexity API для {ticker}: {api_error}")
+                result_text = f"""❌ <b>ОШИБКА ПОЛУЧЕНИЯ НОВОСТЕЙ {ticker}</b>
 🔍 Причина: {str(api_error)}
 💡 Попробуйте:
 - Повторить запрос через несколько секунд
