@@ -91,11 +91,11 @@ def main():
 
     asyncio.run(test())
 
-
-if __name__ == "__main__":
-    main()
-
     def calculate_rsi(self, prices, period=14):
         """Заглушка для расчета RSI"""
         # Временная заглушка - всегда возвращаем нейтральное значение
         return 50.0
+
+
+if __name__ == "__main__":
+    main()
