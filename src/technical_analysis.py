@@ -445,10 +445,10 @@ class TechnicalAnalyzer:
             descriptions = []
 
             # Анализ SMA 20/50
-            sma_analysis = self._analyze_sma_crossover(ma_data, signals, descriptions)
+            self._analyze_sma_crossover(ma_data, signals, descriptions)
 
             # Анализ позиции цены относительно SMA 20
-            price_analysis = self._analyze_price_vs_sma20(current_price, ma_data, descriptions)
+            self._analyze_price_vs_sma20(current_price, ma_data, descriptions)
 
             # Общий сигнал по скользящим средним
             overall_signal, emoji = self._calculate_ma_signal(signals)
@@ -690,7 +690,7 @@ class TechnicalAnalyzer:
         if "rsi" in indicators and indicators["rsi"]["value"] is not None:
             rsi_data = indicators["rsi"]
             rsi_interp = rsi_data["interpretation"]
-            text += f"📈 *RSI (Индекс относительной силы):*\n"
+            text += "📈 *RSI (Индекс относительной силы):*\n"
             text += f"{rsi_interp['emoji']} Значение: {rsi_data['value']}\n"
             text += f"📝 {rsi_interp['description']}\n\n"
 
@@ -698,7 +698,7 @@ class TechnicalAnalyzer:
         if "macd" in indicators and indicators["macd"]["current_macd"] is not None:
             macd_data = indicators["macd"]
             macd_interp = macd_data["interpretation"]
-            text += f"📊 *MACD (Схождение-расхождение):*\n"
+            text += "📊 *MACD (Схождение-расхождение):*\n"
             text += f"{macd_interp['emoji']} MACD: {macd_data['current_macd']}\n"
             text += f"📡 Signal: {macd_data['current_signal']}\n"
             text += f"📝 {macd_interp['description']}\n\n"
@@ -706,19 +706,19 @@ class TechnicalAnalyzer:
         # Скользящие средние
         if "moving_averages" in indicators:
             ma_data = indicators["moving_averages"]
-            text += f"📈 *Скользящие средние:*\n"
+            text += "📈 *Скользящие средние:*\n"
             text += f"{ma_data.get('emoji', '⚪')} {ma_data.get('description', 'Нет данных')}\n\n"
 
         # Полосы Боллинджера
         if "bollinger_bands" in indicators:
             bb_data = indicators["bollinger_bands"]
-            text += f"📊 *Полосы Боллинджера:*\n"
+            text += "📊 *Полосы Боллинджера:*\n"
             text += f"{bb_data.get('emoji', '⚪')} {bb_data.get('description', 'Нет данных')}\n\n"
 
         # Компоненты общего сигнала
         components = overall_signal.get("components", {})
         if components:
-            text += f"🔍 *Детализация сигналов:*\n"
+            text += "🔍 *Детализация сигналов:*\n"
             text += f"• RSI: {components.get('rsi_signal', 'N/A')}\n"
             text += f"• MACD: {components.get('macd_signal', 'N/A')}\n"
             text += f"• MA: {components.get('ma_signal', 'N/A')}\n\n"
@@ -727,15 +727,15 @@ class TechnicalAnalyzer:
         text += f"🕐 *Время анализа:* {datetime.now().strftime('%H:%M:%S')}\n"
 
         # Подсказки
-        text += f"\n*💡 Что дальше?*\n"
+        text += "\n*💡 Что дальше?*\n"
         text += f"• `/price {ticker}` - текущая цена\n"
         text += f"• `/news {ticker}` - анализ новостей\n"
         text += f"• `/signal {ticker}` - комбинированный сигнал\n\n"
 
         # Дисклеймер
         text += (
-            f"⚠️ *Дисклеймер:* Технический анализ не гарантирует результат. "
-            f"Используйте в комплексе с фундаментальным анализом."
+            "⚠️ *Дисклеймер:* Технический анализ не гарантирует результат. "
+            "Используйте в комплексе с фундаментальным анализом."
         )
 
         return text

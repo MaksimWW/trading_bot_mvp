@@ -98,101 +98,103 @@ class SignalGenerator:
     ) -> Dict:
         """Комбинирование технического и новостного анализа."""
         try:
-            # Преобразование сигналов в числовые значения
-            signal_values = {
-                "STRONG_BUY": 2,
-                "BUY": 1,
-                "NEUTRAL_BULLISH": 0.5,
-                "HOLD": 0,
-                "NEUTRAL_BEARISH": -0.5,
-                "SELL": -1,
-                "STRONG_SELL": -2,
-                "UNKNOWN": 0,
-            }
-
-            # Получение технического сигнала
-            technical_score = 0
-            technical_confidence = 0
-            try:
-                print("DEBUG: Обрабатываем технический результат...")
-                if technical_result and technical_result.get("success"):
-                    overall_signal = technical_result.get("overall_signal", {})
-                    tech_signal = (
-                        overall_signal.get("signal", "UNKNOWN") if overall_signal else "UNKNOWN"
-                    )
-                    technical_score = signal_values.get(tech_signal, 0)
-                    technical_confidence = (
-                        overall_signal.get("confidence", 0) if overall_signal else 0
-                    )
-                    print(f"DEBUG: Технический сигнал: {tech_signal}, score: {technical_score}")
-            except Exception as e:
-                print("DEBUG: Ошибка в техническом анализе:", e)
-                raise
-
-            # Получение новостного сигнала
-            news_score = 0
-            news_confidence = 0
-            try:
-                print("DEBUG: Обрабатываем новостной результат...")
-                if news_result and news_result.get("success") and news_result.get("sentiment"):
-                    sentiment = news_result.get("sentiment", {})
-                    if sentiment:
-                        sentiment_score = sentiment.get("sentiment_score", 0)
-                        news_score = sentiment_score * 2  # Преобразуем [-1,1] в [-2,2]
-                        news_confidence = sentiment.get("confidence", 0)
-                        print(
-                            f"DEBUG: Новостной сигнал: sentiment_score={sentiment_score}, news_score={news_score}"
-                        )
-            except Exception as e:
-                print("DEBUG: Ошибка в новостном анализе:", e)
-                raise
-
+            # Получение технического и новостного анализа
+            tech_data = self._process_technical_analysis(technical_result)
+            news_data = self._process_news_analysis(news_result)
+            
             # Взвешенное комбинирование
             combined_score = (
-                technical_score * self.weights["technical"] + news_score * self.weights["news"]
+                tech_data["score"] * self.weights["technical"] + 
+                news_data["score"] * self.weights["news"]
             )
-
-            # Комбинированная уверенность
+            
             combined_confidence = (
-                technical_confidence * self.weights["technical"]
-                + news_confidence * self.weights["news"]
+                tech_data["confidence"] * self.weights["technical"] +
+                news_data["confidence"] * self.weights["news"]
             )
-
-            # Преобразование обратно в сигнал
+            
+            # Преобразование в итоговый сигнал
             signal, emoji = self._get_signal_and_emoji(combined_score)
-
-            # Формирование результата
-            try:
-                print("DEBUG: Формируем итоговый результат...")
-                print(f"DEBUG: combined_score = {combined_score}")
-                print(f"DEBUG: signal = {signal}")
-
-                result = self._create_result(
-                    ticker,
-                    technical_result,
-                    signal,
-                    emoji,
-                    combined_score,
-                    combined_confidence,
-                    tech_signal,
-                    technical_score,
-                    technical_confidence,
-                    news_result,
-                    news_score,
-                    news_confidence,
-                )
-
-                print("DEBUG: Результат сформирован успешно")
-                return result
-
-            except Exception as e:
-                print("DEBUG: Ошибка формирования результата:", e)
-                print(f"DEBUG: Переменные: tech_signal={locals().get('tech_signal', 'UNDEFINED')}")
-                raise
-
+            
+            # Формирование итогового результата
+            return self._create_final_result(
+                ticker, technical_result, news_result, 
+                signal, emoji, combined_score, combined_confidence,
+                tech_data, news_data
+            )
+            
         except Exception as e:
             logger.error(f"Ошибка комбинирования сигналов: {e}")
             return self._create_error_signal(ticker, f"Ошибка комбинирования: {str(e)}")
+
+    def _process_technical_analysis(self, technical_result: Optional[Dict]) -> Dict:
+        """Обработка результатов технического анализа."""
+        signal_values = {
+            "STRONG_BUY": 2, "BUY": 1, "NEUTRAL_BULLISH": 0.5, "HOLD": 0,
+            "NEUTRAL_BEARISH": -0.5, "SELL": -1, "STRONG_SELL": -2, "UNKNOWN": 0,
+        }
+        
+        score = 0
+        confidence = 0
+        signal = "UNKNOWN"
+        
+        try:
+            print("DEBUG: Обрабатываем технический результат...")
+            if technical_result and technical_result.get("success"):
+                overall_signal = technical_result.get("overall_signal", {})
+                signal = overall_signal.get("signal", "UNKNOWN") if overall_signal else "UNKNOWN"
+                score = signal_values.get(signal, 0)
+                confidence = overall_signal.get("confidence", 0) if overall_signal else 0
+                print(f"DEBUG: Технический сигнал: {signal}, score: {score}")
+        except Exception as e:
+            print("DEBUG: Ошибка в техническом анализе:", e)
+            raise
+            
+        return {"signal": signal, "score": score, "confidence": confidence}
+
+    def _process_news_analysis(self, news_result: Optional[Dict]) -> Dict:
+        """Обработка результатов анализа новостей."""
+        score = 0
+        confidence = 0
+        
+        try:
+            print("DEBUG: Обрабатываем новостной результат...")
+            if news_result and news_result.get("success") and news_result.get("sentiment"):
+                sentiment = news_result.get("sentiment", {})
+                if sentiment:
+                    sentiment_score = sentiment.get("sentiment_score", 0)
+                    score = sentiment_score * 2  # Преобразуем [-1,1] в [-2,2]
+                    confidence = sentiment.get("confidence", 0)
+                    print(f"DEBUG: Новостной сигнал: sentiment_score={sentiment_score}, news_score={score}")
+        except Exception as e:
+            print("DEBUG: Ошибка в новостном анализе:", e)
+            raise
+            
+        return {"score": score, "confidence": confidence}
+
+    def _create_final_result(self, ticker: str, technical_result: Optional[Dict], 
+                           news_result: Optional[Dict], signal: str, emoji: str,
+                           combined_score: float, combined_confidence: float,
+                           tech_data: Dict, news_data: Dict) -> Dict:
+        """Формирование итогового результата."""
+        try:
+            print("DEBUG: Формируем итоговый результат...")
+            print(f"DEBUG: combined_score = {combined_score}")
+            print(f"DEBUG: signal = {signal}")
+
+            result = self._create_result(
+                ticker, technical_result, signal, emoji, combined_score, combined_confidence,
+                tech_data["signal"], tech_data["score"], tech_data["confidence"],
+                news_result, news_data["score"], news_data["confidence"]
+            )
+
+            print("DEBUG: Результат сформирован успешно")
+            return result
+
+        except Exception as e:
+            print("DEBUG: Ошибка формирования результата:", e)
+            print(f"DEBUG: Переменные: tech_signal={tech_data.get('signal', 'UNDEFINED')}")
+            raise
 
     def _news_score_to_signal(self, news_score: float) -> str:
         """Преобразование новостного score в сигнал."""
@@ -247,7 +249,7 @@ class SignalGenerator:
         text += f"🎯 *Уверенность:* {combined['confidence']:.0%}\n\n"
 
         # Компоненты анализа
-        text += f"📋 *СОСТАВЛЯЮЩИЕ АНАЛИЗА:*\n\n"
+        text += "📋 *СОСТАВЛЯЮЩИЕ АНАЛИЗА:*\n\n"
 
         # Технический анализ
         tech = components["technical"]
@@ -256,7 +258,7 @@ class SignalGenerator:
             text += f"📊 Сигнал: {tech['signal']}\n"
             text += f"📈 Вклад: {tech['score']:+.2f}\n\n"
         else:
-            text += f"📈 *Технический анализ:* ❌ Недоступен\n\n"
+            text += "📈 *Технический анализ:* ❌ Недоступен\n\n"
 
         # Анализ новостей
         news = components["news"]
@@ -265,20 +267,20 @@ class SignalGenerator:
             text += f"📊 Сигнал: {news['signal']}\n"
             text += f"📈 Вклад: {news['score']:+.2f}\n\n"
         else:
-            text += f"📰 *Анализ новостей:* ❌ Недоступен\n\n"
+            text += "📰 *Анализ новостей:* ❌ Недоступен\n\n"
 
         # Время и действия
         text += f"🕐 *Время анализа:* {datetime.now().strftime('%H:%M:%S')}\n\n"
 
-        text += f"*💡 Детальная информация:*\n"
+        text += "*💡 Детальная информация:*\n"
         text += f"• `/analysis {ticker}` - технический анализ\n"
         text += f"• `/news {ticker}` - анализ новостей\n"
         text += f"• `/price {ticker}` - текущая цена\n\n"
 
         # Дисклеймер
         text += (
-            f"⚠️ *Важно:* Комбинированный сигнал учитывает множество факторов, "
-            f"но не гарантирует результат. Принимайте решения обдуманно."
+            "⚠️ *Важно:* Комбинированный сигнал учитывает множество факторов, "
+            "но не гарантирует результат. Принимайте решения обдуманно."
         )
 
         return text
