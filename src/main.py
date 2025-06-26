@@ -17,8 +17,8 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("logs/trading_bot.log", encoding="utf-8")
-    ]
+        logging.FileHandler("logs/trading_bot.log", encoding="utf-8"),
+    ],
 )
 
 logger = logging.getLogger(__name__)
@@ -38,13 +38,13 @@ def check_environment() -> bool:
     # Обязательные токены
     required_tokens = {
         "TELEGRAM_TOKEN": "Telegram Bot API token",
-        "TINKOFF_TOKEN": "Tinkoff Invest API token"
+        "TINKOFF_TOKEN": "Tinkoff Invest API token",
     }
 
     # Дополнительные токены
     optional_tokens = {
         "PERPLEXITY_API_KEY": "Perplexity API для новостей",
-        "OPENAI_API_KEY": "OpenAI API для анализа новостей"
+        "OPENAI_API_KEY": "OpenAI API для анализа новостей",
     }
 
     missing_required = []

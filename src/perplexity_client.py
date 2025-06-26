@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class PerplexityError(Exception):
     """Кастомное исключение для ошибок Perplexity API"""
+
     pass
 
 
@@ -49,15 +50,15 @@ class PerplexityClient:
 
         # Поддерживаемые тикеры
         self.supported_tickers = {
-            'SBER': 'Сбербанк Сбер',
-            'GAZP': 'Газпром',
-            'YNDX': 'Яндекс Yandex',
-            'LKOH': 'Лукойл',
-            'NVTK': 'Новатэк',
-            'ROSN': 'Роснефть',
-            'MGNT': 'Магнит',
-            'MTSS': 'МТС',
-            'AFLT': 'Аэрофлот'
+            "SBER": "Сбербанк Сбер",
+            "GAZP": "Газпром",
+            "YNDX": "Яндекс Yandex",
+            "LKOH": "Лукойл",
+            "NVTK": "Новатэк",
+            "ROSN": "Роснефть",
+            "MGNT": "Магнит",
+            "MTSS": "МТС",
+            "AFLT": "Аэрофлот",
         }
 
         logger.info("PerplexityClient инициализирован")
@@ -136,24 +137,16 @@ class PerplexityClient:
 
     def _prepare_headers(self) -> Dict[str, str]:
         """Подготовка заголовков для запроса"""
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     def _prepare_payload(self, query: str) -> Dict:
         """Подготовка данных для запроса"""
         return {
             "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": query
-                }
-            ],
+            "messages": [{"role": "user", "content": query}],
             "return_citations": True,
             "temperature": 0.1,
-            "max_tokens": 2000
+            "max_tokens": 2000,
         }
 
     def _handle_response_errors(self, response) -> None:
@@ -191,10 +184,7 @@ class PerplexityClient:
             logger.debug(f"Отправка запроса к {self.base_url}/chat/completions")
 
             response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=self.timeout
+                f"{self.base_url}/chat/completions", headers=headers, json=payload, timeout=self.timeout
             )
 
             self._handle_response_errors(response)
@@ -246,7 +236,7 @@ class PerplexityClient:
                 "source": "Perplexity AI",
                 "url": "",
                 "timestamp": current_time,
-                "type": "aggregated"
+                "type": "aggregated",
             }
             news_items.append(main_news)
 
@@ -259,7 +249,7 @@ class PerplexityClient:
                         "source": self._extract_domain(citation),
                         "url": citation,
                         "timestamp": current_time,
-                        "type": "citation"
+                        "type": "citation",
                     }
                     news_items.append(citation_news)
 
@@ -274,6 +264,7 @@ class PerplexityClient:
         """Извлечение домена из URL"""
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(url)
             return parsed.netloc or "Неизвестный источник"
         except Exception:
