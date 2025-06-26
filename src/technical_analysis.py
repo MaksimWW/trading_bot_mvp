@@ -66,17 +66,17 @@ class TechnicalAnalyzer:
         """
         try:
             # Поиск инструмента
-            instrument = await self.tinkoff.search_instrument(ticker)
+            instrument = self.tinkoff.search_instrument(ticker)
             if not instrument:
                 logger.error(f"Инструмент {ticker} не найден")
                 return None
             
-            figi = instrument['figi']
+            figi = instrument.figi
             
-            # Получение исторических данных
-            # TODO: Реализовать через Tinkoff API get_candles
-            # Пока возвращаем тестовые данные для разработки
-            logger.info(f"Получение исторических данных для {ticker}")
+            # TODO: Реализовать получение реальных исторических данных через Tinkoff API
+            # Необходимо добавить метод get_candles в TinkoffClient
+            # Пример: candles = self.tinkoff.get_candles(figi, days)
+            logger.warning(f"Используются тестовые данные для {ticker}. Требуется реализация get_candles в TinkoffClient")
             
             # Генерируем тестовые данные для разработки
             dates = pd.date_range(
@@ -85,15 +85,16 @@ class TechnicalAnalyzer:
                 freq='D'
             )
             
-            # Имитируем реальные цены с трендом и волатильностью
-            base_price = 100.0
+            # Имитируем более реалистичные цены с базовой ценой около 100-200 рублей
+            np.random.seed(hash(ticker) % 1000)  # Детерминированные данные для одного тикера
+            base_price = 150.0 + (hash(ticker) % 100)  # Разные базовые цены для разных тикеров
             prices = []
             for i in range(days):
-                # Добавляем тренд и случайные колебания
-                trend = i * 0.1
-                volatility = np.random.normal(0, 2)
+                # Добавляем небольшой тренд и реалистичную волатильность
+                trend = (i * 0.05) + np.sin(i * 0.1) * 2  # Синусоидальный тренд
+                volatility = np.random.normal(0, base_price * 0.02)  # 2% волатильность
                 price = base_price + trend + volatility
-                prices.append(max(price, 1.0))  # Цена не может быть отрицательной
+                prices.append(max(price, base_price * 0.5))  # Цена не может упасть ниже 50% от базы
             
             # Создаем DataFrame
             df = pd.DataFrame({
