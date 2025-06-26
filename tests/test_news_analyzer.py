@@ -1,13 +1,14 @@
+import os
+import sys
 
 import pytest
-import sys
-import os
 
 # Добавляем путь к src для импорта модулей
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 try:
     from news_analyzer import NewsAnalyzer, get_news_analyzer
+
     MODULES_AVAILABLE = True
 except ImportError:
     MODULES_AVAILABLE = False
@@ -31,5 +32,5 @@ def test_get_news_analyzer():
 def test_module_structure():
     """Базовый тест структуры модуля."""
     # Проверяем что файл существует
-    module_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'news_analyzer.py')
+    module_path = os.path.join(os.path.dirname(__file__), "..", "src", "news_analyzer.py")
     assert os.path.exists(module_path), "news_analyzer.py должен существовать"
