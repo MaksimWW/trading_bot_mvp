@@ -185,7 +185,7 @@ class PerplexityClient:
                 try:
                     error_detail = response.json().get("error", {}).get("message", response.text)
                     error_msg += f": {error_detail}"
-                except:
+                except Exception as e:
                     error_msg += f": {response.text}"
                 raise PerplexityError(error_msg)
 
@@ -267,7 +267,7 @@ class PerplexityClient:
             from urllib.parse import urlparse
             parsed = urlparse(url)
             return parsed.netloc or "Неизвестный источник"
-        except:
+        except Exception as e:
             return "Неизвестный источник"
 
     def test_connection(self) -> bool:
