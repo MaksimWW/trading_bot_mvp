@@ -10,11 +10,9 @@
 Использует исторические данные от Tinkoff Invest API.
 """
 
-import asyncio
 import logging
-import math
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, Optional
 
 try:
     import numpy as np
@@ -69,13 +67,11 @@ class TechnicalAnalyzer:
                 logger.error(f"Инструмент {ticker} не найден")
                 return None
 
-            figi = instrument.figi
-
             # TODO: Реализовать получение реальных исторических данных через Tinkoff API
             # Необходимо добавить метод get_candles в TinkoffClient
             # Пример: candles = self.tinkoff.get_candles(figi, days)
             logger.warning(
-                f"Используются тестовые данные для {ticker}. Требуется реализация get_candles в TinkoffClient"
+                "Используются тестовые данные для %s. Требуется реализация get_candles в TinkoffClient", ticker
             )
 
             # Генерируем тестовые данные для разработки
@@ -448,52 +444,13 @@ class TechnicalAnalyzer:
             descriptions = []
 
             # Анализ SMA 20/50
-            if "sma_20" in ma_data and "sma_50" in ma_data:
-                sma_20 = ma_data["sma_20"].dropna()
-                sma_50 = ma_data["sma_50"].dropna()
-
-                if len(sma_20) > 0 and len(sma_50) > 0:
-                    current_sma_20 = sma_20.iloc[-1]
-                    current_sma_50 = sma_50.iloc[-1]
-
-                    if current_sma_20 > current_sma_50:
-                        signals.append("BUY")
-                        descriptions.append("SMA 20 > SMA 50 (бычий тренд)")
-                    else:
-                        signals.append("SELL")
-                        descriptions.append("SMA 20 < SMA 50 (медвежий тренд)")
-
+            sma_analysis = self._analyze_sma_crossover(ma_data, signals, descriptions)
+            
             # Анализ позиции цены относительно SMA 20
-            if "sma_20" in ma_data:
-                sma_20 = ma_data["sma_20"].dropna()
-                if len(sma_20) > 0:
-                    current_sma_20 = sma_20.iloc[-1]
-                    if current_price > current_sma_20:
-                        descriptions.append(
-                            f"Цена выше SMA 20 (+{((current_price/current_sma_20 - 1) * 100):.1f}%)"
-                        )
-                    else:
-                        descriptions.append(
-                            f"Цена ниже SMA 20 ({((current_price/current_sma_20 - 1) * 100):.1f}%)"
-                        )
+            price_analysis = self._analyze_price_vs_sma20(current_price, ma_data, descriptions)
 
             # Общий сигнал по скользящим средним
-            if signals:
-                buy_signals = signals.count("BUY")
-                sell_signals = signals.count("SELL")
-
-                if buy_signals > sell_signals:
-                    overall_signal = "BUY"
-                    emoji = "🟢"
-                elif sell_signals > buy_signals:
-                    overall_signal = "SELL"
-                    emoji = "🔴"
-                else:
-                    overall_signal = "HOLD"
-                    emoji = "🟡"
-            else:
-                overall_signal = "UNKNOWN"
-                emoji = "⚪"
+            overall_signal, emoji = self._calculate_ma_signal(signals)
 
             return {
                 "signal": overall_signal,
@@ -505,6 +462,50 @@ class TechnicalAnalyzer:
         except Exception as e:
             logger.error(f"Ошибка анализа скользящих средних: {e}")
             return {"signal": "UNKNOWN", "description": "Ошибка анализа"}
+
+    def _analyze_sma_crossover(self, ma_data: Dict, signals: list, descriptions: list):
+        """Анализ пересечения SMA 20/50."""
+        if "sma_20" in ma_data and "sma_50" in ma_data:
+            sma_20 = ma_data["sma_20"].dropna()
+            sma_50 = ma_data["sma_50"].dropna()
+
+            if len(sma_20) > 0 and len(sma_50) > 0:
+                current_sma_20 = sma_20.iloc[-1]
+                current_sma_50 = sma_50.iloc[-1]
+
+                if current_sma_20 > current_sma_50:
+                    signals.append("BUY")
+                    descriptions.append("SMA 20 > SMA 50 (бычий тренд)")
+                else:
+                    signals.append("SELL")
+                    descriptions.append("SMA 20 < SMA 50 (медвежий тренд)")
+
+    def _analyze_price_vs_sma20(self, current_price: float, ma_data: Dict, descriptions: list):
+        """Анализ позиции цены относительно SMA 20."""
+        if "sma_20" in ma_data:
+            sma_20 = ma_data["sma_20"].dropna()
+            if len(sma_20) > 0:
+                current_sma_20 = sma_20.iloc[-1]
+                price_change = ((current_price/current_sma_20 - 1) * 100)
+                if current_price > current_sma_20:
+                    descriptions.append(f"Цена выше SMA 20 (+{price_change:.1f}%)")
+                else:
+                    descriptions.append(f"Цена ниже SMA 20 ({price_change:.1f}%)")
+
+    def _calculate_ma_signal(self, signals: list) -> tuple:
+        """Расчет общего сигнала по скользящим средним."""
+        if signals:
+            buy_signals = signals.count("BUY")
+            sell_signals = signals.count("SELL")
+
+            if buy_signals > sell_signals:
+                return "BUY", "🟢"
+            elif sell_signals > buy_signals:
+                return "SELL", "🔴"
+            else:
+                return "HOLD", "🟡"
+        else:
+            return "UNKNOWN", "⚪"
 
     def _analyze_bollinger_bands(
         self, current_price: float, bollinger_data: Dict[str, pd.Series]
@@ -767,7 +768,6 @@ async def get_ticker_analysis_for_telegram(ticker: str) -> str:
 
 def main():
     """Функция для тестирования модуля."""
-    import asyncio
     import json
 
     async def test_analysis():
@@ -818,6 +818,7 @@ def main():
             traceback.print_exc()
 
     print("Тестирование Technical Analyzer...")
+    import asyncio
     asyncio.run(test_analysis())
 
 

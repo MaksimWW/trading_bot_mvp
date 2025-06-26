@@ -16,7 +16,6 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
-from technical_analysis import get_technical_analyzer
 from tinkoff_client import TinkoffClient
 
 # Настройка логирования
@@ -417,10 +416,10 @@ class TradingTelegramBot:
         except Exception as e:
             error_msg = f"❌ *Ошибка технического анализа {ticker}*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
-            error_msg += f"💡 Попробуйте:\n"
-            error_msg += f"• Проверить тикер (SBER, GAZP, YNDX)\n"
-            error_msg += f"• Повторить запрос через несколько секунд\n"
-            error_msg += f"• Использовать /status для проверки систем"
+            error_msg += "💡 Попробуйте:\n"
+            error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
+            error_msg += "• Повторить запрос через несколько секунд\n"
+            error_msg += "• Использовать /status для проверки систем"
 
             await loading_msg.edit_text(error_msg, parse_mode="Markdown")
             logger.error(f"Analysis command error for {ticker}: {e}")

@@ -126,7 +126,7 @@ class SignalGenerator:
                     )
                     print(f"DEBUG: Технический сигнал: {tech_signal}, score: {technical_score}")
             except Exception as e:
-                print(f"DEBUG: Ошибка в техническом анализе: {e}")
+                print("DEBUG: Ошибка в техническом анализе:", e)
                 raise
 
             # Получение новостного сигнала
@@ -144,7 +144,7 @@ class SignalGenerator:
                             f"DEBUG: Новостной сигнал: sentiment_score={sentiment_score}, news_score={news_score}"
                         )
             except Exception as e:
-                print(f"DEBUG: Ошибка в новостном анализе: {e}")
+                print("DEBUG: Ошибка в новостном анализе:", e)
                 raise
 
             # Взвешенное комбинирование
@@ -159,21 +159,7 @@ class SignalGenerator:
             )
 
             # Преобразование обратно в сигнал
-            if combined_score >= 1.2:
-                signal = "STRONG_BUY"
-                emoji = "💚"
-            elif combined_score >= 0.4:
-                signal = "BUY"
-                emoji = "🟢"
-            elif combined_score <= -1.2:
-                signal = "STRONG_SELL"
-                emoji = "🔴"
-            elif combined_score <= -0.4:
-                signal = "SELL"
-                emoji = "🟠"
-            else:
-                signal = "HOLD"
-                emoji = "🟡"
+            signal, emoji = self._get_signal_and_emoji(combined_score)
 
             # Формирование результата
             try:
@@ -181,54 +167,18 @@ class SignalGenerator:
                 print(f"DEBUG: combined_score = {combined_score}")
                 print(f"DEBUG: signal = {signal}")
 
-                # Формирование результата
-                result = {
-                    "ticker": ticker,
-                    "company_name": (
-                        technical_result.get("company_name", f"Акция {ticker}")
-                        if technical_result
-                        else f"Акция {ticker}"
-                    ),
-                    "timestamp": datetime.now().isoformat(),
-                    "success": True,
-                    "error_message": None,
-                    "combined_signal": {
-                        "signal": signal,
-                        "emoji": emoji,
-                        "score": round(combined_score, 2),
-                        "confidence": round(combined_confidence, 2),
-                        "description": f"Комбинированный сигнал ({signal})",
-                    },
-                    "components": {
-                        "technical": {
-                            "available": technical_result is not None
-                            and technical_result.get("success", False),
-                            "signal": tech_signal,  # НЕ ИСПОЛЬЗУЙ technical_result.get('overall_signal', {}).get('signal')
-                            "score": technical_score,
-                            "confidence": technical_confidence,
-                            "weight": self.weights["technical"],
-                        },
-                        "news": {
-                            "available": news_result is not None
-                            and news_result.get("success", False)
-                            and news_result.get("sentiment"),
-                            "signal": self._news_score_to_signal(news_score),
-                            "score": news_score,
-                            "confidence": news_confidence,
-                            "weight": self.weights["news"],
-                        },
-                    },
-                    "details": {
-                        "technical_analysis": technical_result,
-                        "news_analysis": news_result,
-                    },
-                }
+                result = self._create_result(
+                    ticker, technical_result, signal, emoji, 
+                    combined_score, combined_confidence, tech_signal,
+                    technical_score, technical_confidence,
+                    news_result, news_score, news_confidence
+                )
 
                 print("DEBUG: Результат сформирован успешно")
                 return result
 
             except Exception as e:
-                print(f"DEBUG: Ошибка формирования результата: {e}")
+                print("DEBUG: Ошибка формирования результата:", e)
                 print(f"DEBUG: Переменные: tech_signal={locals().get('tech_signal', 'UNDEFINED')}")
                 raise
 
@@ -325,6 +275,75 @@ class SignalGenerator:
 
         return text
 
+    def _get_signal_and_emoji(self, combined_score: float) -> tuple[str, str]:
+        """Преобразование combined_score в сигнал и emoji."""
+        if combined_score >= 1.2:
+            signal = "STRONG_BUY"
+            emoji = "💚"
+        elif combined_score >= 0.4:
+            signal = "BUY"
+            emoji = "🟢"
+        elif combined_score <= -1.2:
+            signal = "STRONG_SELL"
+            emoji = "🔴"
+        elif combined_score <= -0.4:
+            signal = "SELL"
+            emoji = "🟠"
+        else:
+            signal = "HOLD"
+            emoji = "🟡"
+        return signal, emoji
+
+    def _create_result(
+        self, ticker: str, technical_result: Optional[Dict], signal: str, emoji: str, 
+        combined_score: float, combined_confidence: float, tech_signal: str,
+        technical_score: float, technical_confidence: float,
+        news_result: Optional[Dict], news_score: float, news_confidence: float
+    ) -> Dict:
+        """Формирование результата."""
+
+        return {
+            "ticker": ticker,
+            "company_name": (
+                technical_result.get("company_name", f"Акция {ticker}")
+                if technical_result
+                else f"Акция {ticker}"
+            ),
+            "timestamp": datetime.now().isoformat(),
+            "success": True,
+            "error_message": None,
+            "combined_signal": {
+                "signal": signal,
+                "emoji": emoji,
+                "score": round(combined_score, 2),
+                "confidence": round(combined_confidence, 2),
+                "description": f"Комбинированный сигнал ({signal})",
+            },
+            "components": {
+                "technical": {
+                    "available": technical_result is not None
+                    and technical_result.get("success", False),
+                    "signal": tech_signal,  # НЕ ИСПОЛЬЗУЙ technical_result.get('overall_signal', {}).get('signal')
+                    "score": technical_score,
+                    "confidence": technical_confidence,
+                    "weight": self.weights["technical"],
+                },
+                "news": {
+                    "available": news_result is not None
+                    and news_result.get("success", False)
+                    and news_result.get("sentiment"),
+                    "signal": self._news_score_to_signal(news_score),
+                    "score": news_score,
+                    "confidence": news_confidence,
+                    "weight": self.weights["news"],
+                },
+            },
+            "details": {
+                "technical_analysis": technical_result,
+                "news_analysis": news_result,
+            },
+        }
+
 
 # Глобальный экземпляр генератора
 _global_signal_generator = None
@@ -373,7 +392,7 @@ def main():
             print(telegram_text)
 
         except Exception as e:
-            print(f"❌ Ошибка тестирования: {e}")
+            print("❌ Ошибка тестирования:", e)
             import traceback
 
             traceback.print_exc()
