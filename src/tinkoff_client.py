@@ -4,9 +4,9 @@
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
 
 from tinkoff.invest import Client
 from tinkoff.invest.constants import INVEST_GRPC_API_SANDBOX
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Candle:
     """Класс для представления свечи."""
+
     open: float
     high: float
     low: float
@@ -32,7 +33,9 @@ class Candle:
     def __post_init__(self):
         """Валидация данных свечи после инициализации."""
         if self.high < max(self.open, self.close) or self.low > min(self.open, self.close):
-            logger.warning(f"Некорректные данные свечи: high={self.high}, low={self.low}, open={self.open}, close={self.close}")
+            logger.warning(
+                f"Некорректные данные свечи: high={self.high}, low={self.low}, open={self.open}, close={self.close}"
+            )
 
 
 class TinkoffClient:
@@ -46,7 +49,9 @@ class TinkoffClient:
         if not self.token:
             raise ValueError("TINKOFF_TOKEN не установлен в переменных окружения")
 
-        logger.info(f"TinkoffClient инициализирован. Режим: {'Песочница' if self.is_sandbox else 'Продакшен'}")
+        logger.info(
+            f"TinkoffClient инициализирован. Режим: {'Песочница' if self.is_sandbox else 'Продакшен'}"
+        )
 
     def _get_client_target(self):
         """Получение целевого URL для подключения к API."""
@@ -80,28 +85,30 @@ class TinkoffClient:
                     if share.ticker.upper() == ticker.upper():
                         if share.api_trade_available_flag:  # Только торгуемые
                             instrument = {
-                                'figi': share.figi,
-                                'ticker': share.ticker,
-                                'name': share.name,
-                                'currency': share.currency,
-                                'lot': share.lot,
-                                'class_code': share.class_code
+                                "figi": share.figi,
+                                "ticker": share.ticker,
+                                "name": share.name,
+                                "currency": share.currency,
+                                "lot": share.lot,
+                                "class_code": share.class_code,
                             }
                             logger.info(f"Найден инструмент: {share.name} ({share.figi})")
                             return instrument
 
                 # Если точного совпадения нет, ищем по части названия
                 for share in shares.instruments:
-                    if (ticker.upper() in share.name.upper() or 
-                        ticker.upper() in share.ticker.upper()):
+                    if (
+                        ticker.upper() in share.name.upper()
+                        or ticker.upper() in share.ticker.upper()
+                    ):
                         if share.api_trade_available_flag:
                             instrument = {
-                                'figi': share.figi,
-                                'ticker': share.ticker,
-                                'name': share.name,
-                                'currency': share.currency,
-                                'lot': share.lot,
-                                'class_code': share.class_code
+                                "figi": share.figi,
+                                "ticker": share.ticker,
+                                "name": share.name,
+                                "currency": share.currency,
+                                "lot": share.lot,
+                                "class_code": share.class_code,
                             }
                             logger.info(f"Найден инструмент: {share.name} ({share.figi})")
                             return instrument
@@ -130,7 +137,12 @@ class TinkoffClient:
             logger.error(f"Ошибка получения цены для FIGI {figi}: {e}")
             return None
 
-    def get_historical_candles(self, figi: str, days: int = 100, interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_DAY) -> List[Candle]:
+    def get_historical_candles(
+        self,
+        figi: str,
+        days: int = 100,
+        interval: CandleInterval = CandleInterval.CANDLE_INTERVAL_DAY,
+    ) -> List[Candle]:
         """
         Получение исторических свечей для инструмента.
 
@@ -149,14 +161,13 @@ class TinkoffClient:
             to_date = datetime.now()
             from_date = to_date - timedelta(days=days)
 
-            logger.info(f"Получение свечей для FIGI {figi} с {from_date.date()} по {to_date.date()}")
+            logger.info(
+                f"Получение свечей для FIGI {figi} с {from_date.date()} по {to_date.date()}"
+            )
 
             with Client(self.token, target=target) as client:
                 response = client.market_data.get_candles(
-                    figi=figi,
-                    from_=from_date,
-                    to=to_date,
-                    interval=interval
+                    figi=figi, from_=from_date, to=to_date, interval=interval
                 )
 
                 candles = []
@@ -176,7 +187,7 @@ class TinkoffClient:
                             low=low_price,
                             close=close_price,
                             volume=volume,
-                            time=time
+                            time=time,
                         )
                         candles.append(candle)
 
@@ -210,7 +221,7 @@ class TinkoffClient:
                 return []
 
             # Получение свечей
-            candles = self.get_historical_candles(instrument['figi'], days)
+            candles = self.get_historical_candles(instrument["figi"], days)
 
             # Извлечение цен закрытия
             prices = [candle.close for candle in candles]
@@ -242,7 +253,7 @@ class TinkoffClient:
                 return None
 
             # Получение текущей цены
-            last_price_data = self.get_last_price(instrument['figi'])
+            last_price_data = self.get_last_price(instrument["figi"])
             if not last_price_data:
                 logger.error(f"Не удалось получить текущую цену для {ticker}")
                 return None
@@ -257,37 +268,41 @@ class TinkoffClient:
                 return None
 
             # Получение детальных свечей за последние 30 дней
-            candles = self.get_historical_candles(instrument['figi'], days=30)
+            candles = self.get_historical_candles(instrument["figi"], days=30)
 
             # Расчет дополнительных метрик
-            volatility = self._calculate_volatility(price_history[-30:] if len(price_history) >= 30 else price_history)
+            volatility = self._calculate_volatility(
+                price_history[-30:] if len(price_history) >= 30 else price_history
+            )
             price_change_1d = self._calculate_price_change(price_history, 1)
             price_change_7d = self._calculate_price_change(price_history, 7)
             price_change_30d = self._calculate_price_change(price_history, 30)
 
             result = {
-                'ticker': ticker,
-                'figi': instrument['figi'],
-                'name': instrument['name'],
-                'current_price': current_price,
-                'price_history': price_history,
-                'candles': candles,
-                'market_data': {
-                    'volatility_30d': volatility,
-                    'price_change_1d': price_change_1d,
-                    'price_change_7d': price_change_7d,
-                    'price_change_30d': price_change_30d,
-                    'data_points': len(price_history),
-                    'last_update': datetime.now().isoformat()
+                "ticker": ticker,
+                "figi": instrument["figi"],
+                "name": instrument["name"],
+                "current_price": current_price,
+                "price_history": price_history,
+                "candles": candles,
+                "market_data": {
+                    "volatility_30d": volatility,
+                    "price_change_1d": price_change_1d,
+                    "price_change_7d": price_change_7d,
+                    "price_change_30d": price_change_30d,
+                    "data_points": len(price_history),
+                    "last_update": datetime.now().isoformat(),
                 },
-                'instrument_info': {
-                    'currency': instrument.get('currency', 'RUB'),
-                    'lot': instrument.get('lot', 1),
-                    'min_price_increment': instrument.get('min_price_increment', None)
-                }
+                "instrument_info": {
+                    "currency": instrument.get("currency", "RUB"),
+                    "lot": instrument.get("lot", 1),
+                    "min_price_increment": instrument.get("min_price_increment", None),
+                },
             }
 
-            logger.info(f"Данные для анализа {ticker} успешно получены: {len(price_history)} точек истории")
+            logger.info(
+                f"Данные для анализа {ticker} успешно получены: {len(price_history)} точек истории"
+            )
             return result
 
         except Exception as e:
@@ -297,7 +312,7 @@ class TinkoffClient:
     def _quotation_to_float(self, quotation) -> float:
         """Конвертация объекта Quotation в float."""
         try:
-            if hasattr(quotation, 'units') and hasattr(quotation, 'nano'):
+            if hasattr(quotation, "units") and hasattr(quotation, "nano"):
                 return float(quotation.units) + float(quotation.nano) / 1_000_000_000
             else:
                 # Если это уже число
@@ -315,8 +330,8 @@ class TinkoffClient:
             # Расчет дневных изменений
             returns = []
             for i in range(1, len(prices)):
-                if prices[i-1] != 0:
-                    daily_return = (prices[i] - prices[i-1]) / prices[i-1]
+                if prices[i - 1] != 0:
+                    daily_return = (prices[i] - prices[i - 1]) / prices[i - 1]
                     returns.append(daily_return)
 
             if not returns:
@@ -325,7 +340,7 @@ class TinkoffClient:
             # Стандартное отклонение
             mean_return = sum(returns) / len(returns)
             variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
-            volatility = (variance ** 0.5) * 100  # В процентах
+            volatility = (variance**0.5) * 100  # В процентах
 
             return round(volatility, 2)
 
@@ -340,7 +355,7 @@ class TinkoffClient:
                 return 0.0
 
             current_price = prices[-1]
-            past_price = prices[-days-1]
+            past_price = prices[-days - 1]
 
             if past_price == 0:
                 return 0.0
@@ -410,7 +425,9 @@ def test_connection():
                 if candles:
                     print(f"✅ Получено {len(candles)} свечей за 30 дней")
                     print(f"  - Первая свеча: {candles[0].time.date()} - {candles[0].close:.2f} ₽")
-                    print(f"  - Последняя свеча: {candles[-1].time.date()} - {candles[-1].close:.2f} ₽")
+                    print(
+                        f"  - Последняя свеча: {candles[-1].time.date()} - {candles[-1].close:.2f} ₽"
+                    )
                 else:
                     print("❌ Не удалось получить исторические данные")
 
@@ -467,5 +484,5 @@ if __name__ == "__main__":
     test_connection()
 
     # Запускаем асинхронные тесты
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     asyncio.run(test_analysis_data())

@@ -896,11 +896,11 @@ class TradingTelegramBot:
 
         try:
             from technical_analysis import TechnicalAnalyzer
-            
+
             analyzer = TechnicalAnalyzer()
             analysis_result = await analyzer.analyze_ticker(ticker)
-            
-            if not analysis_result.get('success', False):
+
+            if not analysis_result.get("success", False):
                 error_text = f"❌ Ошибка технического анализа {ticker}\n\n"
                 error_text += f"Причина: {analysis_result.get('error', 'Неизвестная ошибка')}\n\n"
                 error_text += "💡 Попробуйте:\n"
@@ -910,17 +910,17 @@ class TradingTelegramBot:
                 return
 
             # Простое форматирование без Markdown
-            current_price = analysis_result.get('current_price', 0)
-            data_points = analysis_result.get('data_points', 0)
-            
+            current_price = analysis_result.get("current_price", 0)
+            data_points = analysis_result.get("data_points", 0)
+
             # Извлекаем данные индикаторов
-            rsi_data = analysis_result.get('rsi', {})
-            rsi_value = rsi_data.get('value', 0) if rsi_data else 0
-            
-            signal_data = analysis_result.get('signal', {})
-            signal_label = signal_data.get('label', 'UNKNOWN')
-            signal_score = signal_data.get('score', 0.0)
-            confidence = signal_data.get('confidence', 0.0)
+            rsi_data = analysis_result.get("rsi", {})
+            rsi_value = rsi_data.get("value", 0) if rsi_data else 0
+
+            signal_data = analysis_result.get("signal", {})
+            signal_label = signal_data.get("label", "UNKNOWN")
+            signal_score = signal_data.get("score", 0.0)
+            confidence = signal_data.get("confidence", 0.0)
 
             result_text = f"""📊 ТЕХНИЧЕСКИЙ АНАЛИЗ {ticker}
 
