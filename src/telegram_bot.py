@@ -876,44 +876,81 @@ class TradingTelegramBot:
         """Обработчик команды /analysis TICKER."""
         if not context.args:
             await update.message.reply_text(
-                "📊 *Технический анализ акции*\n\n"
-                "Использование: `/analysis TICKER`\n\n"
+                "📊 Технический анализ акции\n\n"
+                "Использование: /analysis TICKER\n\n"
                 "Примеры:\n"
-                "• `/analysis SBER` - анализ Сбербанка\n"
-                "• `/analysis GAZP` - анализ Газпрома\n"
-                "• `/analysis YNDX` - анализ Яндекса\n\n"
+                "• /analysis SBER - анализ Сбербанка\n"
+                "• /analysis GAZP - анализ Газпрома\n"
+                "• /analysis YNDX - анализ Яндекса\n\n"
                 "📈 Включает: RSI, MACD, скользящие средние, Боллинджер\n"
-                "⏱️ Время обработки: 3-8 секунд",
-                parse_mode="Markdown",
+                "⏱️ Время обработки: 3-8 секунд"
             )
             return
 
         ticker = context.args[0].upper()
 
         loading_msg = await update.message.reply_text(
-            "📊 Выполняю технический анализ *{ticker}*...\n"
-            "📈 Рассчитываю RSI, MACD, скользящие средние...",
-            parse_mode="Markdown",
+            f"📊 Выполняю технический анализ {ticker}...\n"
+            "📈 Рассчитываю RSI, MACD, скользящие средние..."
         )
 
         try:
-            from technical_analysis import get_ticker_analysis_for_telegram
+            from technical_analysis import TechnicalAnalyzer
+            
+            analyzer = TechnicalAnalyzer()
+            analysis_result = analyzer.analyze_ticker(ticker)
+            
+            if not analysis_result.get('success', False):
+                error_text = f"❌ Ошибка технического анализа {ticker}\n\n"
+                error_text += f"Причина: {analysis_result.get('error', 'Неизвестная ошибка')}\n\n"
+                error_text += "💡 Попробуйте:\n"
+                error_text += "• Проверить тикер (SBER, GAZP, YNDX)\n"
+                error_text += "• Повторить запрос через несколько секунд"
+                await loading_msg.edit_text(error_text)
+                return
 
-            result_text = await get_ticker_analysis_for_telegram(ticker)
+            # Простое форматирование без Markdown
+            current_price = analysis_result.get('current_price', 0)
+            data_points = analysis_result.get('data_period_days', 0)
+            
+            # Извлекаем данные индикаторов
+            indicators = analysis_result.get('indicators', {})
+            rsi_value = indicators.get('rsi', {}).get('value', 0) or 0
+            
+            overall_signal = analysis_result.get('overall_signal', {})
+            signal_label = overall_signal.get('signal', 'UNKNOWN')
+            signal_score = overall_signal.get('score', 0.0)
+            confidence = overall_signal.get('confidence', 0.0)
 
-            await loading_msg.edit_text(result_text, parse_mode="Markdown")
+            result_text = f"""📊 ТЕХНИЧЕСКИЙ АНАЛИЗ {ticker}
 
-            logger.info("Технический анализ {ticker} завершен успешно")
+💰 Цена: {current_price:.2f} ₽
+📅 Данных: {data_points} дней
+📈 RSI: {rsi_value:.1f}
+🎯 Сигнал: {signal_label}
+📊 Оценка: {signal_score:+.2f}
+🎯 Уверенность: {confidence:.0%}
+
+⏰ Время: {datetime.now().strftime('%H:%M:%S')}
+
+💡 Дополнительные команды:
+• /price {ticker} - текущая цена
+• /news {ticker} - анализ новостей
+• /risk {ticker} - анализ рисков"""
+
+            await loading_msg.edit_text(result_text)
+
+            logger.info(f"Технический анализ {ticker} завершен успешно")
 
         except Exception as e:
-            error_msg = f"❌ *Ошибка технического анализа {ticker}*\n\n"
+            error_msg = f"❌ Ошибка технического анализа {ticker}\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
             error_msg += "• Повторить запрос через несколько секунд\n"
             error_msg += "• Использовать /status для проверки систем"
 
-            await loading_msg.edit_text(error_msg, parse_mode="Markdown")
+            await loading_msg.edit_text(error_msg)
             logger.error(f"Analysis command error for {ticker}: {e}")
 
     async def signal_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
