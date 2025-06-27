@@ -210,7 +210,7 @@ class TinkoffClient:
                 return []
 
             # Получение свечей
-            candles = self.get_historical_candles(instrument.figi, days)
+            candles = self.get_historical_candles(instrument['figi'], days)
 
             # Извлечение цен закрытия
             prices = [candle.close for candle in candles]
@@ -242,7 +242,7 @@ class TinkoffClient:
                 return None
 
             # Получение текущей цены
-            last_price_data = self.get_last_price(instrument.figi)
+            last_price_data = self.get_last_price(instrument['figi'])
             if not last_price_data:
                 logger.error(f"Не удалось получить текущую цену для {ticker}")
                 return None
@@ -257,7 +257,7 @@ class TinkoffClient:
                 return None
 
             # Получение детальных свечей за последние 30 дней
-            candles = self.get_historical_candles(instrument.figi, days=30)
+            candles = self.get_historical_candles(instrument['figi'], days=30)
 
             # Расчет дополнительных метрик
             volatility = self._calculate_volatility(price_history[-30:] if len(price_history) >= 30 else price_history)
@@ -267,8 +267,8 @@ class TinkoffClient:
 
             result = {
                 'ticker': ticker,
-                'figi': instrument.figi,
-                'name': instrument.name,
+                'figi': instrument['figi'],
+                'name': instrument['name'],
                 'current_price': current_price,
                 'price_history': price_history,
                 'candles': candles,
@@ -281,9 +281,9 @@ class TinkoffClient:
                     'last_update': datetime.now().isoformat()
                 },
                 'instrument_info': {
-                    'currency': getattr(instrument, 'currency', 'RUB'),
-                    'lot': getattr(instrument, 'lot', 1),
-                    'min_price_increment': getattr(instrument, 'min_price_increment', None)
+                    'currency': instrument.get('currency', 'RUB'),
+                    'lot': instrument.get('lot', 1),
+                    'min_price_increment': instrument.get('min_price_increment', None)
                 }
             }
 
