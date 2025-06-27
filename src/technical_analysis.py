@@ -8,7 +8,7 @@
 import logging
 import math
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 from tinkoff_client import TinkoffClient
 
@@ -185,18 +185,7 @@ class TechnicalAnalyzer:
             histogram = macd_line - signal_line
 
             # Определяем тренд
-            if len(signal_values) >= 2:
-                prev_histogram = macd_values[-2] - signal_values[-2]
-                if histogram > 0 and prev_histogram <= 0:
-                    trend = "BULLISH_CROSSOVER"
-                elif histogram < 0 and prev_histogram >= 0:
-                    trend = "BEARISH_CROSSOVER"
-                elif histogram > 0:
-                    trend = "BULLISH"
-                else:
-                    trend = "BEARISH"
-            else:
-                trend = "BULLISH" if histogram > 0 else "BEARISH"
+            trend = self._determine_macd_trend(histogram, macd_values, signal_values)
 
             result = {
                 "macd_line": macd_line,
@@ -211,6 +200,21 @@ class TechnicalAnalyzer:
         except Exception as e:
             logger.error(f"Ошибка расчета MACD: {e}")
             return {"macd_line": 0.0, "signal_line": 0.0, "histogram": 0.0, "trend": "NEUTRAL"}
+
+    def _determine_macd_trend(self, histogram: float, macd_values: List[float], signal_values: List[float]) -> str:
+        """Определение тренда MACD."""
+        if len(signal_values) >= 2:
+            prev_histogram = macd_values[-2] - signal_values[-2]
+            if histogram > 0 and prev_histogram <= 0:
+                return "BULLISH_CROSSOVER"
+            elif histogram < 0 and prev_histogram >= 0:
+                return "BEARISH_CROSSOVER"
+            elif histogram > 0:
+                return "BULLISH"
+            else:
+                return "BEARISH"
+        else:
+            return "BULLISH" if histogram > 0 else "BEARISH"
 
     def calculate_bollinger_bands(
         self, prices: List[float], period: int = 20, std_dev: float = 2
@@ -417,50 +421,57 @@ class TechnicalAnalyzer:
     ) -> float:
         """Расчет общего сигнала на основе всех индикаторов."""
         score = 0.0
-
-        # RSI компонент (30% веса)
-        if rsi < 30:
-            score += 0.3  # Перепроданность - покупка
-        elif rsi > 70:
-            score -= 0.3  # Перекупленность - продажа
-        else:
-            # Нейтральная зона с небольшим bias
-            score += (50 - rsi) / 100 * 0.15
-
-        # MACD компонент (25% веса)
-        macd_signal = macd.get("trend", "NEUTRAL")
-        if macd_signal == "BULLISH_CROSSOVER":
-            score += 0.25
-        elif macd_signal == "BEARISH_CROSSOVER":
-            score -= 0.25
-        elif macd_signal == "BULLISH":
-            score += 0.15
-        elif macd_signal == "BEARISH":
-            score -= 0.15
-
-        # Moving Averages компонент (25% веса)
-        if price_vs_sma20 == "ABOVE" and price_vs_sma50 == "ABOVE":
-            score += 0.25  # Цена выше обеих MA
-        elif price_vs_sma20 == "BELOW" and price_vs_sma50 == "BELOW":
-            score -= 0.25  # Цена ниже обеих MA
-        elif price_vs_sma20 == "ABOVE":
-            score += 0.1  # Цена выше короткой MA
-
-        # Bollinger Bands компонент (20% веса)
-        bb_position = bollinger.get("position", "MIDDLE")
-        if bb_position == "BELOW_LOWER":
-            score += 0.2  # Перепроданность
-        elif bb_position == "ABOVE_UPPER":
-            score -= 0.2  # Перекупленность
-        elif bb_position == "UPPER_HALF":
-            score += 0.05  # Слабый бычий сигнал
-        elif bb_position == "LOWER_HALF":
-            score -= 0.05  # Слабый медвежий сигнал
+        
+        score += self._calculate_rsi_component(rsi)
+        score += self._calculate_macd_component(macd)
+        score += self._calculate_ma_component(price_vs_sma20, price_vs_sma50)
+        score += self._calculate_bollinger_component(bollinger)
 
         # Нормализуем в диапазон -1 до 1
         score = max(-1.0, min(1.0, score))
-
         return score
+
+    def _calculate_rsi_component(self, rsi: float) -> float:
+        """Расчет RSI компонента сигнала (30% веса)."""
+        if rsi < 30:
+            return 0.3  # Перепроданность - покупка
+        elif rsi > 70:
+            return -0.3  # Перекупленность - продажа
+        else:
+            # Нейтральная зона с небольшим bias
+            return (50 - rsi) / 100 * 0.15
+
+    def _calculate_macd_component(self, macd: Dict) -> float:
+        """Расчет MACD компонента сигнала (25% веса)."""
+        macd_signal = macd.get("trend", "NEUTRAL")
+        macd_scores = {
+            "BULLISH_CROSSOVER": 0.25,
+            "BEARISH_CROSSOVER": -0.25,
+            "BULLISH": 0.15,
+            "BEARISH": -0.15
+        }
+        return macd_scores.get(macd_signal, 0.0)
+
+    def _calculate_ma_component(self, price_vs_sma20: str, price_vs_sma50: str) -> float:
+        """Расчет Moving Averages компонента сигнала (25% веса)."""
+        if price_vs_sma20 == "ABOVE" and price_vs_sma50 == "ABOVE":
+            return 0.25  # Цена выше обеих MA
+        elif price_vs_sma20 == "BELOW" and price_vs_sma50 == "BELOW":
+            return -0.25  # Цена ниже обеих MA
+        elif price_vs_sma20 == "ABOVE":
+            return 0.1  # Цена выше короткой MA
+        return 0.0
+
+    def _calculate_bollinger_component(self, bollinger: Dict) -> float:
+        """Расчет Bollinger Bands компонента сигнала (20% веса)."""
+        bb_position = bollinger.get("position", "MIDDLE")
+        bb_scores = {
+            "BELOW_LOWER": 0.2,   # Перепроданность
+            "ABOVE_UPPER": -0.2,  # Перекупленность
+            "UPPER_HALF": 0.05,   # Слабый бычий сигнал
+            "LOWER_HALF": -0.05   # Слабый медвежий сигнал
+        }
+        return bb_scores.get(bb_position, 0.0)
 
     def _get_signal_label(self, score: float) -> str:
         """Конвертация численного сигнала в текстовую метку."""
