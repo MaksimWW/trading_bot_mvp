@@ -306,7 +306,7 @@ class TinkoffClient:
             logger.warning(f"Ошибка конвертации quotation в float: {e}")
             return 0.0
 
-    def _calculate_volatility(self, self, prices: List[float]) -> float:
+    def _calculate_volatility(self, prices: List[float]) -> float:
         """Расчет волатильности (стандартное отклонение)."""
         try:
             if len(prices) < 2:
