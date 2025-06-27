@@ -201,7 +201,9 @@ class TechnicalAnalyzer:
             logger.error(f"Ошибка расчета MACD: {e}")
             return {"macd_line": 0.0, "signal_line": 0.0, "histogram": 0.0, "trend": "NEUTRAL"}
 
-    def _determine_macd_trend(self, histogram: float, macd_values: List[float], signal_values: List[float]) -> str:
+    def _determine_macd_trend(
+        self, histogram: float, macd_values: List[float], signal_values: List[float]
+    ) -> str:
         """Определение тренда MACD."""
         if len(signal_values) >= 2:
             prev_histogram = macd_values[-2] - signal_values[-2]
@@ -421,7 +423,7 @@ class TechnicalAnalyzer:
     ) -> float:
         """Расчет общего сигнала на основе всех индикаторов."""
         score = 0.0
-        
+
         score += self._calculate_rsi_component(rsi)
         score += self._calculate_macd_component(macd)
         score += self._calculate_ma_component(price_vs_sma20, price_vs_sma50)
@@ -448,7 +450,7 @@ class TechnicalAnalyzer:
             "BULLISH_CROSSOVER": 0.25,
             "BEARISH_CROSSOVER": -0.25,
             "BULLISH": 0.15,
-            "BEARISH": -0.15
+            "BEARISH": -0.15,
         }
         return macd_scores.get(macd_signal, 0.0)
 
@@ -466,10 +468,10 @@ class TechnicalAnalyzer:
         """Расчет Bollinger Bands компонента сигнала (20% веса)."""
         bb_position = bollinger.get("position", "MIDDLE")
         bb_scores = {
-            "BELOW_LOWER": 0.2,   # Перепроданность
+            "BELOW_LOWER": 0.2,  # Перепроданность
             "ABOVE_UPPER": -0.2,  # Перекупленность
-            "UPPER_HALF": 0.05,   # Слабый бычий сигнал
-            "LOWER_HALF": -0.05   # Слабый медвежий сигнал
+            "UPPER_HALF": 0.05,  # Слабый бычий сигнал
+            "LOWER_HALF": -0.05,  # Слабый медвежий сигнал
         }
         return bb_scores.get(bb_position, 0.0)
 
