@@ -9,9 +9,9 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
-from config import PORTFOLIO_CONFIG, STRATEGY_CONFIG
+from config import PORTFOLIO_CONFIG
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from strategy_engine import TradingSignal, get_strategy_engine
@@ -357,7 +357,7 @@ class StrategyExecutor:
             action = signal_data.get("recommendation", "HOLD")
             confidence = signal_data.get("confidence", 0.0)
             signals_count = signal_data.get("signals_count", 0)
-            message = signal_data.get("message", "")
+            _ = signal_data.get("message", "")  # message не используется
 
             logger.info(
                 f"Получен сигнал для {ticker}: {action} "
