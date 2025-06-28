@@ -8,9 +8,9 @@ Portfolio Analytics для торгового бота.
 import logging
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from statistics import mean, stdev
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from portfolio_manager import PortfolioManager
 from tinkoff_client import TinkoffClient
@@ -162,7 +162,6 @@ class PortfolioAnalytics:
 
         # Создаем список дат на основе индексов
         all_dates = [f"day_{i}" for i in range(max_days)]
-        sorted_dates = sorted(all_dates)
 
         # Упрощенный расчет стоимости портфеля по дням
         portfolio_values = []
@@ -253,7 +252,6 @@ class PortfolioAnalytics:
             max_drawdown = abs(max_dd) * 100
 
         # Sharpe ratio
-        mean_return = mean(returns_array) * 252  # Годовая
         daily_risk_free = (self.risk_free_rate / 100) / 252
         excess_returns = [ret - daily_risk_free for ret in returns_array]
         returns_std = stdev(returns_array) if len(returns_array) > 1 else 0
