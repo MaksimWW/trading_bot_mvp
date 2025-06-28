@@ -671,7 +671,8 @@ class TradingTelegramBot:
             error_msg += f"Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Убедиться что есть позиции в портфеле\n"
-            error_msg += "• Повторить запрос через несколько секунд\n"
+            error_msg += "```python
+"• Повторить запрос через несколько секунд\n"
             error_msg += "• Использовать `/portfolio` для проверки позиций"
 
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
@@ -1193,6 +1194,260 @@ class TradingTelegramBot:
             )
             logger.error(f"Strategy signals error: {e}")
 
+    async def auto_trading_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /auto_trading on/off."""
+        if not context.args:
+            await update.message.reply_text(
+                "💡 *Управление автоматической торговлей*\n\n"
+                "Использование:\n"
+                "• `/auto_trading on` - включить автоматическую торговлю\n"
+                "• `/auto_trading off` - выключить автоматическую торговлю\n"
+                "• `/auto_trading status` - текущий статус\n\n"
+                "⚠️ *Внимание:* Автоматическая торговля работает только с виртуальным портфелем",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+
+        action = context.args[0].lower()
+
+        try:
+            from strategy_executor import get_strategy_executor
+            executor = get_strategy_executor()
+
+            if action == "on":
+                from strategy_executor import ExecutionMode
+                success = executor.enable_auto_trading(ExecutionMode.AUTOMATIC)
+                if success:
+                    text = "🤖 *АВТОМАТИЧЕСКАЯ ТОРГОВЛЯ ВКЛЮЧЕНА*\n\n"
+                    text += "✅ Режим: Автоматическое исполнение\n"
+                    text += f"⚙️ Мин. уверенность сигнала: {executor.min_confidence_threshold:.1%}\n"
+                    text += f"🎯 Макс. размер позиции: {executor.max_position_size_pct:.1%}\n\n"
+                    text += "💡 *Следующие шаги:*\n"
+                    text += "• `/auto_execute SBER` - добавить тикер\n"
+                    text += "• `/execution_status` - статус исполнений\n"
+                    text += "• `/auto_settings` - настройки"
+                else:
+                    text = "❌ Не удалось включить автоматическую торговлю"
+
+            elif action == "off":
+                success = executor.disable_auto_trading()
+                if success:
+                    text = "⏹️ *АВТОМАТИЧЕСКАЯ ТОРГОВЛЯ ВЫКЛЮЧЕНА*\n\n"
+                    text += "🔒 Все автоматические операции остановлены\n"
+                    text += "📊 Портфель остается без изменений\n\n"
+                    text += "💡 Используйте `/auto_trading on` для повторного включения"
+                else:
+                    text = "❌ Не удалось выключить автоматическую торговлю"
+
+            elif action == "status":
+                status = executor.get_execution_status()
+                mode = status.get('execution_mode', 'unknown')
+                enabled_tickers = status.get('enabled_tickers', [])
+                daily_executions = status.get('daily_executions', 0)
+                max_daily = status.get('max_daily_trades', 5)
+
+                text = f"📊 *СТАТУС АВТОМАТИЧЕСКОЙ ТОРГОВЛИ*\n\n"
+                text += f"🔄 Режим: {mode.upper()}\n"
+                text += f"📈 Активных тикеров: {len(enabled_tickers)}\n"
+                if enabled_tickers:
+                    text += f"🎯 Тикеры: {', '.join(enabled_tickers)}\n"
+                text += f"📊 Сделок сегодня: {daily_executions}/{max_daily}\n"
+                text += f"⚙️ Мин. уверенность: {status.get('min_confidence_threshold', 0):.1%}"
+            else:
+                text = "❌ Неизвестное действие. Используйте: on, off, status"
+
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка управления автоматической торговлей: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Auto trading command error: {e}")
+
+    async def auto_execute_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /auto_execute TICKER."""
+        if not context.args:
+            await update.message.reply_text(
+                "🎯 *Управление автоматическим исполнением*\n\n"
+                "Использование:\n"
+                "• `/auto_execute SBER` - добавить SBER к автоматическому исполнению\n"
+                "• `/auto_execute remove SBER` - убрать SBER из автоматического исполнения\n"
+                "• `/auto_execute list` - список активных тикеров\n\n"
+                "Поддерживаемые тикеры: SBER, GAZP, YNDX, LKOH, ROSN, NVTK, GMKN",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+
+        try:
+            from strategy_executor import get_strategy_executor
+            executor = get_strategy_executor()
+
+            if context.args[0].lower() == "list":
+                status = executor.get_execution_status()
+                enabled_tickers = status.get('enabled_tickers', [])
+
+                text = "📋 *ТИКЕРЫ ДЛЯ АВТОМАТИЧЕСКОГО ИСПОЛНЕНИЯ*\n\n"
+                if enabled_tickers:
+                    text += "✅ Активные тикеры:\n"
+                    for ticker in enabled_tickers:
+                        text += f"  • {ticker}\n"
+                else:
+                    text += "❌ Нет активных тикеров\n"
+                text += "\n💡 Используйте `/auto_execute TICKER` для добавления"
+
+            elif len(context.args) >= 2 and context.args[0].lower() == "remove":
+                ticker = context.args[1].upper()
+                success = executor.remove_ticker_from_execution(ticker)
+                if success:
+                    text = f"✅ Тикер *{ticker}* удален из автоматического исполнения"
+                else:
+                    text = f"❌ Не удалось удалить тикер {ticker}"
+
+            else:
+                ticker = context.args[0].upper()
+                supported_tickers = ["SBER", "GAZP", "YNDX", "LKOH", "ROSN", "NVTK", "GMKN"]
+
+                if ticker not in supported_tickers:
+                    text = f"❌ Тикер {ticker} не поддерживается\n\n"
+                    text += f"Поддерживаемые: {', '.join(supported_tickers)}"
+                else:
+                    success = executor.add_ticker_for_execution(ticker)
+                    if success:
+                        text = f"✅ *{ticker}* добавлен для автоматического исполнения\n\n"
+                        text += f"🤖 Теперь торговые сигналы для {ticker} будут исполняться автоматически\n"
+                        text += f"⚙️ При условии превышения порога уверенности\n\n"
+                        text += f"💡 Проверьте статус: `/execution_status`"
+                    else:
+                        text = f"❌ Не удалось добавить тикер {ticker}"
+
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка управления тикерами: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Auto execute command error: {e}")
+
+    async def execution_status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /execution_status."""
+        try:
+            from strategy_executor import get_strategy_executor
+            executor = get_strategy_executor()
+
+            status = executor.get_execution_status()
+
+            text = "📊 *СТАТУС АВТОМАТИЧЕСКОГО ИСПОЛНЕНИЯ*\n\n"
+
+            # Основная информация
+            mode = status.get('execution_mode', 'unknown')
+            enabled_tickers = status.get('enabled_tickers', [])
+            daily_executions = status.get('daily_executions', 0)
+            max_daily = status.get('max_daily_trades', ```python
+5)
+            total_executions = status.get('total_executions', 0)
+
+            if mode == "automatic":
+                text += "🟢 Режим: АВТОМАТИЧЕСКОЕ ИСПОЛНЕНИЕ\n"
+            elif mode == "disabled":
+                text += "🔴 Режим: ОТКЛЮЧЕНО\n"
+            else:
+                text += f"🟡 Режим: {mode.upper()}\n"
+
+            text += f"📈 Активных тикеров: {len(enabled_tickers)}\n"
+            if enabled_tickers:
+                text += f"🎯 Тикеры: {', '.join(enabled_tickers)}\n"
+
+            text += f"📊 Исполнений сегодня: {daily_executions}/{max_daily}\n"
+            text += f"📈 Всего исполнений: {total_executions}\n"
+            text += f"⚙️ Мин. уверенность: {status.get('min_confidence_threshold', 0):.1%}\n\n"
+
+            # Последние исполнения
+            recent_executions = status.get('recent_executions', [])
+            if recent_executions:
+                text += "📋 *ПОСЛЕДНИЕ ИСПОЛНЕНИЯ:*\n"
+                for execution in recent_executions[-5:]:  # Последние 5
+                    ticker = execution.get('ticker', 'N/A')
+                    action = execution.get('signal_action', 'N/A')
+                    status_exec = execution.get('status', 'N/A')
+                    confidence = execution.get('signal_confidence', 0)
+
+                    if status_exec == "executed":
+                        emoji = "✅"
+                    elif status_exec == "rejected":
+                        emoji = "⚠️"
+                    else:
+                        emoji = "❌"
+
+                    text += f"{emoji} {ticker}: {action} (уверенность: {confidence:.2f})\n"
+            else:
+                text += "📋 *Исполнений пока не было*\n"
+
+            text += "\n💡 *Команды управления:*\n"
+            text += "• `/auto_trading on/off` - включить/выключить\n"
+            text += "• `/auto_execute TICKER` - добавить тикер\n"
+            text += "• `/auto_settings` - настройки"
+
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка получения статуса: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Execution status command error: {e}")
+
+    async def auto_settings_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /auto_settings."""
+        try:
+            from strategy_executor import get_strategy_executor
+            executor = get_strategy_executor()
+
+            text = "⚙️ *НАСТРОЙКИ АВТОМАТИЧЕСКОЙ ТОРГОВЛИ*\n\n"
+
+            text += "🎯 *Основные параметры:*\n"
+            text += f"• Мин. уверенность сигнала: {executor.min_confidence_threshold:.1%}\n"
+            text += f"• Макс. размер позиции: {executor.max_position_size_pct:.1%}\n"
+            text += f"• Макс. сделок в день: {executor.get_execution_status().get('max_daily_trades', 5)}\n\n"
+
+            text += "🛡️ *Риск-менеджмент:*\n"
+            text += "• Виртуальный портфель: 1,000,000 ₽\n"
+            text += "• Комиссия: 0.05%\n"
+            text += "• Автоматические лимиты активны\n\n"
+
+            text += "🤖 *Поддерживаемые стратегии:*\n"
+            text += "• RSI Mean Reversion\n"
+            text += "• MACD Trend Following\n\n"
+
+            text += "📊 *Поддерживаемые активы:*\n"
+            text += "• SBER - ПАО Сбербанк\n"
+            text += "• GAZP - ПАО Газпром\n"
+            text += "• YNDX - Яндекс\n"
+            text += "• LKOH - ЛУКОЙЛ\n"
+            text += "• ROSN - Роснефть\n"
+            text += "• NVTK - НОВАТЭК\n"
+            text += "• GMKN - ГМК Норильский никель\n\n"
+
+            text += "⚠️ *Важные ограничения:*\n"
+            text += "• Работа только в песочнице Tinkoff\n"
+            text += "• Только виртуальные сделки\n"
+            text += "• Автоматическая остановка при достижении лимитов\n\n"
+
+            text += "💡 *Рекомендации:*\n"
+            text += "• Начните с одного тикера\n"
+            text += "• Следите за `/execution_status`\n"
+            text += "• Регулярно проверяйте `/portfolio`"
+
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка получения настроек: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Auto settings command error: {e}")
+
     def setup_handlers(self, app: Application):
         """Настройка обработчиков команд"""
         # Команды для всех пользователей
@@ -1217,6 +1472,11 @@ class TradingTelegramBot:
         app.add_handler(CommandHandler("stop_strategy", self.stop_strategy_command))
         app.add_handler(CommandHandler("strategy_status", self.strategy_status_command))
         app.add_handler(CommandHandler("strategy_signals", self.strategy_signals_command))
+        # Команды StrategyExecutor
+        app.add_handler(CommandHandler("auto_trading", self.auto_trading_command))
+        app.add_handler(CommandHandler("auto_execute", self.auto_execute_command))
+        app.add_handler(CommandHandler("execution_status", self.execution_status_command))
+        app.add_handler(CommandHandler("auto_settings", self.auto_settings_command))
         # Обработчик текстовых сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.help_command))
         logger.info("✅ Обработчики команд настроены")
