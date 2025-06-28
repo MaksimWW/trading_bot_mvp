@@ -1204,7 +1204,7 @@ class TradingTelegramBot:
                 "• `/auto_trading off` - выключить автоматическую торговлю\n"
                 "• `/auto_trading status` - текущий статус\n\n"
                 "⚠️ *Внимание:* Автоматическая торговля работает только с виртуальным портфелем",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
@@ -1212,10 +1212,12 @@ class TradingTelegramBot:
 
         try:
             from strategy_executor import get_strategy_executor
+
             executor = get_strategy_executor()
 
             if action == "on":
                 from strategy_executor import ExecutionMode
+
                 success = executor.enable_auto_trading(ExecutionMode.AUTOMATIC)
                 if success:
                     text = "🤖 *АВТОМАТИЧЕСКАЯ ТОРГОВЛЯ ВКЛЮЧЕНА*\n\n"
@@ -1241,10 +1243,10 @@ class TradingTelegramBot:
 
             elif action == "status":
                 status = executor.get_execution_status()
-                mode = status.get('execution_mode', 'unknown')
-                enabled_tickers = status.get('enabled_tickers', [])
-                daily_executions = status.get('daily_executions', 0)
-                max_daily = status.get('max_daily_trades', 5)
+                mode = status.get("execution_mode", "unknown")
+                enabled_tickers = status.get("enabled_tickers", [])
+                daily_executions = status.get("daily_executions", 0)
+                max_daily = status.get("max_daily_trades", 5)
 
                 text = f"📊 *СТАТУС АВТОМАТИЧЕСКОЙ ТОРГОВЛИ*\n\n"
                 text += f"🔄 Режим: {mode.upper()}\n"
@@ -1261,7 +1263,7 @@ class TradingTelegramBot:
         except Exception as e:
             await update.message.reply_text(
                 f"❌ Ошибка управления автоматической торговлей: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             logger.error(f"Auto trading command error: {e}")
 
@@ -1275,17 +1277,18 @@ class TradingTelegramBot:
                 "• `/auto_execute remove SBER` - убрать SBER из автоматического исполнения\n"
                 "• `/auto_execute list` - список активных тикеров\n\n"
                 "Поддерживаемые тикеры: SBER, GAZP, YNDX, LKOH, ROSN, NVTK, GMKN",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
         try:
             from strategy_executor import get_strategy_executor
+
             executor = get_strategy_executor()
 
             if context.args[0].lower() == "list":
                 status = executor.get_execution_status()
-                enabled_tickers = status.get('enabled_tickers', [])
+                enabled_tickers = status.get("enabled_tickers", [])
 
                 text = "📋 *ТИКЕРЫ ДЛЯ АВТОМАТИЧЕСКОГО ИСПОЛНЕНИЯ*\n\n"
                 if enabled_tickers:
@@ -1325,8 +1328,7 @@ class TradingTelegramBot:
 
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка управления тикерами: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка управления тикерами: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Auto execute command error: {e}")
 
@@ -1334,6 +1336,7 @@ class TradingTelegramBot:
         """Обработчик команды /execution_status."""
         try:
             from strategy_executor import get_strategy_executor
+
             executor = get_strategy_executor()
 
             status = executor.get_execution_status()
@@ -1341,11 +1344,11 @@ class TradingTelegramBot:
             text = "📊 *СТАТУС АВТОМАТИЧЕСКОГО ИСПОЛНЕНИЯ*\n\n"
 
             # Основная информация
-            mode = status.get('execution_mode', 'unknown')
-            enabled_tickers = status.get('enabled_tickers', [])
-            daily_executions = status.get('daily_executions', 0)
-            max_daily = status.get('max_daily_trades', 5)
-            total_executions = status.get('total_executions', 0)
+            mode = status.get("execution_mode", "unknown")
+            enabled_tickers = status.get("enabled_tickers", [])
+            daily_executions = status.get("daily_executions", 0)
+            max_daily = status.get("max_daily_trades", 5)
+            total_executions = status.get("total_executions", 0)
 
             if mode == "automatic":
                 text += "🟢 Режим: АВТОМАТИЧЕСКОЕ ИСПОЛНЕНИЕ\n"
@@ -1363,14 +1366,14 @@ class TradingTelegramBot:
             text += f"⚙️ Мин. уверенность: {status.get('min_confidence_threshold', 0):.1%}\n\n"
 
             # Последние исполнения
-            recent_executions = status.get('recent_executions', [])
+            recent_executions = status.get("recent_executions", [])
             if recent_executions:
                 text += "📋 *ПОСЛЕДНИЕ ИСПОЛНЕНИЯ:*\n"
                 for execution in recent_executions[-5:]:  # Последние 5
-                    ticker = execution.get('ticker', 'N/A')
-                    action = execution.get('signal_action', 'N/A')
-                    status_exec = execution.get('status', 'N/A')
-                    confidence = execution.get('signal_confidence', 0)
+                    ticker = execution.get("ticker", "N/A")
+                    action = execution.get("signal_action", "N/A")
+                    status_exec = execution.get("status", "N/A")
+                    confidence = execution.get("signal_confidence", 0)
 
                     if status_exec == "executed":
                         emoji = "✅"
@@ -1392,8 +1395,7 @@ class TradingTelegramBot:
 
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка получения статуса: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка получения статуса: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Execution status command error: {e}")
 
@@ -1401,6 +1403,7 @@ class TradingTelegramBot:
         """Обработчик команды /auto_settings."""
         try:
             from strategy_executor import get_strategy_executor
+
             executor = get_strategy_executor()
 
             text = "⚙️ *НАСТРОЙКИ АВТОМАТИЧЕСКОЙ ТОРГОВЛИ*\n\n"
@@ -1442,8 +1445,7 @@ class TradingTelegramBot:
 
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка получения настроек: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка получения настроек: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Auto settings command error: {e}")
 
