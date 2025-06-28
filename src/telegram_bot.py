@@ -437,7 +437,7 @@ class TradingTelegramBot:
             )
             return None
 
-        price_data = self.tinkoff_client.get_last_price(instrument.figi)
+        price_data = self.tinkoff_client.get_last_price(instrument["figi"])
         if not price_data:
             await loading_msg.edit_text(
                 f"❌ Не удалось получить цену для {ticker}", parse_mode=ParseMode.MARKDOWN
