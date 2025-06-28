@@ -610,6 +610,54 @@ class TradingTelegramBot:
             )
             logger.error(f"Portfolio command error: {e}")
 
+    async def analytics_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /analytics."""
+        loading_msg = await update.message.reply_text(
+            "📊 Рассчитываю продвинутые метрики портфеля...\n"
+            "🔢 Анализирую доходность и риски...\n"
+            "📈 Вычисляю Sharpe ratio и VaR...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            # Импортируем Portfolio Analytics
+            from portfolio_analytics import PortfolioAnalytics
+            
+            analytics = PortfolioAnalytics(self.portfolio_manager)
+            
+            # Определяем период анализа
+            days = 30
+            if context.args and context.args[0].isdigit():
+                days = min(90, max(7, int(context.args[0])))
+            
+            # Рассчитываем метрики
+            metrics = await analytics.calculate_portfolio_metrics(days=days)
+            
+            # Форматируем результат для Telegram
+            result_text = analytics.format_metrics_for_telegram(metrics)
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
+                       f"Sharpe {metrics.sharpe_ratio:.2f}")
+            
+        except Exception as e:
+            error_msg = "❌ *Ошибка расчета аналитики портфеля*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += "💡 Попробуйте:\n"
+            error_msg += "• Убедиться что есть позиции в портфеле\n"
+            error_msg += "• Повторить запрос через несколько секунд\n"
+            error_msg += "• Использовать /portfolio для проверки позиций"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Analytics command error: {e}")
+
     async def buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /buy TICKER QUANTITY."""
         if len(context.args) < 2:
@@ -697,4 +745,5 @@ class TradingTelegramBot:
                 "• `/sell GAZP 30` - продать 30 акций Газпрома\n\n"
                 "💡 Продажа осуществляется по текущей рыночной цене\n"
                 "📊 Используйте `/portfolio` для просмотра позиций",
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode=ParseMode.MARKDOWN
+            )
