@@ -885,7 +885,7 @@ class TradingTelegramBot:
                     result_text += f"⚖️ Риск: {str(signal_result.risk_level).replace('RiskLevel.', '')}\n\n"
 
                     # Дополнительная информация и команды
-                    result_text += f"⏰ Время анализа: {signal_result.analysis_time.strftime('%H:%M:%S')}\n\n"
+                    result_text += f"⏰ Время анализа: {datetime.now().strftime('%H:%M:%S')}\n\n"
                     result_text += "💡 **Что дальше?**\n"
                     result_text += f"• `/analysis {ticker}` - детальный технический анализ\n"
                     result_text += f"• `/news {ticker}` - подробный анализ новостей\n"
