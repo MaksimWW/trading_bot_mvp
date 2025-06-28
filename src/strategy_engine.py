@@ -6,15 +6,13 @@ Strategy Engine для автоматических торговых страт�
 """
 
 import asyncio
-import json
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from ai_signal_integration import AISignalIntegration
-from config import STRATEGY_CONFIG
 from news_analyzer import get_news_analyzer
 from portfolio_manager import PortfolioManager
 from technical_analysis import get_technical_analyzer
