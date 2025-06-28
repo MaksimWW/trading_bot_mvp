@@ -42,8 +42,6 @@ class TradingTelegramBot:
         self.portfolio_manager = PortfolioManager()
         self.application = None
         logger.info("🤖 Инициализация Trading Telegram Bot")
-        # Импорт PortfolioManager
-        from portfolio_manager import get_portfolio_manager, PortfolioManager
 
         self.portfolio = get_portfolio_manager()
         self.portfolio_manager = PortfolioManager()
