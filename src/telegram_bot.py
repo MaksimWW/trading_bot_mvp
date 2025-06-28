@@ -867,7 +867,7 @@ class TradingTelegramBot:
                     technical_score = signal_result.technical_score
                     news_score = signal_result.news_sentiment_score
 
-                    result_text += f"📊 **ТЕХНИЧЕСКИЙ АНАЛИЗ (60% веса):**\n"
+                    result_text += "📊 **ТЕХНИЧЕСКИЙ АНАЛИЗ (60% веса):**\n"
                     result_text += f"📈 Оценка: {technical_score:+.2f}\n"
 
                     # Технические индикаторы
@@ -881,14 +881,14 @@ class TradingTelegramBot:
                     )
                     result_text += f"• MACD: {macd_data.get('trend', 'N/A')}\n\n"
 
-                    result_text += f"📰 **АНАЛИЗ НОВОСТЕЙ (40% веса):**\n"
+                    result_text += "📰 **АНАЛИЗ НОВОСТЕЙ (40% веса):**\n"
                     result_text += f"🤖 Оценка: {news_score:+.2f}\n"
                     result_text += f"📝 Сводка: {signal_result.news_summary}\n\n"
 
                     result_text += f"⚖️ Формула: ({technical_score:+.2f} × 0.6) + ({news_score:+.2f} × 0.4) = {combined_score:+.2f}\n\n"
 
                     # Торговые рекомендации
-                    result_text += f"💰 **ТОРГОВЫЕ РЕКОМЕНДАЦИИ:**\n"
+                    result_text += "💰 **ТОРГОВЫЕ РЕКОМЕНДАЦИИ:**\n"
                     result_text += f"💵 Цена входа: {current_price:.2f} ₽\n"
                     result_text += f"🛑 Стоп-лосс: {signal_result.stop_loss_price:.2f} ₽\n"
                     result_text += f"🎯 Тейк-профит: {signal_result.take_profit_price:.2f} ₽\n"
