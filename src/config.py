@@ -57,8 +57,8 @@ STRATEGY_CONFIG = {
     "risk_management": {
         "max_daily_trades": 10,
         "max_position_risk": 0.05,  # 5% от депозита на позицию
-        "min_confidence_threshold": 0.6
-    }
+        "min_confidence_threshold": 0.6,
+    },
 }
 
 

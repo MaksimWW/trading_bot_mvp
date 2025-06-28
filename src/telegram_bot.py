@@ -942,55 +942,51 @@ class TradingTelegramBot:
     async def strategies_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /strategies."""
         loading_msg = await update.message.reply_text(
-            "📊 Получаю список доступных стратегий...",
-            parse_mode=ParseMode.MARKDOWN
+            "📊 Получаю список доступных стратегий...", parse_mode=ParseMode.MARKDOWN
         )
-        
+
         try:
             from strategy_engine import get_strategy_engine
+
             engine = get_strategy_engine()
-            
+
             # Получаем все стратегии
             all_strategies = engine.get_all_strategies()
             active_strategies = engine.get_active_strategies()
-            
+
             strategies_text = "*📊 АВТОМАТИЧЕСКИЕ ТОРГОВЫЕ СТРАТЕГИИ*\n\n"
-            
+
             for strategy_id, info in all_strategies.items():
                 status_emoji = {
                     "inactive": "⚫",
-                    "active": "🟢", 
+                    "active": "🟢",
                     "paused": "🟡",
                     "error": "🔴",
-                    "stopped": "⚪"
+                    "stopped": "⚪",
                 }.get(info["status"], "❓")
-                
+
                 strategies_text += f"*{info['name']}*\n"
                 strategies_text += f"{status_emoji} Статус: {info['status'].upper()}\n"
                 strategies_text += f"📝 Описание: {info['description']}\n"
                 strategies_text += f"📈 Тикеры: {', '.join(info['supported_tickers'])}\n"
                 strategies_text += f"🎯 Сигналов создано: {info['signals_generated']}\n\n"
-            
+
             strategies_text += "*💡 КОМАНДЫ УПРАВЛЕНИЯ:*\n"
             strategies_text += "• `/start_strategy rsi_mean_reversion SBER` - запуск стратегии\n"
             strategies_text += "• `/stop_strategy rsi_mean_reversion` - остановка стратегии\n"
             strategies_text += "• `/strategy_status` - статус активных стратегий\n"
             strategies_text += "• `/strategy_signals SBER` - сигналы для тикера\n\n"
-            
+
             if active_strategies:
                 strategies_text += f"*🚀 АКТИВНЫХ СТРАТЕГИЙ: {len(active_strategies)}*"
             else:
                 strategies_text += "*💤 Нет активных стратегий*"
-            
-            await loading_msg.edit_text(
-                strategies_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+
+            await loading_msg.edit_text(strategies_text, parse_mode=ParseMode.MARKDOWN)
+
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка получения стратегий: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка получения стратегий: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Strategies command error: {e}")
 
@@ -1007,25 +1003,26 @@ class TradingTelegramBot:
                 "• `rsi_mean_reversion` - RSI Mean Reversion\n"
                 "• `macd_trend_following` - MACD Trend Following\n\n"
                 "Используйте `/strategies` для подробной информации",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
-        
+
         strategy_id = context.args[0]
         ticker = context.args[1].upper()
-        
+
         loading_msg = await update.message.reply_text(
             f"🚀 Запускаю стратегию *{strategy_id}* для *{ticker}*...",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
-        
+
         try:
             from strategy_engine import get_strategy_engine
+
             engine = get_strategy_engine()
-            
+
             # Запускаем стратегию
             success = engine.start_strategy(strategy_id, [ticker])
-            
+
             if success:
                 result_text = f"✅ *СТРАТЕГИЯ ЗАПУЩЕНА*\n\n"
                 result_text += f"🎯 Стратегия: *{strategy_id}*\n"
@@ -1040,16 +1037,12 @@ class TradingTelegramBot:
                 result_text += f"• Неизвестная стратегия\n"
                 result_text += f"• Тикер не поддерживается\n"
                 result_text += f"• Стратегия уже активна"
-            
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+
+            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка запуска стратегии: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка запуска стратегии: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Start strategy error: {e}")
 
@@ -1063,18 +1056,19 @@ class TradingTelegramBot:
                 "• `/stop_strategy rsi_mean_reversion`\n"
                 "• `/stop_strategy macd_trend_following`\n\n"
                 "Используйте `/strategy_status` для списка активных стратегий",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
-        
+
         strategy_id = context.args[0]
-        
+
         try:
             from strategy_engine import get_strategy_engine
+
             engine = get_strategy_engine()
-            
+
             success = engine.stop_strategy(strategy_id)
-            
+
             if success:
                 result_text = f"✅ *СТРАТЕГИЯ ОСТАНОВЛЕНА*\n\n"
                 result_text += f"🎯 Стратегия: *{strategy_id}*\n"
@@ -1082,16 +1076,12 @@ class TradingTelegramBot:
             else:
                 result_text = f"⚠️ *СТРАТЕГИЯ НЕ АКТИВНА*\n\n"
                 result_text += f"Стратегия *{strategy_id}* не была запущена"
-            
-            await update.message.reply_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+
+            await update.message.reply_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка остановки стратегии: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка остановки стратегии: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Stop strategy error: {e}")
 
@@ -1099,42 +1089,41 @@ class TradingTelegramBot:
         """Обработчик команды /strategy_status."""
         try:
             from strategy_engine import get_strategy_engine
+
             engine = get_strategy_engine()
-            
+
             active_strategies = engine.get_active_strategies()
-            
+
             if not active_strategies:
                 status_text = "*📊 СТАТУС СТРАТЕГИЙ*\n\n"
                 status_text += "💤 *Нет активных стратегий*\n\n"
                 status_text += "Используйте `/strategies` для просмотра доступных стратегий"
             else:
                 status_text = f"*📊 АКТИВНЫЕ СТРАТЕГИИ ({len(active_strategies)})*\n\n"
-                
+
                 for strategy_id, info in active_strategies.items():
                     status_text += f"🟢 *{info['name']}*\n"
                     status_text += f"🆔 ID: `{strategy_id}`\n"
                     status_text += f"📈 Тикеры: {', '.join(info['supported_tickers'])}\n"
                     status_text += f"🎯 Сигналов: {info['signals_generated']}\n"
-                    
-                    if info['last_execution']:
-                        last_exec = datetime.fromisoformat(info['last_execution'])
-                        status_text += f"⏰ Последнее выполнение: {last_exec.strftime('%H:%M:%S')}\n"
-                    
+
+                    if info["last_execution"]:
+                        last_exec = datetime.fromisoformat(info["last_execution"])
+                        status_text += (
+                            f"⏰ Последнее выполнение: {last_exec.strftime('%H:%M:%S')}\n"
+                        )
+
                     status_text += "\n"
-                
+
                 status_text += "*💡 Команды:*\n"
                 status_text += "• `/stop_strategy STRATEGY_ID` - остановить\n"
                 status_text += "• `/strategy_signals TICKER` - получить сигналы"
-            
-            await update.message.reply_text(
-                status_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+
+            await update.message.reply_text(status_text, parse_mode=ParseMode.MARKDOWN)
+
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка получения статуса: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка получения статуса: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Strategy status error: {e}")
 
@@ -1148,59 +1137,59 @@ class TradingTelegramBot:
                 "• `/strategy_signals SBER`\n"
                 "• `/strategy_signals GAZP`\n\n"
                 "Команда покажет сигналы от всех активных стратегий",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
-        
+
         ticker = context.args[0].upper()
-        
+
         loading_msg = await update.message.reply_text(
-            f"🎯 Генерирую стратегические сигналы для *{ticker}*...",
-            parse_mode=ParseMode.MARKDOWN
+            f"🎯 Генерирую стратегические сигналы для *{ticker}*...", parse_mode=ParseMode.MARKDOWN
         )
-        
+
         try:
             from strategy_engine import get_strategy_engine
+
             engine = get_strategy_engine()
-            
+
             # Генерируем сигналы
             result = await engine.execute_strategy_signals(ticker)
-            
-            if result['signals_count'] == 0:
+
+            if result["signals_count"] == 0:
                 signals_text = f"*🎯 СТРАТЕГИЧЕСКИЕ СИГНАЛЫ {ticker}*\n\n"
                 signals_text += "💤 *Нет активных стратегий*\n\n"
-                signals_text += result['message']
+                signals_text += result["message"]
             else:
                 signals_text = f"*🎯 СТРАТЕГИЧЕСКИЕ СИГНАЛЫ {ticker}*\n\n"
-                
+
                 # Итоговая рекомендация
-                rec_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(result['recommendation'], "⚪")
+                rec_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(
+                    result["recommendation"], "⚪"
+                )
                 signals_text += f"{rec_emoji} *ИТОГОВАЯ РЕКОМЕНДАЦИЯ: {result['recommendation']}*\n"
                 signals_text += f"🎯 Уверенность: {result['confidence']:.2f}\n"
                 signals_text += f"📊 Сигналов проанализировано: {result['signals_count']}\n\n"
-                
+
                 # Детализация по сигналам
-                if result['buy_signals'] > 0:
+                if result["buy_signals"] > 0:
                     signals_text += f"🟢 BUY сигналов: {result['buy_signals']}\n"
-                if result['sell_signals'] > 0:
+                if result["sell_signals"] > 0:
                     signals_text += f"🔴 SELL сигналов: {result['sell_signals']}\n"
-                
+
                 signals_text += f"\n*📋 ДЕТАЛИ СИГНАЛОВ:*\n"
-                for signal in result['signals']:
-                    signal_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(signal['action'], "⚪")
+                for signal in result["signals"]:
+                    signal_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(
+                        signal["action"], "⚪"
+                    )
                     signals_text += f"{signal_emoji} {signal['strategy_id']}: {signal['action']} ({signal['confidence']:.2f})\n"
-                
+
                 signals_text += f"\n⏰ Время генерации: {datetime.now().strftime('%H:%M:%S')}"
-            
-            await loading_msg.edit_text(
-                signals_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+
+            await loading_msg.edit_text(signals_text, parse_mode=ParseMode.MARKDOWN)
+
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка генерации сигналов: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка генерации сигналов: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Strategy signals error: {e}")
 
