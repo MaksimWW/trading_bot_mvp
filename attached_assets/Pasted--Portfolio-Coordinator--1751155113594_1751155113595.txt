@@ -1,0 +1,453 @@
+"""
+Portfolio Coordinator - Умная координация множественных торговых стратегий.
+
+Этот модуль обеспечивает интеллектуальное управление портфелем стратегий,
+включая распределение капитала, агрегацию сигналов и ребалансировку.
+"""
+
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum
+import asyncio
+
+from strategy_engine import get_strategy_engine, TradingSignal
+from strategy_executor import get_strategy_executor, ExecutionMode
+from portfolio_manager import PortfolioManager
+from portfolio_analytics import PortfolioAnalytics
+from config import SUPPORTED_TICKERS
+
+
+logger = logging.getLogger(__name__)
+
+
+class StrategyWeight(Enum):
+    """Методы расчета весов стратегий."""
+    EQUAL = "equal"
+    PERFORMANCE_BASED = "performance_based"
+    RISK_ADJUSTED = "risk_adjusted"
+    CUSTOM = "custom"
+
+
+@dataclass
+class StrategyAllocation:
+    """Распределение стратегии в портфеле."""
+    strategy_id: str
+    ticker: str
+    weight: float
+    target_allocation: float
+    current_allocation: float
+    performance_score: float
+    risk_score: float
+    last_rebalance: datetime
+
+
+@dataclass
+class PortfolioStatus:
+    """Статус портфеля стратегий."""
+    total_strategies: int
+    active_strategies: int
+    total_allocation: float
+    cash_allocation: float
+    last_rebalance: datetime
+    performance_score: float
+    risk_score: float
+
+
+class PortfolioCoordinator:
+    """Координатор портфеля множественных торговых стратегий."""
+    
+    def __init__(self):
+        """Инициализация координатора портфеля."""
+        self.strategy_engine = get_strategy_engine()
+        self.strategy_executor = get_strategy_executor()
+        self.portfolio_manager = PortfolioManager()
+        self.portfolio_analytics = PortfolioAnalytics()
+        
+        # Стратегии и их распределение
+        self.strategy_allocations: Dict[str, StrategyAllocation] = {}
+        self.weight_method = StrategyWeight.EQUAL
+        self.rebalance_threshold = 0.05  # 5% отклонение для ребалансировки
+        self.max_strategy_weight = 0.4   # 40% максимум на стратегию
+        self.min_strategy_weight = 0.1   # 10% минимум на активную стратегию
+        
+        # Настройки координации
+        self.enabled = False
+        self.last_coordination = None
+        self.coordination_interval = timedelta(hours=6)  # Координация каждые 6 часов
+        
+        logger.info("Portfolio Coordinator инициализирован")
+    
+    def enable_coordination(self, weight_method: StrategyWeight = StrategyWeight.EQUAL):
+        """Включить координацию портфеля."""
+        self.enabled = True
+        self.weight_method = weight_method
+        self.last_coordination = datetime.now()
+        logger.info(f"Portfolio coordination включена с методом {weight_method.value}")
+    
+    def disable_coordination(self):
+        """Отключить координацию портфеля."""
+        self.enabled = False
+        logger.info("Portfolio coordination отключена")
+    
+    def add_strategy_to_portfolio(self, strategy_id: str, ticker: str, 
+                                 target_weight: float = None) -> bool:
+        """
+        Добавить стратегию в портфель.
+        
+        Args:
+            strategy_id: ID стратегии (rsi_mean_reversion, macd_trend_following)
+            ticker: Тикер для стратегии
+            target_weight: Целевой вес (если None, рассчитывается автоматически)
+            
+        Returns:
+            True если стратегия добавлена успешно
+        """
+        try:
+            if ticker not in SUPPORTED_TICKERS:
+                logger.error(f"Тикер {ticker} не поддерживается")
+                return False
+            
+            # Проверяем есть ли уже такая стратегия
+            allocation_key = f"{strategy_id}_{ticker}"
+            if allocation_key in self.strategy_allocations:
+                logger.warning(f"Стратегия {allocation_key} уже в портфеле")
+                return False
+            
+            # Рассчитываем целевой вес
+            if target_weight is None:
+                target_weight = self._calculate_auto_weight()
+            
+            # Создаем распределение стратегии
+            allocation = StrategyAllocation(
+                strategy_id=strategy_id,
+                ticker=ticker,
+                weight=target_weight,
+                target_allocation=target_weight,
+                current_allocation=0.0,
+                performance_score=0.0,
+                risk_score=0.5,  # Нейтральный риск изначально
+                last_rebalance=datetime.now()
+            )
+            
+            self.strategy_allocations[allocation_key] = allocation
+            
+            # Перерасчет весов всех стратегий
+            self._rebalance_weights()
+            
+            logger.info(f"Стратегия {allocation_key} добавлена с весом {target_weight:.2%}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Ошибка добавления стратегии {strategy_id} для {ticker}: {e}")
+            return False
+    
+    def remove_strategy_from_portfolio(self, strategy_id: str, ticker: str) -> bool:
+        """Удалить стратегию из портфеля."""
+        try:
+            allocation_key = f"{strategy_id}_{ticker}"
+            if allocation_key not in self.strategy_allocations:
+                logger.warning(f"Стратегия {allocation_key} не найдена в портфеле")
+                return False
+            
+            del self.strategy_allocations[allocation_key]
+            
+            # Перерасчет весов оставшихся стратегий
+            if self.strategy_allocations:
+                self._rebalance_weights()
+            
+            logger.info(f"Стратегия {allocation_key} удалена из портфеля")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Ошибка удаления стратегии {strategy_id} для {ticker}: {e}")
+            return False
+    
+    async def coordinate_portfolio(self) -> Dict:
+        """
+        Основная функция координации портфеля.
+        
+        Returns:
+            Результат координации
+        """
+        if not self.enabled:
+            return {"status": "disabled", "message": "Portfolio coordination отключена"}
+        
+        try:
+            logger.info("Начинаем координацию портфеля")
+            
+            # 1. Получаем сигналы от всех стратегий
+            strategy_signals = await self._gather_strategy_signals()
+            
+            # 2. Агрегируем сигналы
+            aggregated_signals = self._aggregate_signals(strategy_signals)
+            
+            # 3. Обновляем performance метрики
+            await self._update_performance_metrics()
+            
+            # 4. Проверяем необходимость ребалансировки
+            rebalance_needed = self._check_rebalance_needed()
+            
+            # 5. Выполняем ребалансировку если нужно
+            if rebalance_needed:
+                await self._execute_rebalancing()
+            
+            # 6. Генерируем рекомендации
+            recommendations = self._generate_recommendations(aggregated_signals)
+            
+            self.last_coordination = datetime.now()
+            
+            result = {
+                "status": "success",
+                "timestamp": self.last_coordination.isoformat(),
+                "strategies_count": len(self.strategy_allocations),
+                "signals_aggregated": len(aggregated_signals),
+                "rebalance_executed": rebalance_needed,
+                "recommendations": recommendations
+            }
+            
+            logger.info(f"Координация портфеля завершена: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Ошибка координации портфеля: {e}")
+            return {"status": "error", "message": str(e)}
+    
+    async def _gather_strategy_signals(self) -> Dict[str, TradingSignal]:
+        """Собрать сигналы от всех стратегий в портфеле."""
+        signals = {}
+        
+        for allocation_key, allocation in self.strategy_allocations.items():
+            try:
+                # Получаем сигнал от конкретной стратегии
+                ticker_signals = await self.strategy_engine.execute_strategy_signals(
+                    allocation.ticker
+                )
+                
+                # Ищем сигнал от нужной стратегии
+                if isinstance(ticker_signals, dict) and allocation.strategy_id in ticker_signals:
+                    signals[allocation_key] = ticker_signals[allocation.strategy_id]
+                elif isinstance(ticker_signals, list):
+                    # Если список, берем первый подходящий
+                    for signal in ticker_signals:
+                        if hasattr(signal, 'strategy_id') and signal.strategy_id == allocation.strategy_id:
+                            signals[allocation_key] = signal
+                            break
+                
+            except Exception as e:
+                logger.error(f"Ошибка получения сигнала для {allocation_key}: {e}")
+        
+        logger.info(f"Собрано {len(signals)} сигналов от стратегий")
+        return signals
+    
+    def _aggregate_signals(self, strategy_signals: Dict[str, TradingSignal]) -> Dict[str, float]:
+        """
+        Агрегировать сигналы от множественных стратегий.
+        
+        Args:
+            strategy_signals: Сигналы от стратегий
+            
+        Returns:
+            Агрегированные сигналы по тикерам
+        """
+        ticker_aggregated = {}
+        
+        for allocation_key, signal in strategy_signals.items():
+            allocation = self.strategy_allocations[allocation_key]
+            ticker = allocation.ticker
+            
+            if ticker not in ticker_aggregated:
+                ticker_aggregated[ticker] = {
+                    'weighted_confidence': 0.0,
+                    'total_weight': 0.0,
+                    'signals_count': 0
+                }
+            
+            # Взвешиваем сигнал по весу стратегии
+            weighted_confidence = signal.confidence * allocation.weight
+            ticker_aggregated[ticker]['weighted_confidence'] += weighted_confidence
+            ticker_aggregated[ticker]['total_weight'] += allocation.weight
+            ticker_aggregated[ticker]['signals_count'] += 1
+        
+        # Нормализуем агрегированные сигналы
+        final_signals = {}
+        for ticker, data in ticker_aggregated.items():
+            if data['total_weight'] > 0:
+                final_signals[ticker] = data['weighted_confidence'] / data['total_weight']
+            else:
+                final_signals[ticker] = 0.0
+        
+        logger.info(f"Агрегированы сигналы для {len(final_signals)} тикеров")
+        return final_signals
+    
+    async def _update_performance_metrics(self):
+        """Обновить метрики производительности стратегий."""
+        try:
+            for allocation_key, allocation in self.strategy_allocations.items():
+                # Получаем производительность через portfolio analytics
+                analytics = await self.portfolio_analytics.calculate_comprehensive_metrics()
+                
+                # Примерный расчет performance score (можно улучшить)
+                if analytics and 'returns' in analytics:
+                    returns_data = analytics['returns']
+                    allocation.performance_score = returns_data.get('total_return', 0.0)
+                
+                # Обновляем текущее распределение
+                positions = self.portfolio_manager.get_positions()
+                total_value = sum(pos['current_value'] for pos in positions.values())
+                
+                if total_value > 0:
+                    ticker_value = positions.get(allocation.ticker, {}).get('current_value', 0)
+                    allocation.current_allocation = ticker_value / total_value
+                else:
+                    allocation.current_allocation = 0.0
+                    
+        except Exception as e:
+            logger.error(f"Ошибка обновления performance метрик: {e}")
+    
+    def _check_rebalance_needed(self) -> bool:
+        """Проверить нужна ли ребалансировка."""
+        for allocation in self.strategy_allocations.values():
+            deviation = abs(allocation.current_allocation - allocation.target_allocation)
+            if deviation > self.rebalance_threshold:
+                logger.info(f"Ребалансировка нужна: отклонение {deviation:.2%} > {self.rebalance_threshold:.2%}")
+                return True
+        return False
+    
+    async def _execute_rebalancing(self):
+        """Выполнить ребалансировку портфеля."""
+        logger.info("Выполняем ребалансировку портфеля")
+        
+        # Здесь будет логика ребалансировки через portfolio_manager
+        # Пока заглушка, в будущем можно добавить реальную логику
+        
+        for allocation in self.strategy_allocations.values():
+            allocation.last_rebalance = datetime.now()
+    
+    def _generate_recommendations(self, aggregated_signals: Dict[str, float]) -> List[str]:
+        """Генерировать рекомендации на основе агрегированных сигналов."""
+        recommendations = []
+        
+        for ticker, signal_strength in aggregated_signals.items():
+            if signal_strength > 0.6:
+                recommendations.append(f"STRONG BUY рекомендация для {ticker} (сигнал: {signal_strength:.2f})")
+            elif signal_strength > 0.3:
+                recommendations.append(f"BUY рекомендация для {ticker} (сигнал: {signal_strength:.2f})")
+            elif signal_strength < -0.6:
+                recommendations.append(f"STRONG SELL рекомендация для {ticker} (сигнал: {signal_strength:.2f})")
+            elif signal_strength < -0.3:
+                recommendations.append(f"SELL рекомендация для {ticker} (сигнал: {signal_strength:.2f})")
+            else:
+                recommendations.append(f"HOLD рекомендация для {ticker} (сигнал: {signal_strength:.2f})")
+        
+        return recommendations
+    
+    def _calculate_auto_weight(self) -> float:
+        """Рассчитать автоматический вес для новой стратегии."""
+        current_strategies = len(self.strategy_allocations)
+        
+        if current_strategies == 0:
+            return 1.0
+        
+        if self.weight_method == StrategyWeight.EQUAL:
+            return 1.0 / (current_strategies + 1)
+        else:
+            # Для других методов - равный вес пока
+            return 1.0 / (current_strategies + 1)
+    
+    def _rebalance_weights(self):
+        """Перерасчет весов всех стратегий."""
+        if not self.strategy_allocations:
+            return
+        
+        if self.weight_method == StrategyWeight.EQUAL:
+            equal_weight = 1.0 / len(self.strategy_allocations)
+            for allocation in self.strategy_allocations.values():
+                allocation.weight = equal_weight
+                allocation.target_allocation = equal_weight
+    
+    def get_portfolio_status(self) -> PortfolioStatus:
+        """Получить статус портфеля."""
+        total_strategies = len(self.strategy_allocations)
+        active_strategies = sum(1 for a in self.strategy_allocations.values() if a.weight > 0)
+        
+        total_allocation = sum(a.current_allocation for a in self.strategy_allocations.values())
+        cash_allocation = max(0, 1.0 - total_allocation)
+        
+        avg_performance = sum(a.performance_score for a in self.strategy_allocations.values()) / max(1, total_strategies)
+        avg_risk = sum(a.risk_score for a in self.strategy_allocations.values()) / max(1, total_strategies)
+        
+        last_rebalance = max(
+            (a.last_rebalance for a in self.strategy_allocations.values()), 
+            default=datetime.now()
+        )
+        
+        return PortfolioStatus(
+            total_strategies=total_strategies,
+            active_strategies=active_strategies,
+            total_allocation=total_allocation,
+            cash_allocation=cash_allocation,
+            last_rebalance=last_rebalance,
+            performance_score=avg_performance,
+            risk_score=avg_risk
+        )
+    
+    def get_strategy_allocations(self) -> Dict[str, StrategyAllocation]:
+        """Получить распределения всех стратегий."""
+        return self.strategy_allocations.copy()
+
+
+# Глобальный экземпляр координатора (singleton pattern)
+_global_coordinator = None
+
+
+def get_portfolio_coordinator() -> PortfolioCoordinator:
+    """Получить глобальный экземпляр координатора портфеля."""
+    global _global_coordinator
+    if _global_coordinator is None:
+        _global_coordinator = PortfolioCoordinator()
+    return _global_coordinator
+
+
+def main():
+    """Функция для тестирования модуля."""
+    import asyncio
+    
+    async def test_coordinator():
+        print("🧪 Тестирование Portfolio Coordinator...")
+        
+        try:
+            coordinator = get_portfolio_coordinator()
+            
+            # Включаем координацию
+            coordinator.enable_coordination(StrategyWeight.EQUAL)
+            
+            # Добавляем стратегии
+            print("📊 Добавляем стратегии в портфель...")
+            result1 = coordinator.add_strategy_to_portfolio("rsi_mean_reversion", "SBER")
+            result2 = coordinator.add_strategy_to_portfolio("macd_trend_following", "SBER")
+            
+            print(f"RSI стратегия добавлена: {result1}")
+            print(f"MACD стратегия добавлена: {result2}")
+            
+            # Получаем статус портфеля
+            status = coordinator.get_portfolio_status()
+            print(f"\n📋 Статус портфеля:")
+            print(f"Всего стратегий: {status.total_strategies}")
+            print(f"Активных стратегий: {status.active_strategies}")
+            print(f"Средняя производительность: {status.performance_score:.2%}")
+            
+            # Тестируем координацию (базовую)
+            print(f"\n🔄 Тестируем координацию портфеля...")
+            coordination_result = await coordinator.coordinate_portfolio()
+            print(f"Результат координации: {coordination_result}")
+            
+        except Exception as e:
+            print(f"❌ Ошибка тестирования: {e}")
+    
+    asyncio.run(test_coordinator())
+
+
+if __name__ == "__main__":
+    main()
