@@ -341,13 +341,31 @@ class StrategyExecutor:
         execution_records = []
         
         try:
-            # Получение сигналов от Strategy Engine
-            signals = await self.strategy_engine.execute_strategy_signals(ticker)
+            # Получение агрегированных сигналов от Strategy Engine
+            signal_data = await self.strategy_engine.execute_strategy_signals(ticker)
             
-            for signal in signals:
-                if signal.action != "HOLD":  # Исполняем только BUY/SELL
-                    execution_record = await self.execute_signal(ticker, signal)
-                    execution_records.append(execution_record)
+            # Извлекаем данные из словаря
+            action = signal_data.get('recommendation', 'HOLD')
+            confidence = signal_data.get('confidence', 0.0)
+            signals_count = signal_data.get('signals_count', 0)
+            message = signal_data.get('message', '')
+            
+            logger.info(f"Получен сигнал для {ticker}: {action} "
+                       f"(уверенность: {confidence:.2f}, сигналов: {signals_count})")
+            
+            # Создаем объект TradingSignal из полученных данных
+            if action != "HOLD" and confidence > 0:
+                trading_signal = TradingSignal(
+                    ticker=ticker,
+                    action=action,
+                    confidence=confidence
+                )
+                
+                execution_record = await self.execute_signal(ticker, trading_signal)
+                execution_records.append(execution_record)
+            else:
+                logger.info(f"Сигнал {action} для {ticker} не требует исполнения "
+                           f"(уверенность: {confidence:.2f})")
             
         except Exception as e:
             logger.error(f"Ошибка обработки сигналов для {ticker}: {e}")
