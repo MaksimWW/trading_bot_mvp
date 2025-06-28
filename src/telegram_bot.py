@@ -19,10 +19,10 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
+from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from signal_generator import get_trading_signal_for_telegram
 from tinkoff_client import TinkoffClient
-from portfolio_manager import PortfolioManager
 from trading_engine import TradingEngine, TradingMode
 
 # Настройка логирования
@@ -591,10 +591,10 @@ class TradingTelegramBot:
         text += f"💎 **Общая стоимость:** {summary['portfolio_value']:,.0f} ₽\n"
         text += f"📊 **P&L:** {summary['unrealized_pnl']:+,.0f} ₽ ({summary['unrealized_pnl_percent']:+.2f}%)\n\n"
 
-        if summary['positions']:
+        if summary["positions"]:
             text += "📋 **ПОЗИЦИИ:**\n"
-            for pos in summary['positions']:
-                pnl_emoji = "🟢" if pos['unrealized_pnl'] >= 0 else "🔴"
+            for pos in summary["positions"]:
+                pnl_emoji = "🟢" if pos["unrealized_pnl"] >= 0 else "🔴"
                 text += f"{pnl_emoji} **{pos['ticker']}**: {pos['quantity']} шт × {pos['current_price']:.2f} ₽\n"
                 text += f"   P&L: {pos['unrealized_pnl']:+,.0f} ₽ ({pos['unrealized_pnl_percent']:+.2f}%) | Вес: {pos['weight_percent']:.1f}%\n\n"
         else:
@@ -640,7 +640,7 @@ class TradingTelegramBot:
             "📊 Рассчитываю продвинутые метрики портфеля...\n"
             "🔢 Анализирую доходность и риски...\n"
             "📈 Вычисляю Sharpe ratio и VaR...",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.MARKDOWN,
         )
 
         try:
@@ -660,13 +660,12 @@ class TradingTelegramBot:
             # Форматируем результат для Telegram
             result_text = analytics.format_metrics_for_telegram(metrics)
 
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=None
-            )
+            await loading_msg.edit_text(result_text, parse_mode=None)
 
-            logger.info(f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
-                       f"Sharpe {metrics.sharpe_ratio:.2f}")
+            logger.info(
+                f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
+                f"Sharpe {metrics.sharpe_ratio:.2f}"
+            )
 
         except Exception as e:
             error_msg = "❌ *Ошибка расчета аналитики портфеля*\n\n"
@@ -676,10 +675,7 @@ class TradingTelegramBot:
             error_msg += "• Повторить запрос через несколько секунд\n"
             error_msg += "• Использоватьde `/portfolio` для проверки позиций"
 
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode=ParseMode.MARKDOWN
-            )
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Analytics command error: {e}")
 
     async def buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -769,7 +765,7 @@ class TradingTelegramBot:
                 "• `/sell GAZP 30` - продать 30 акций Газпрома\n\n"
                 "💡 Продажа осуществляется по текущей рыночной цене\n"
                 "📊 Используйте `/portfolio` для просмотра позиций",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
 
     def setup_handlers(self, app: Application):
