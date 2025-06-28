@@ -135,9 +135,8 @@ class PortfolioAnalytics:
                 prices = self.tinkoff_client.get_price_history(ticker, days + 10)
                 
                 if prices and len(prices) >= days:
-                    # Сортируем по дате и берем последние дни
-                    sorted_prices = sorted(prices, key=lambda x: x["date"])
-                    historical_data[ticker] = sorted_prices[-days:]
+                    # Берем последние дни (prices уже список float-ов)
+                    historical_data[ticker] = prices[-days:]
                     
             except Exception as e:
                 logger.warning(f"Не удалось получить данные для {ticker}: {e}")
