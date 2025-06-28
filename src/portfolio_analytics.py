@@ -124,7 +124,7 @@ class PortfolioAnalytics:
             logger.error(f"Ошибка расчета метрик портфеля: {e}")
             return self._create_error_metrics(days, str(e))
     
-    async def _get_historical_data(self, positions: List[Dict], days: int) -> Dict[str, pd.DataFrame]:
+    async def _get_historical_data(self, positions: List[Dict], days: int) -> Dict[str, List[Dict]]:
         """Получение исторических данных для всех позиций."""
         historical_data = {}
         
@@ -135,13 +135,9 @@ class PortfolioAnalytics:
                 prices = await self.tinkoff_client.get_historical_prices(ticker, days + 10)
                 
                 if prices and len(prices) >= days:
-                    df = pd.DataFrame(prices)
-                    df["date"] = pd.to_datetime(df["date"])
-                    df.set_index("date", inplace=True)
-                    df.sort_index(inplace=True)
-                    
-                    # Берем последние дни
-                    historical_data[ticker] = df.tail(days)
+                    # Сортируем по дате и берем последние дни
+                    sorted_prices = sorted(prices, key=lambda x: x["date"])
+                    historical_data[ticker] = sorted_prices[-days:]
                     
             except Exception as e:
                 logger.warning(f"Не удалось получить данные для {ticker}: {e}")
@@ -149,7 +145,7 @@ class PortfolioAnalytics:
         
         return historical_data
     
-    def _calculate_returns(self, historical_data: Dict[str, pd.DataFrame], 
+    def _calculate_returns(self, historical_data: Dict[str, List[Dict]], 
                           positions: List[Dict]) -> Dict:
         """Расчет доходности портфеля."""
         if not historical_data:
@@ -157,45 +153,65 @@ class PortfolioAnalytics:
         
         # Создаем портфель на основе весов позиций
         portfolio_values = []
-        dates = None
         
-        for ticker, df in historical_data.items():
-            # Находим позицию для этого тикера
-            position = next((p for p in positions if p["ticker"] == ticker), None)
-            if not position:
-                continue
-            
-            # Вес позиции в портфеле
-            weight = position["current_value"] / sum(p["current_value"] for p in positions)
-            
-            # Добавляем взвешенные цены
-            if dates is None:
-                dates = df.index
-                portfolio_values = df["price"] * weight
-            else:
-                # Выравниваем даты
-                aligned_df = df.reindex(dates, method="ffill")
-                portfolio_values += aligned_df["price"] * weight
+        # Определяем общий период (пересечение всех дат)
+        all_dates = set()
+        for ticker_data in historical_data.values():
+            for price_point in ticker_data:
+                all_dates.add(price_point["date"])
         
-        if len(portfolio_values) == 0:
+        if not all_dates:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
         
-        # Рассчитываем доходности
-        portfolio_series = pd.Series(portfolio_values, index=dates)
-        daily_returns = portfolio_series.pct_change().dropna()
+        sorted_dates = sorted(all_dates)
+        
+        # Рассчитываем портфельные значения для каждой даты
+        for date in sorted_dates:
+            daily_portfolio_value = 0.0
+            total_weight = 0.0
+            
+            for ticker, ticker_data in historical_data.items():
+                # Находим позицию для этого тикера
+                position = next((p for p in positions if p["ticker"] == ticker), None)
+                if not position:
+                    continue
+                
+                # Находим цену на эту дату (или ближайшую предыдущую)
+                price = None
+                for price_point in ticker_data:
+                    if price_point["date"] <= date:
+                        price = price_point["price"]
+                
+                if price is not None:
+                    weight = position["current_value"] / sum(p["current_value"] for p in positions)
+                    daily_portfolio_value += price * weight
+                    total_weight += weight
+            
+            if total_weight > 0:
+                portfolio_values.append(daily_portfolio_value)
+        
+        if len(portfolio_values) < 2:
+            return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
+        
+        # Рассчитываем дневные доходности
+        daily_returns = []
+        for i in range(1, len(portfolio_values)):
+            if portfolio_values[i-1] != 0:
+                ret = (portfolio_values[i] / portfolio_values[i-1]) - 1
+                daily_returns.append(ret)
         
         # Общая доходность
-        total_return = (portfolio_series.iloc[-1] / portfolio_series.iloc[0] - 1) * 100
+        total_return = (portfolio_values[-1] / portfolio_values[0] - 1) * 100 if portfolio_values[0] != 0 else 0
         
         # Годовая доходность
-        days_count = len(portfolio_series)
-        annualized_return = ((1 + total_return/100) ** (365/days_count) - 1) * 100
+        days_count = len(portfolio_values)
+        annualized_return = ((1 + total_return/100) ** (365/days_count) - 1) * 100 if days_count > 0 else 0
         
         return {
             "total_return": total_return,
             "annualized_return": annualized_return,
-            "daily_returns": daily_returns.tolist(),
-            "portfolio_series": portfolio_series
+            "daily_returns": daily_returns,
+            "portfolio_series": portfolio_values
         }
     
     def _calculate_risk_metrics(self, returns_data: Dict) -> Dict:
@@ -212,34 +228,52 @@ class PortfolioAnalytics:
                 "var_99": 0.0
             }
         
-        returns_array = np.array(daily_returns)
+        returns_array = daily_returns
         portfolio_series = returns_data.get("portfolio_series")
         
         # Волатильность (годовая)
-        volatility = np.std(returns_array) * np.sqrt(252) * 100
+        volatility = stdev(returns_array) * math.sqrt(252) * 100 if len(returns_array) > 1 else 0.0
         
         # Максимальная просадка
         max_drawdown = 0.0
-        if portfolio_series is not None and len(portfolio_series) > 1:
-            cumulative = (1 + pd.Series(daily_returns)).cumprod()
-            running_max = cumulative.expanding().max()
-            drawdown = (cumulative - running_max) / running_max
-            max_drawdown = abs(drawdown.min()) * 100
+        if portfolio_series is not None and len(daily_returns) > 1:
+            # Расчет кумулятивной доходности
+            cumulative = []
+            cum_product = 1.0
+            for ret in daily_returns:
+                cum_product *= (1 + ret)
+                cumulative.append(cum_product)
+            
+            # Поиск максимальной просадки
+            running_max = cumulative[0]
+            max_dd = 0.0
+            for value in cumulative:
+                if value > running_max:
+                    running_max = value
+                drawdown = (value - running_max) / running_max
+                if drawdown < max_dd:
+                    max_dd = drawdown
+            max_drawdown = abs(max_dd) * 100
         
         # Sharpe ratio
-        mean_return = np.mean(returns_array) * 252  # Годовая
+        mean_return = mean(returns_array) * 252  # Годовая
         daily_risk_free = (self.risk_free_rate / 100) / 252
-        excess_returns = returns_array - daily_risk_free
-        sharpe_ratio = np.mean(excess_returns) * np.sqrt(252) / np.std(returns_array) if np.std(returns_array) > 0 else 0
+        excess_returns = [ret - daily_risk_free for ret in returns_array]
+        returns_std = stdev(returns_array) if len(returns_array) > 1 else 0
+        sharpe_ratio = mean(excess_returns) * math.sqrt(252) / returns_std if returns_std > 0 else 0
         
         # Sortino ratio (только негативные отклонения)
-        negative_returns = returns_array[returns_array < daily_risk_free]
-        downside_std = np.std(negative_returns) if len(negative_returns) > 0 else np.std(returns_array)
-        sortino_ratio = np.mean(excess_returns) * np.sqrt(252) / downside_std if downside_std > 0 else 0
+        negative_returns = [ret for ret in returns_array if ret < daily_risk_free]
+        downside_std = stdev(negative_returns) if len(negative_returns) > 1 else (stdev(returns_array) if len(returns_array) > 1 else 0)
+        sortino_ratio = mean(excess_returns) * math.sqrt(252) / downside_std if downside_std > 0 else 0
         
         # VaR (Value at Risk)
-        var_95 = np.percentile(returns_array, 5) * 100  # 5% худшие дни
-        var_99 = np.percentile(returns_array, 1) * 100  # 1% худшие дни
+        sorted_returns = sorted(returns_array)
+        n = len(sorted_returns)
+        var_95_idx = max(0, int(n * 0.05) - 1)
+        var_99_idx = max(0, int(n * 0.01) - 1)
+        var_95 = sorted_returns[var_95_idx] * 100 if n > 0 else 0.0  # 5% худшие дни
+        var_99 = sorted_returns[var_99_idx] * 100 if n > 0 else 0.0  # 1% худшие дни
         
         return {
             "volatility": volatility,
@@ -250,7 +284,7 @@ class PortfolioAnalytics:
             "var_99": var_99
         }
     
-    def _calculate_correlation_metrics(self, historical_data: Dict[str, pd.DataFrame]) -> Dict:
+    def _calculate_correlation_metrics(self, historical_data: Dict[str, List[Dict]]) -> Dict:
         """Расчет корреляционных метрик."""
         if len(historical_data) < 2:
             return {
@@ -259,38 +293,73 @@ class PortfolioAnalytics:
             }
         
         # Создаем матрицу доходностей
-        returns_matrix = pd.DataFrame()
+        returns_data = {}
         
-        for ticker, df in historical_data.items():
-            if len(df) > 1:
-                daily_returns = df["price"].pct_change().dropna()
-                returns_matrix[ticker] = daily_returns
+        for ticker, ticker_data in historical_data.items():
+            if len(ticker_data) > 1:
+                daily_returns = []
+                for i in range(1, len(ticker_data)):
+                    if ticker_data[i-1]["price"] != 0:
+                        ret = (ticker_data[i]["price"] / ticker_data[i-1]["price"]) - 1
+                        daily_returns.append(ret)
+                if daily_returns:
+                    returns_data[ticker] = daily_returns
         
-        if returns_matrix.empty or len(returns_matrix.columns) < 2:
+        if len(returns_data) < 2:
             return {
                 "avg_correlation": 0.0,
                 "diversification_ratio": 1.0
             }
         
-        # Корреляционная матрица
-        correlation_matrix = returns_matrix.corr()
-        
-        # Средняя корреляция (исключая диагональ)
+        # Вычисляем корреляции между всеми парами
+        tickers = list(returns_data.keys())
         correlations = []
-        for i in range(len(correlation_matrix)):
-            for j in range(i+1, len(correlation_matrix)):
-                correlations.append(correlation_matrix.iloc[i, j])
         
-        avg_correlation = np.mean(correlations) if correlations else 0.0
+        for i in range(len(tickers)):
+            for j in range(i+1, len(tickers)):
+                ticker1, ticker2 = tickers[i], tickers[j]
+                returns1, returns2 = returns_data[ticker1], returns_data[ticker2]
+                
+                # Выравниваем длины массивов
+                min_len = min(len(returns1), len(returns2))
+                if min_len > 1:
+                    r1 = returns1[-min_len:]
+                    r2 = returns2[-min_len:]
+                    
+                    # Вычисляем корреляцию
+                    correlation = self._calculate_correlation(r1, r2)
+                    if correlation is not None:
+                        correlations.append(correlation)
+        
+        avg_correlation = mean(correlations) if correlations else 0.0
         
         # Коэффициент диверсификации
-        # Simplified: 1 - average_correlation (чем меньше корреляция, тем лучше диверсификация)
         diversification_ratio = max(0.0, 1.0 - abs(avg_correlation))
         
         return {
             "avg_correlation": avg_correlation,
             "diversification_ratio": diversification_ratio
         }
+    
+    def _calculate_correlation(self, x: List[float], y: List[float]) -> Optional[float]:
+        """Вычисление коэффициента корреляции Пирсона."""
+        if len(x) != len(y) or len(x) < 2:
+            return None
+        
+        n = len(x)
+        mean_x = mean(x)
+        mean_y = mean(y)
+        
+        numerator = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(n))
+        sum_sq_x = sum((x[i] - mean_x) ** 2 for i in range(n))
+        sum_sq_y = sum((y[i] - mean_y) ** 2 for i in range(n))
+        
+        denominator = math.sqrt(sum_sq_x * sum_sq_y)
+        
+        if denominator == 0:
+            return None
+        
+        return numerator / denominator
     
     def _create_empty_metrics(self, days: int) -> PortfolioMetrics:
         """Создание пустых метрик для портфеля без позиций."""
