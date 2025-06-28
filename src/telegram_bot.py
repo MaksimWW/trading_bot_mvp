@@ -1165,7 +1165,7 @@ class TradingTelegramBot:
         except Exception as e:
             logger.error(f"Ошибка в обработке неизвестной команды: {e}")
             await update.message.reply_text("❌ Произошла ошибка. Попробуйте `/help`")
-            
+
     async def ai_analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /ai_analysis TICKER."""
         if not context.args:
@@ -1195,20 +1195,19 @@ class TradingTelegramBot:
         try:
             # Импортируем и используем AI Signal Integration
             from ai_signal_integration import get_ai_signal_integration
-            
+
             ai_integration = get_ai_signal_integration()
             ai_signal = await ai_integration.analyze_ticker(ticker)
-            
+
             # Форматируем результат для Telegram
             result_text = ai_integration.format_signal_for_telegram(ai_signal)
-            
-            await loading_msg.edit_text(
-                result_text,
-                parse_mode=ParseMode.MARKDOWN
+
+            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+
+            logger.info(
+                f"AI анализ {ticker} отправлен пользователю: {ai_signal.signal_strength.value}"
             )
-            
-            logger.info(f"AI анализ {ticker} отправлен пользователю: {ai_signal.signal_strength.value}")
-            
+
         except Exception as e:
             error_msg = f"❌ *Ошибка AI анализа {ticker}*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
@@ -1216,11 +1215,8 @@ class TradingTelegramBot:
             error_msg += f"• Проверить правильность тикера\n"
             error_msg += f"• Повторить запрос через несколько секунд\n"
             error_msg += f"• Использовать /status для проверки систем"
-            
-            await loading_msg.edit_text(
-                error_msg,
-                parse_mode=ParseMode.MARKDOWN
-            )
+
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"AI analysis command error for {ticker}: {e}")
 
     def setup_handlers(self):
