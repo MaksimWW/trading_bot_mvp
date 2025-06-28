@@ -1193,24 +1193,35 @@ class TradingTelegramBot:
         )
 
         try:
-            #Здесь будет логика AI анализа. Сейчас заглушка
-            result_text = f"""
-🤖 *AI АНАЛИЗ АКЦИИ {ticker} (Бета-версия)*
-
-⚠️ В разработке. Результаты носят ознакомительный характер.
-"""
-            await loading_msg.edit_text(result_text, parse_mode="Markdown")
-            logger.info(f"AI анализ {ticker} завершен (заглушка)")
-
+            # Импортируем и используем AI Signal Integration
+            from ai_signal_integration import get_ai_signal_integration
+            
+            ai_integration = get_ai_signal_integration()
+            ai_signal = await ai_integration.analyze_ticker(ticker)
+            
+            # Форматируем результат для Telegram
+            result_text = ai_integration.format_signal_for_telegram(ai_signal)
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"AI анализ {ticker} отправлен пользователю: {ai_signal.signal_strength.value}")
+            
         except Exception as e:
-            error_msg = "❌ *Ошибка AI анализа {ticker}*\n\n"
-            error_msg += "Причина: {str(e)}\n\n"
-            error_msg += "💡 Попробуйте:\n"
-            error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
-            error_msg += "• Повторить запрос через несколько секунд"
-
-            await loading_msg.edit_text(error_msg, parse_mode="Markdown")
-            logger.error(f"AI Analysis command error for {ticker}: {e}")
+            error_msg = f"❌ *Ошибка AI анализа {ticker}*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте:\n"
+            error_msg += f"• Проверить правильность тикера\n"
+            error_msg += f"• Повторить запрос через несколько секунд\n"
+            error_msg += f"• Использовать /status для проверки систем"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"AI analysis command error for {ticker}: {e}")
 
     def setup_handlers(self):
         """Настройка обработчиков команд"""
