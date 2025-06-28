@@ -123,9 +123,12 @@ class PortfolioManager:
                 if not instrument:
                     return {"success": False, "error": f"Инструмент {ticker} не найден"}
                 
-                price = self.tinkoff.get_last_price(instrument["figi"])
-                if not price:
+                price_data = self.tinkoff.get_last_price(instrument["figi"])
+                if not price_data:
                     return {"success": False, "error": f"Не удалось получить цену {ticker}"}
+                
+                # Извлекаем числовое значение цены из объекта LastPrice
+                price = float(price_data.units + price_data.nano / 1_000_000_000)
             
             # Расчет комиссии и общей суммы
             commission = quantity * price * self.default_commission_rate
