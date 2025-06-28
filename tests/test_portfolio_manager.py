@@ -12,15 +12,15 @@ from unittest.mock import MagicMock
 import pytest
 
 # Мокаем TinkoffClient чтобы избежать зависимости от API
-sys.modules['tinkoff_client'] = MagicMock()
+sys.modules["tinkoff_client"] = MagicMock()
 
 # Добавляем src в путь для импорта
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from portfolio_manager import PortfolioManager  # noqa: E402
-
 # Создаем классы Position и Trade для тестов
 from dataclasses import dataclass  # noqa: E402
+
+from portfolio_manager import PortfolioManager  # noqa: E402
 
 
 @dataclass
