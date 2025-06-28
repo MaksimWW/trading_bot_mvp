@@ -431,7 +431,7 @@ class TradingTelegramBot:
         instrument = self.tinkoff_client.search_instrument(ticker)
         if not instrument:
             await loading_msg.edit_text(
-                "❌ Акция с тикером *{ticker}* не найдена.\n\n"
+                f"❌ Акция с тикером *{ticker}* не найдена.\n\n"
                 "Попробуйте: SBER, GAZP, YNDX, LKOH, NVTK, ROSN",
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -440,7 +440,7 @@ class TradingTelegramBot:
         price_data = self.tinkoff_client.get_last_price(instrument.figi)
         if not price_data:
             await loading_msg.edit_text(
-                "❌ Не удалось получить цену для {ticker}", parse_mode=ParseMode.MARKDOWN
+                f"❌ Не удалось получить цену для {ticker}", parse_mode=ParseMode.MARKDOWN
             )
             return None
 
@@ -520,7 +520,7 @@ class TradingTelegramBot:
 
         ticker = context.args[0].upper()
         loading_msg = await update.message.reply_text(
-            "🔍 Анализирую риски для *{ticker}*...\n"
+            f"🔍 Анализирую риски для *{ticker}*...\n"
             "📊 Получаю данные и рассчитываю параметры...",
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -564,12 +564,12 @@ class TradingTelegramBot:
 
             await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
             logger.info(
-                "Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%"
+                f"Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%"
             )
 
         except Exception as e:
-            error_msg = "❌ *Ошибка анализа рисков {ticker}*\n\n"
-            error_msg += "Причина: {str(e)}\n\n"
+            error_msg = f"❌ *Ошибка анализа рисков {ticker}*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Проверить правильность тикера\n"
             error_msg += "• Использовать `/risk SBER 100 93` с параметрами\n"
