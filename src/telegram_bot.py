@@ -42,6 +42,7 @@ class TradingTelegramBot:
         logger.info("🤖 Инициализация Trading Telegram Bot")
         # Импорт PortfolioManager
         from portfolio_manager import get_portfolio_manager
+
         self.portfolio = get_portfolio_manager()
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -520,7 +521,8 @@ class TradingTelegramBot:
 
         ticker = context.args[0].upper()
         loading_msg = await update.message.reply_text(
-            "🔍 Анализирую риски для *{ticker}*...\n" "📊 Получаю данные и рассчитываю параметры...",
+            "🔍 Анализирую риски для *{ticker}*...\n"
+            "📊 Получаю данные и рассчитываю параметры...",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -580,8 +582,7 @@ class TradingTelegramBot:
     async def portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /portfolio."""
         loading_msg = await update.message.reply_text(
-            "💼 Обновляю данные портфеля...",
-            parse_mode=ParseMode.MARKDOWN
+            "💼 Обновляю данные портфеля...", parse_mode=ParseMode.MARKDOWN
         )
 
         try:
@@ -592,24 +593,20 @@ class TradingTelegramBot:
             if "error" in summary:
                 await loading_msg.edit_text(
                     f"❌ Ошибка получения портфеля: {summary['error']}",
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.MARKDOWN,
                 )
                 return
 
             # Форматируем ответ
             portfolio_text = self._format_portfolio_summary(summary)
 
-            await loading_msg.edit_text(
-                portfolio_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
+            await loading_msg.edit_text(portfolio_text, parse_mode=ParseMode.MARKDOWN)
 
             logger.info("Сводка портфеля отправлена")
 
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка при получении портфеля: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка при получении портфеля: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Portfolio command error: {e}")
 
@@ -623,7 +620,7 @@ class TradingTelegramBot:
                 "• `/buy SBER 100` - купить 100 акций Сбербанка\n"
                 "• `/buy GAZP 50` - купить 50 акций Газпрома\n\n"
                 "💡 Покупка осуществляется по текущей рыночной цене",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
@@ -632,21 +629,19 @@ class TradingTelegramBot:
             quantity = int(context.args[1])
         except ValueError:
             await update.message.reply_text(
-                "❌ Количество акций должно быть числом",
-                parse_mode=ParseMode.MARKDOWN
+                "❌ Количество акций должно быть числом", parse_mode=ParseMode.MARKDOWN
             )
             return
 
         if quantity <= 0:
             await update.message.reply_text(
                 "❌ Количество акций должно быть положительным числом",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
         loading_msg = await update.message.reply_text(
-            f"💰 Покупаю {quantity} акций {ticker}...",
-            parse_mode=ParseMode.MARKDOWN
+            f"💰 Покупаю {quantity} акций {ticker}...", parse_mode=ParseMode.MARKDOWN
         )
 
         try:
@@ -683,15 +678,11 @@ class TradingTelegramBot:
 - Используйте `/portfolio` для проверки баланса
                 """
 
-            await loading_msg.edit_text(
-                buy_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
+            await loading_msg.edit_text(buy_text, parse_mode=ParseMode.MARKDOWN)
 
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка при покупке {ticker}: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка при покупке {ticker}: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Buy command error for {ticker}: {e}")
 
@@ -706,41 +697,39 @@ class TradingTelegramBot:
                 "• `/sell GAZP 30` - продать 30 акций Газпрома\n\n"
                 "💡 Продажа осуществляется по текущей рыночной цене\n"
                 "📊 Используйте `/portfolio` для просмотра позиций",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
-        
+
         ticker = context.args[0].upper()
         try:
             quantity = int(context.args[1])
         except ValueError:
             await update.message.reply_text(
-                "❌ Количество акций должно быть числом",
-                parse_mode=ParseMode.MARKDOWN
+                "❌ Количество акций должно быть числом", parse_mode=ParseMode.MARKDOWN
             )
             return
-        
+
         if quantity <= 0:
             await update.message.reply_text(
                 "❌ Количество акций должно быть положительным числом",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
-        
+
         loading_msg = await update.message.reply_text(
-            f"📈 Продаю {quantity} акций {ticker}...",
-            parse_mode=ParseMode.MARKDOWN
+            f"📈 Продаю {quantity} акций {ticker}...", parse_mode=ParseMode.MARKDOWN
         )
-        
+
         try:
             result = await self.portfolio.sell_stock(ticker, quantity)
-            
+
             if result["success"]:
-                realized_pnl = result['realized_pnl']
+                realized_pnl = result["realized_pnl"]
                 pnl_emoji = "💚" if realized_pnl >= 0 else "❤️"
                 pnl_sign = "+" if realized_pnl >= 0 else ""
-                remaining = result.get('remaining_quantity', 0)
-                
+                remaining = result.get("remaining_quantity", 0)
+
                 sell_text = f"""
 📈 *ПРОДАЖА ВЫПОЛНЕНА*
 
@@ -773,27 +762,23 @@ class TradingTelegramBot:
 - Убедитесь что у вас достаточно акций
 - Используйте `/portfolio` для проверки позиций
                 """
-            
-            await loading_msg.edit_text(
-                sell_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            
+
+            await loading_msg.edit_text(sell_text, parse_mode=ParseMode.MARKDOWN)
+
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка при продаже {ticker}: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка при продаже {ticker}: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Sell command error for {ticker}: {e}")
 
     def _format_portfolio_summary(self, summary: dict) -> str:
         """Форматирование сводки портфеля для Telegram."""
-        portfolio_value = summary['portfolio_value']
-        cash_balance = summary['cash_balance']
-        unrealized_pnl = summary['unrealized_pnl']
-        unrealized_pnl_percent = summary['unrealized_pnl_percent']
-        positions_count = summary['positions_count']
-        positions = summary['positions']
+        portfolio_value = summary["portfolio_value"]
+        cash_balance = summary["cash_balance"]
+        unrealized_pnl = summary["unrealized_pnl"]
+        unrealized_pnl_percent = summary["unrealized_pnl_percent"]
+        positions_count = summary["positions_count"]
+        positions = summary["positions"]
 
         # Эмодзи для P&L
         pnl_emoji = "📈" if unrealized_pnl >= 0 else "📉"
@@ -813,8 +798,8 @@ class TradingTelegramBot:
             text += "\n📋 *ПОЗИЦИИ:*\n"
 
             for pos in positions[:10]:  # Показываем первые 10 позиций
-                pos_pnl = pos['unrealized_pnl']
-                pos_pnl_percent = pos['unrealized_pnl_percent']
+                pos_pnl = pos["unrealized_pnl"]
+                pos_pnl_percent = pos["unrealized_pnl_percent"]
                 pos_emoji = "🟢" if pos_pnl >= 0 else "🔴"
                 pos_sign = "+" if pos_pnl >= 0 else ""
 
@@ -829,9 +814,9 @@ class TradingTelegramBot:
                 text += f"\n📋 И ещё {len(positions) - 10} позиций...\n"
 
         # Секторное распределение
-        if 'sector_allocation' in summary and summary['sector_allocation']:
+        if "sector_allocation" in summary and summary["sector_allocation"]:
             text += "\n🏭 *РАСПРЕДЕЛЕНИЕ ПО СЕКТОРАМ:*\n"
-            for sector, weight in summary['sector_allocation'].items():
+            for sector, weight in summary["sector_allocation"].items():
                 text += f"• {sector}: {weight:.1f}%\n"
 
         text += f"""
@@ -1235,6 +1220,7 @@ class TradingTelegramBot:
 
         # Импорт PortfolioManager
         from portfolio_manager import get_portfolio_manager
+
         self.portfolio = get_portfolio_manager()
 
 

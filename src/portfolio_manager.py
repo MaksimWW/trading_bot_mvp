@@ -1,4 +1,3 @@
-
 """
 Portfolio Manager для торгового бота.
 
@@ -6,16 +5,15 @@ Portfolio Manager для торгового бота.
 отслеживания позиций, расчета P&L и оценки рисков.
 """
 
-import logging
-import json
 import asyncio
+import json
+import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
 
 from config import PORTFOLIO_CONFIG
 from tinkoff_client import TinkoffClient
-
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Position:
     """Класс для представления торговой позиции."""
+
     ticker: str
     company_name: str
     sector: str
@@ -31,22 +30,22 @@ class Position:
     current_price: float
     purchase_date: str
     last_update: str
-    
+
     @property
     def total_value(self) -> float:
         """Общая стоимость позиции по текущей цене."""
         return self.quantity * self.current_price
-    
+
     @property
     def cost_basis(self) -> float:
         """Общая стоимость покупки позиции."""
         return self.quantity * self.avg_price
-    
+
     @property
     def unrealized_pnl(self) -> float:
         """Нереализованная прибыль/убыток."""
         return self.total_value - self.cost_basis
-    
+
     @property
     def unrealized_pnl_percent(self) -> float:
         """Нереализованная прибыль/убыток в процентах."""
@@ -58,6 +57,7 @@ class Position:
 @dataclass
 class Trade:
     """Класс для представления торговой сделки."""
+
     trade_id: str
     ticker: str
     action: str  # "BUY" или "SELL"
@@ -65,7 +65,7 @@ class Trade:
     price: float
     timestamp: str
     commission: float = 0.0
-    
+
     @property
     def total_amount(self) -> float:
         """Общая сумма сделки включая комиссию."""
@@ -78,11 +78,11 @@ class Trade:
 
 class PortfolioManager:
     """Менеджер виртуального торгового портфеля."""
-    
+
     def __init__(self, initial_balance: float = None):
         """
         Инициализация портфеля.
-        
+
         Args:
             initial_balance: Начальный баланс портфеля
         """
@@ -91,28 +91,27 @@ class PortfolioManager:
         self.positions: Dict[str, Position] = {}
         self.trades: List[Trade] = []
         self.creation_date = datetime.now().isoformat()
-        
+
         # Интеграция с Tinkoff для получения цен
         self.tinkoff = TinkoffClient()
-        
+
         # Настройки портфеля
         self.max_position_size = PORTFOLIO_CONFIG["max_position_size"]
         self.max_daily_loss = PORTFOLIO_CONFIG["max_daily_loss"]
         self.max_daily_trades = PORTFOLIO_CONFIG["max_daily_trades"]
         self.default_commission_rate = PORTFOLIO_CONFIG["commission_rate"]
-        
+
         logger.info(f"PortfolioManager инициализирован с балансом {self.initial_balance:,.0f} ₽")
-    
-    async def buy_stock(self, ticker: str, quantity: int, 
-                       price: Optional[float] = None) -> Dict:
+
+    async def buy_stock(self, ticker: str, quantity: int, price: Optional[float] = None) -> Dict:
         """
         Виртуальная покупка акций.
-        
+
         Args:
             ticker: Тикер акции
             quantity: Количество акций
             price: Цена покупки (если None, используется текущая рыночная цена)
-            
+
         Returns:
             Результат операции покупки
         """
@@ -122,23 +121,23 @@ class PortfolioManager:
                 instrument = self.tinkoff.search_instrument(ticker)
                 if not instrument:
                     return {"success": False, "error": f"Инструмент {ticker} не найден"}
-                
+
                 price_data = self.tinkoff.get_last_price(instrument["figi"])
                 if not price_data:
                     return {"success": False, "error": f"Не удалось получить цену {ticker}"}
-                
+
                 # Извлекаем цену из Quotation объекта
                 price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
-            
+
             # Расчет комиссии и общей суммы
             commission = quantity * price * self.default_commission_rate
             total_cost = quantity * price + commission
-            
+
             # Проверки перед покупкой
             validation_result = self._validate_purchase(ticker, quantity, price, total_cost)
             if not validation_result["valid"]:
                 return {"success": False, "error": validation_result["reason"]}
-            
+
             # Выполнение покупки
             trade_id = f"BUY_{ticker}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             trade = Trade(
@@ -148,20 +147,20 @@ class PortfolioManager:
                 quantity=quantity,
                 price=price,
                 timestamp=datetime.now().isoformat(),
-                commission=commission
+                commission=commission,
             )
-            
+
             # Обновление баланса
             self.cash_balance -= total_cost
-            
+
             # Обновление или создание позиции
             await self._update_position_after_buy(ticker, quantity, price)
-            
+
             # Запись сделки
             self.trades.append(trade)
-            
+
             logger.info(f"Покупка выполнена: {quantity} {ticker} по {price:.2f} ₽")
-            
+
             return {
                 "success": True,
                 "trade_id": trade_id,
@@ -171,17 +170,17 @@ class PortfolioManager:
                 "price": price,
                 "commission": commission,
                 "total_cost": total_cost,
-                "new_cash_balance": self.cash_balance
+                "new_cash_balance": self.cash_balance,
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка при покупке {ticker}: {e}")
             return {"success": False, "error": f"Ошибка покупки: {str(e)}"}
-    
+
     def get_portfolio_summary(self) -> Dict:
         """
         Получение сводки по портфелю.
-        
+
         Returns:
             Подробная информация о портфеле
         """
@@ -190,38 +189,50 @@ class PortfolioManager:
             total_portfolio_value = self.cash_balance
             total_cost_basis = 0
             positions_data = []
-            
+
             # Расчет данных по позициям
             for ticker, position in self.positions.items():
                 total_portfolio_value += position.total_value
                 total_cost_basis += position.cost_basis
-                
-                positions_data.append({
-                    "ticker": ticker,
-                    "company_name": position.company_name,
-                    "sector": position.sector,
-                    "quantity": position.quantity,
-                    "avg_price": position.avg_price,
-                    "current_price": position.current_price,
-                    "total_value": position.total_value,
-                    "unrealized_pnl": position.unrealized_pnl,
-                    "unrealized_pnl_percent": position.unrealized_pnl_percent,
-                    "weight_percent": (position.total_value / total_portfolio_value * 100) if total_portfolio_value > 0 else 0
-                })
-            
+
+                positions_data.append(
+                    {
+                        "ticker": ticker,
+                        "company_name": position.company_name,
+                        "sector": position.sector,
+                        "quantity": position.quantity,
+                        "avg_price": position.avg_price,
+                        "current_price": position.current_price,
+                        "total_value": position.total_value,
+                        "unrealized_pnl": position.unrealized_pnl,
+                        "unrealized_pnl_percent": position.unrealized_pnl_percent,
+                        "weight_percent": (
+                            (position.total_value / total_portfolio_value * 100)
+                            if total_portfolio_value > 0
+                            else 0
+                        ),
+                    }
+                )
+
             # Сортировка позиций по весу (убывание)
             positions_data.sort(key=lambda x: x["weight_percent"], reverse=True)
-            
+
             # Общая прибыль/убыток
             total_unrealized_pnl = total_portfolio_value - self.initial_balance
-            total_unrealized_pnl_percent = (total_unrealized_pnl / self.initial_balance * 100) if self.initial_balance > 0 else 0
-            
+            total_unrealized_pnl_percent = (
+                (total_unrealized_pnl / self.initial_balance * 100)
+                if self.initial_balance > 0
+                else 0
+            )
+
             # Диверсификация по секторам
-            sector_allocation = self._calculate_sector_allocation(positions_data, total_portfolio_value)
-            
+            sector_allocation = self._calculate_sector_allocation(
+                positions_data, total_portfolio_value
+            )
+
             # Статистика сделок
             trades_stats = self._calculate_trades_statistics()
-            
+
             return {
                 "portfolio_value": total_portfolio_value,
                 "cash_balance": self.cash_balance,
@@ -233,52 +244,55 @@ class PortfolioManager:
                 "sector_allocation": sector_allocation,
                 "trades_statistics": trades_stats,
                 "creation_date": self.creation_date,
-                "last_update": datetime.now().isoformat()
+                "last_update": datetime.now().isoformat(),
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка создания сводки портфеля: {e}")
             return {"error": str(e)}
-    
-    def _validate_purchase(self, ticker: str, quantity: int, 
-                          price: float, total_cost: float) -> Dict:
+
+    def _validate_purchase(
+        self, ticker: str, quantity: int, price: float, total_cost: float
+    ) -> Dict:
         """Валидация покупки по лимитам риск-менеджмента."""
         # Проверка доступного баланса
         if total_cost > self.cash_balance:
             return {
                 "valid": False,
-                "reason": f"Недостаточно средств: нужно {total_cost:,.0f} ₽, доступно {self.cash_balance:,.0f} ₽"
+                "reason": f"Недостаточно средств: нужно {total_cost:,.0f} ₽, доступно {self.cash_balance:,.0f} ₽",
             }
-        
+
         # Проверка максимального размера позиции
         max_position_value = self.initial_balance * self.max_position_size
         if total_cost > max_position_value:
             return {
                 "valid": False,
-                "reason": f"Превышен максимальный размер позиции: {total_cost:,.0f} ₽ > {max_position_value:,.0f} ₽"
+                "reason": f"Превышен максимальный размер позиции: {total_cost:,.0f} ₽ > {max_position_value:,.0f} ₽",
             }
-        
+
         # Проверка дневного лимита сделок
-        today_trades = len([t for t in self.trades if t.timestamp.startswith(datetime.now().strftime('%Y-%m-%d'))])
+        today_trades = len(
+            [t for t in self.trades if t.timestamp.startswith(datetime.now().strftime("%Y-%m-%d"))]
+        )
         if today_trades >= self.max_daily_trades:
             return {
                 "valid": False,
-                "reason": f"Превышен дневной лимит сделок: {today_trades}/{self.max_daily_trades}"
+                "reason": f"Превышен дневной лимит сделок: {today_trades}/{self.max_daily_trades}",
             }
-        
+
         return {"valid": True, "reason": "OK"}
-    
+
     async def _update_position_after_buy(self, ticker: str, quantity: int, price: float):
         """Обновление позиции после покупки."""
         from config import get_ticker_info
-        
+
         if ticker in self.positions:
             # Обновляем существующую позицию
             position = self.positions[ticker]
             total_quantity = position.quantity + quantity
             total_cost = position.cost_basis + (quantity * price)
             new_avg_price = total_cost / total_quantity
-            
+
             position.quantity = total_quantity
             position.avg_price = new_avg_price
             position.current_price = price
@@ -294,11 +308,12 @@ class PortfolioManager:
                 avg_price=price,
                 current_price=price,
                 purchase_date=datetime.now().isoformat(),
-                last_update=datetime.now().isoformat()
+                last_update=datetime.now().isoformat(),
             )
-    
-    def _calculate_sector_allocation(self, positions_data: List[Dict], 
-                                   total_value: float) -> Dict[str, float]:
+
+    def _calculate_sector_allocation(
+        self, positions_data: List[Dict], total_value: float
+    ) -> Dict[str, float]:
         """Расчет распределения по секторам."""
         sectors = {}
         for position in positions_data:
@@ -306,9 +321,9 @@ class PortfolioManager:
             if sector not in sectors:
                 sectors[sector] = 0
             sectors[sector] += position["weight_percent"]
-        
+
         return sectors
-    
+
     def _calculate_trades_statistics(self) -> Dict:
         """Расчет статистики сделок."""
         if not self.trades:
@@ -317,33 +332,32 @@ class PortfolioManager:
                 "buy_trades": 0,
                 "sell_trades": 0,
                 "total_commission": 0.0,
-                "avg_trade_size": 0.0
+                "avg_trade_size": 0.0,
             }
-        
+
         buy_trades = [t for t in self.trades if t.action == "BUY"]
         sell_trades = [t for t in self.trades if t.action == "SELL"]
         total_commission = sum(t.commission for t in self.trades)
         total_volume = sum(t.quantity * t.price for t in self.trades)
-        
+
         return {
             "total_trades": len(self.trades),
             "buy_trades": len(buy_trades),
             "sell_trades": len(sell_trades),
             "total_commission": total_commission,
             "avg_trade_size": total_volume / len(self.trades) if self.trades else 0.0,
-            "total_volume": total_volume
+            "total_volume": total_volume,
         }
-    
-    async def sell_stock(self, ticker: str, quantity: int,
-                        price: Optional[float] = None) -> Dict:
+
+    async def sell_stock(self, ticker: str, quantity: int, price: Optional[float] = None) -> Dict:
         """
         Виртуальная продажа акций.
-        
+
         Args:
             ticker: Тикер акции
             quantity: Количество акций
             price: Цена продажи (если None, используется текущая рыночная цена)
-            
+
         Returns:
             Результат операции продажи
         """
@@ -351,36 +365,36 @@ class PortfolioManager:
             # Проверка наличия позиции
             if ticker not in self.positions:
                 return {"success": False, "error": f"Нет позиции по {ticker}"}
-            
+
             position = self.positions[ticker]
             if position.quantity < quantity:
                 return {
-                    "success": False, 
-                    "error": f"Недостаточно акций {ticker}: есть {position.quantity}, нужно {quantity}"
+                    "success": False,
+                    "error": f"Недостаточно акций {ticker}: есть {position.quantity}, нужно {quantity}",
                 }
-            
+
             # Получаем текущую цену если не указана
             if price is None:
                 instrument = self.tinkoff.search_instrument(ticker)
                 if not instrument:
                     return {"success": False, "error": f"Инструмент {ticker} не найден"}
-                
+
                 price_data = self.tinkoff.get_last_price(instrument["figi"])
                 if not price_data:
                     return {"success": False, "error": f"Не удалось получить цену {ticker}"}
-                
+
                 # Извлекаем цену из Quotation объекта
                 price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
-            
+
             # Расчет комиссии и общей суммы
             commission = quantity * price * self.default_commission_rate
             total_revenue = quantity * price - commission
-            
+
             # Расчет прибыли/убытка по продаваемой части
             avg_cost_per_share = position.avg_price
             cost_basis_sold = quantity * avg_cost_per_share
             realized_pnl = (quantity * price) - cost_basis_sold - commission
-            
+
             # Выполнение продажи
             trade_id = f"SELL_{ticker}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             trade = Trade(
@@ -390,20 +404,20 @@ class PortfolioManager:
                 quantity=quantity,
                 price=price,
                 timestamp=datetime.now().isoformat(),
-                commission=commission
+                commission=commission,
             )
-            
+
             # Обновление баланса
             self.cash_balance += total_revenue
-            
+
             # Обновление позиции
             await self._update_position_after_sell(ticker, quantity)
-            
+
             # Запись сделки
             self.trades.append(trade)
-            
+
             logger.info(f"Продажа выполнена: {quantity} {ticker} по {price:.2f} ₽")
-            
+
             return {
                 "success": True,
                 "trade_id": trade_id,
@@ -415,19 +429,21 @@ class PortfolioManager:
                 "total_revenue": total_revenue,
                 "realized_pnl": realized_pnl,
                 "new_cash_balance": self.cash_balance,
-                "remaining_quantity": self.positions.get(ticker, Position("", "", "", 0, 0, 0, "", "")).quantity
+                "remaining_quantity": self.positions.get(
+                    ticker, Position("", "", "", 0, 0, 0, "", "")
+                ).quantity,
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка при продаже {ticker}: {e}")
             return {"success": False, "error": f"Ошибка продажи: {str(e)}"}
-    
+
     async def _update_position_after_sell(self, ticker: str, quantity: int):
         """Обновление позиции после продажи."""
         position = self.positions[ticker]
         position.quantity -= quantity
         position.last_update = datetime.now().isoformat()
-        
+
         # Удаляем позицию если акций не осталось
         if position.quantity <= 0:
             del self.positions[ticker]
@@ -441,12 +457,14 @@ class PortfolioManager:
                     price_data = self.tinkoff.get_last_price(instrument["figi"])
                     if price_data:
                         # Извлекаем цену из Quotation объекта
-                        current_price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
+                        current_price = float(
+                            price_data.price.units + price_data.price.nano / 1_000_000_000
+                        )
                         position.current_price = current_price
                         position.last_update = datetime.now().isoformat()
-                        
+
             logger.info(f"Обновлены цены для {len(self.positions)} позиций")
-            
+
         except Exception as e:
             logger.error(f"Ошибка обновления цен портфеля: {e}")
             # Продолжаем работу даже если обновление цен не удалось
@@ -466,19 +484,20 @@ def get_portfolio_manager() -> PortfolioManager:
 
 def main():
     """Функция для тестирования модуля."""
+
     async def test_portfolio():
         print("🧪 Тестирование PortfolioManager...")
-        
+
         try:
             # Создаем портфель
             portfolio = PortfolioManager(initial_balance=1_000_000)
-            
+
             print(f"💰 Создан портфель с балансом: {portfolio.cash_balance:,.0f} ₽")
-            
+
             # Тестируем покупку
             print("\n📊 Тестируем покупку SBER...")
             buy_result = await portfolio.buy_stock("SBER", 100)
-            
+
             if buy_result["success"]:
                 print("✅ Покупка успешна:")
                 print(f"   Куплено: {buy_result['quantity']} шт по {buy_result['price']:.2f} ₽")
@@ -486,24 +505,28 @@ def main():
                 print(f"   Баланс: {buy_result['new_cash_balance']:,.0f} ₽")
             else:
                 print(f"❌ Ошибка покупки: {buy_result['error']}")
-            
+
             # Получаем сводку портфеля
             print("\n📋 Сводка портфеля:")
             summary = portfolio.get_portfolio_summary()
-            
+
             print(f"   Общая стоимость: {summary['portfolio_value']:,.0f} ₽")
             print(f"   Наличные: {summary['cash_balance']:,.0f} ₽")
             print(f"   Позиций: {summary['positions_count']}")
-            print(f"   P&L: {summary['unrealized_pnl']:+,.0f} ₽ ({summary['unrealized_pnl_percent']:+.2f}%)")
-            
-            if summary['positions']:
+            print(
+                f"   P&L: {summary['unrealized_pnl']:+,.0f} ₽ ({summary['unrealized_pnl_percent']:+.2f}%)"
+            )
+
+            if summary["positions"]:
                 print("   Позиции:")
-                for pos in summary['positions']:
-                    print(f"   • {pos['ticker']}: {pos['quantity']} шт, P&L: {pos['unrealized_pnl']:+.0f} ₽")
-            
+                for pos in summary["positions"]:
+                    print(
+                        f"   • {pos['ticker']}: {pos['quantity']} шт, P&L: {pos['unrealized_pnl']:+.0f} ₽"
+                    )
+
         except Exception as e:
             print(f"❌ Ошибка тестирования: {e}")
-    
+
     asyncio.run(test_portfolio())
 
 
