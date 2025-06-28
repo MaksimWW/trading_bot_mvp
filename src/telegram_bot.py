@@ -177,7 +177,7 @@ class TradingTelegramBot:
                 logger.warning("Инструмент {ticker} не найден")
                 return
             # Получаем цену
-            price_data = self.tinkoff_client.get_last_price(instrument.figi)
+            price_data = self.tinkoff_client.get_last_price(instrument["figi"])
             if not price_data:
                 await update.message.reply_text(
                     "❌ Не удалось получить цену для {ticker}. Попробуйте позже."
@@ -187,10 +187,10 @@ class TradingTelegramBot:
             # Конвертируем цену
             price_rub = price_data.price.units + price_data.price.nano / 1_000_000_000
             price_message = f"""
-💰 **{instrument.name}**
+💰 **{instrument["name"]}**
 📊 **Цена:** {price_rub:.2f} ₽
 🎯 **Тикер:** {ticker}
-🔗 **FIGI:** `{instrument.figi}`
+🔗 **FIGI:** `{instrument["figi"]}`
 ⏰ Данные актуальны на: сейчас
 """
             await update.message.reply_text(price_message, parse_mode="Markdown")
