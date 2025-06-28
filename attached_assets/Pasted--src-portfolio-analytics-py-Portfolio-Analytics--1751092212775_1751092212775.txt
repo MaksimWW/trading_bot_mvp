@@ -1,0 +1,406 @@
+Создай файл src/portfolio_analytics.py со следующим содержимым:
+
+"""
+Portfolio Analytics для торгового бота.
+
+Расчет продвинутых метрик портфеля: Sharpe ratio, Sortino ratio, 
+максимальная просадка, VaR, корреляционный анализ.
+"""
+
+import logging
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
+from portfolio_manager import PortfolioManager
+from tinkoff_client import TinkoffClient
+
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PortfolioMetrics:
+    """Структура метрик портфеля."""
+    # Доходность
+    total_return: float  # Общая доходность %
+    annualized_return: float  # Годовая доходность %
+    
+    # Риск-метрики
+    volatility: float  # Волатильность %
+    max_drawdown: float  # Максимальная просадка %
+    sharpe_ratio: float  # Коэффициент Шарпа
+    sortino_ratio: float  # Коэффициент Сортино
+    
+    # VaR метрики
+    var_95: float  # Value at Risk 95%
+    var_99: float  # Value at Risk 99%
+    
+    # Корреляции
+    avg_correlation: float  # Средняя корреляция активов
+    diversification_ratio: float  # Коэффициент диверсификации
+    
+    # Метаданные
+    analysis_period_days: int
+    positions_count: int
+    calculation_timestamp: datetime
+
+
+class PortfolioAnalytics:
+    """Расчет продвинутых метрик портфеля."""
+    
+    def __init__(self, portfolio_manager: PortfolioManager = None):
+        """Инициализация Portfolio Analytics."""
+        self.portfolio_manager = portfolio_manager or PortfolioManager()
+        self.tinkoff_client = TinkoffClient()
+        self.risk_free_rate = 0.15  # 15% годовых - ключевая ставка ЦБ РФ
+        
+        logger.info("Portfolio Analytics инициализирован")
+    
+    async def calculate_portfolio_metrics(self, days: int = 30) -> PortfolioMetrics:
+        """
+        Расчет полных метрик портфеля.
+        
+        Args:
+            days: Период для анализа в днях
+            
+        Returns:
+            PortfolioMetrics с полным анализом
+        """
+        logger.info(f"Начинаем расчет метрик портфеля за {days} дней")
+        
+        try:
+            # Получаем текущий портфель
+            portfolio = self.portfolio_manager.get_portfolio_summary()
+            positions = portfolio["positions"]
+            
+            if not positions:
+                return self._create_empty_metrics(days)
+            
+            # Получаем исторические данные для всех позиций
+            historical_data = await self._get_historical_data(positions, days)
+            
+            if not historical_data:
+                return self._create_empty_metrics(days)
+            
+            # Рассчитываем метрики
+            returns_data = self._calculate_returns(historical_data, positions)
+            risk_metrics = self._calculate_risk_metrics(returns_data)
+            correlation_metrics = self._calculate_correlation_metrics(historical_data)
+            
+            # Объединяем все метрики
+            metrics = PortfolioMetrics(
+                # Доходность
+                total_return=returns_data["total_return"],
+                annualized_return=returns_data["annualized_return"],
+                
+                # Риск
+                volatility=risk_metrics["volatility"],
+                max_drawdown=risk_metrics["max_drawdown"],
+                sharpe_ratio=risk_metrics["sharpe_ratio"],
+                sortino_ratio=risk_metrics["sortino_ratio"],
+                
+                # VaR
+                var_95=risk_metrics["var_95"],
+                var_99=risk_metrics["var_99"],
+                
+                # Корреляции
+                avg_correlation=correlation_metrics["avg_correlation"],
+                diversification_ratio=correlation_metrics["diversification_ratio"],
+                
+                # Метаданные
+                analysis_period_days=days,
+                positions_count=len(positions),
+                calculation_timestamp=datetime.now()
+            )
+            
+            logger.info(f"Метрики портфеля рассчитаны: Sharpe {metrics.sharpe_ratio:.2f}, "
+                       f"Max DD {metrics.max_drawdown:.1%}")
+            
+            return metrics
+            
+        except Exception as e:
+            logger.error(f"Ошибка расчета метрик портфеля: {e}")
+            return self._create_error_metrics(days, str(e))
+    
+    async def _get_historical_data(self, positions: List[Dict], days: int) -> Dict[str, pd.DataFrame]:
+        """Получение исторических данных для всех позиций."""
+        historical_data = {}
+        
+        for position in positions:
+            ticker = position["ticker"]
+            try:
+                # Получаем исторические цены
+                prices = await self.tinkoff_client.get_historical_prices(ticker, days + 10)
+                
+                if prices and len(prices) >= days:
+                    df = pd.DataFrame(prices)
+                    df["date"] = pd.to_datetime(df["date"])
+                    df.set_index("date", inplace=True)
+                    df.sort_index(inplace=True)
+                    
+                    # Берем последние дни
+                    historical_data[ticker] = df.tail(days)
+                    
+            except Exception as e:
+                logger.warning(f"Не удалось получить данные для {ticker}: {e}")
+                continue
+        
+        return historical_data
+    
+    def _calculate_returns(self, historical_data: Dict[str, pd.DataFrame], 
+                          positions: List[Dict]) -> Dict:
+        """Расчет доходности портфеля."""
+        if not historical_data:
+            return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
+        
+        # Создаем портфель на основе весов позиций
+        portfolio_values = []
+        dates = None
+        
+        for ticker, df in historical_data.items():
+            # Находим позицию для этого тикера
+            position = next((p for p in positions if p["ticker"] == ticker), None)
+            if not position:
+                continue
+            
+            # Вес позиции в портфеле
+            weight = position["current_value"] / sum(p["current_value"] for p in positions)
+            
+            # Добавляем взвешенные цены
+            if dates is None:
+                dates = df.index
+                portfolio_values = df["price"] * weight
+            else:
+                # Выравниваем даты
+                aligned_df = df.reindex(dates, method="ffill")
+                portfolio_values += aligned_df["price"] * weight
+        
+        if len(portfolio_values) == 0:
+            return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
+        
+        # Рассчитываем доходности
+        portfolio_series = pd.Series(portfolio_values, index=dates)
+        daily_returns = portfolio_series.pct_change().dropna()
+        
+        # Общая доходность
+        total_return = (portfolio_series.iloc[-1] / portfolio_series.iloc[0] - 1) * 100
+        
+        # Годовая доходность
+        days_count = len(portfolio_series)
+        annualized_return = ((1 + total_return/100) ** (365/days_count) - 1) * 100
+        
+        return {
+            "total_return": total_return,
+            "annualized_return": annualized_return,
+            "daily_returns": daily_returns.tolist(),
+            "portfolio_series": portfolio_series
+        }
+    
+    def _calculate_risk_metrics(self, returns_data: Dict) -> Dict:
+        """Расчет риск-метрик."""
+        daily_returns = returns_data.get("daily_returns", [])
+        
+        if not daily_returns or len(daily_returns) < 2:
+            return {
+                "volatility": 0.0,
+                "max_drawdown": 0.0,
+                "sharpe_ratio": 0.0,
+                "sortino_ratio": 0.0,
+                "var_95": 0.0,
+                "var_99": 0.0
+            }
+        
+        returns_array = np.array(daily_returns)
+        portfolio_series = returns_data.get("portfolio_series")
+        
+        # Волатильность (годовая)
+        volatility = np.std(returns_array) * np.sqrt(252) * 100
+        
+        # Максимальная просадка
+        max_drawdown = 0.0
+        if portfolio_series is not None and len(portfolio_series) > 1:
+            cumulative = (1 + pd.Series(daily_returns)).cumprod()
+            running_max = cumulative.expanding().max()
+            drawdown = (cumulative - running_max) / running_max
+            max_drawdown = abs(drawdown.min()) * 100
+        
+        # Sharpe ratio
+        mean_return = np.mean(returns_array) * 252  # Годовая
+        daily_risk_free = (self.risk_free_rate / 100) / 252
+        excess_returns = returns_array - daily_risk_free
+        sharpe_ratio = np.mean(excess_returns) * np.sqrt(252) / np.std(returns_array) if np.std(returns_array) > 0 else 0
+        
+        # Sortino ratio (только негативные отклонения)
+        negative_returns = returns_array[returns_array < daily_risk_free]
+        downside_std = np.std(negative_returns) if len(negative_returns) > 0 else np.std(returns_array)
+        sortino_ratio = np.mean(excess_returns) * np.sqrt(252) / downside_std if downside_std > 0 else 0
+        
+        # VaR (Value at Risk)
+        var_95 = np.percentile(returns_array, 5) * 100  # 5% худшие дни
+        var_99 = np.percentile(returns_array, 1) * 100  # 1% худшие дни
+        
+        return {
+            "volatility": volatility,
+            "max_drawdown": max_drawdown,
+            "sharpe_ratio": sharpe_ratio,
+            "sortino_ratio": sortino_ratio,
+            "var_95": var_95,
+            "var_99": var_99
+        }
+    
+    def _calculate_correlation_metrics(self, historical_data: Dict[str, pd.DataFrame]) -> Dict:
+        """Расчет корреляционных метрик."""
+        if len(historical_data) < 2:
+            return {
+                "avg_correlation": 0.0,
+                "diversification_ratio": 1.0
+            }
+        
+        # Создаем матрицу доходностей
+        returns_matrix = pd.DataFrame()
+        
+        for ticker, df in historical_data.items():
+            if len(df) > 1:
+                daily_returns = df["price"].pct_change().dropna()
+                returns_matrix[ticker] = daily_returns
+        
+        if returns_matrix.empty or len(returns_matrix.columns) < 2:
+            return {
+                "avg_correlation": 0.0,
+                "diversification_ratio": 1.0
+            }
+        
+        # Корреляционная матрица
+        correlation_matrix = returns_matrix.corr()
+        
+        # Средняя корреляция (исключая диагональ)
+        correlations = []
+        for i in range(len(correlation_matrix)):
+            for j in range(i+1, len(correlation_matrix)):
+                correlations.append(correlation_matrix.iloc[i, j])
+        
+        avg_correlation = np.mean(correlations) if correlations else 0.0
+        
+        # Коэффициент диверсификации
+        # Simplified: 1 - average_correlation (чем меньше корреляция, тем лучше диверсификация)
+        diversification_ratio = max(0.0, 1.0 - abs(avg_correlation))
+        
+        return {
+            "avg_correlation": avg_correlation,
+            "diversification_ratio": diversification_ratio
+        }
+    
+    def _create_empty_metrics(self, days: int) -> PortfolioMetrics:
+        """Создание пустых метрик для портфеля без позиций."""
+        return PortfolioMetrics(
+            total_return=0.0,
+            annualized_return=0.0,
+            volatility=0.0,
+            max_drawdown=0.0,
+            sharpe_ratio=0.0,
+            sortino_ratio=0.0,
+            var_95=0.0,
+            var_99=0.0,
+            avg_correlation=0.0,
+            diversification_ratio=1.0,
+            analysis_period_days=days,
+            positions_count=0,
+            calculation_timestamp=datetime.now()
+        )
+    
+    def _create_error_metrics(self, days: int, error_message: str) -> PortfolioMetrics:
+        """Создание метрик при ошибке."""
+        logger.error(f"Создание error metrics: {error_message}")
+        return self._create_empty_metrics(days)
+    
+    def format_metrics_for_telegram(self, metrics: PortfolioMetrics) -> str:
+        """Форматирование метрик для отправки в Telegram."""
+        if metrics.positions_count == 0:
+            return """
+📊 *АНАЛИТИКА ПОРТФЕЛЯ*
+
+💼 *Статус:* Портфель пуст
+📅 *Период анализа:* {metrics.analysis_period_days} дней
+
+💡 *Рекомендация:* Добавьте позиции для начала анализа
+- `/buy TICKER QUANTITY` - покупка акций
+- `/ai_analysis TICKER` - анализ перед покупкой
+""".format(metrics=metrics)
+        
+        # Эмодзи для метрик
+        return_emoji = "📈" if metrics.total_return >= 0 else "📉"
+        sharpe_emoji = "🟢" if metrics.sharpe_ratio > 1.0 else "🟡" if metrics.sharpe_ratio > 0.5 else "🔴"
+        risk_emoji = "🟢" if metrics.max_drawdown < 5 else "🟡" if metrics.max_drawdown < 10 else "🔴"
+        
+        text = f"""
+📊 *АНАЛИТИКА ПОРТФЕЛЯ*
+
+💰 *ДОХОДНОСТЬ:*
+{return_emoji} *Общая:* {metrics.total_return:+.2f}%
+📈 *Годовая:* {metrics.annualized_return:+.2f}%
+
+⚡ *РИСК-МЕТРИКИ:*
+📊 *Волатильность:* {metrics.volatility:.1f}%
+{risk_emoji} *Макс. просадка:* {metrics.max_drawdown:.1f}%
+{sharpe_emoji} *Sharpe ratio:* {metrics.sharpe_ratio:.2f}
+🎯 *Sortino ratio:* {metrics.sortino_ratio:.2f}
+
+🛡️ *VALUE AT RISK:*
+⚠️ *VaR 95%:* {metrics.var_95:.2f}%
+🚨 *VaR 99%:* {metrics.var_99:.2f}%
+
+🔗 *ДИВЕРСИФИКАЦИЯ:*
+📊 *Средняя корреляция:* {metrics.avg_correlation:.2f}
+🎯 *Коэф. диверсификации:* {metrics.diversification_ratio:.2f}
+
+📋 *СВОДКА:*
+- *Позиций:* {metrics.positions_count}
+- *Период:* {metrics.analysis_period_days} дней
+- *Расчет:* {metrics.calculation_timestamp.strftime('%H:%M:%S %d.%m.%Y')}
+
+💡 *Интерпретация:*
+- Sharpe > 1.0 = отличная доходность с учетом риска
+- Max DD < 5% = низкий риск портфеля
+- Корреляция < 0.5 = хорошая диверсификация
+
+⚠️ *Дисклеймер:* Метрики рассчитаны на основе исторических данных
+"""
+        
+        return text
+
+
+def main():
+    """Функция для тестирования модуля."""
+    import asyncio
+    
+    async def test_portfolio_analytics():
+        print("📊 Тестирование Portfolio Analytics...")
+        
+        try:
+            analytics = PortfolioAnalytics()
+            
+            # Тестируем расчет метрик
+            print("🔢 Рассчитываем метрики портфеля...")
+            metrics = await analytics.calculate_portfolio_metrics(days=30)
+            
+            print("✅ Результат анализа:")
+            print(f"Позиций: {metrics.positions_count}")
+            print(f"Общая доходность: {metrics.total_return:+.2f}%")
+            print(f"Sharpe ratio: {metrics.sharpe_ratio:.2f}")
+            print(f"Max drawdown: {metrics.max_drawdown:.1f}%")
+            
+            print("\n📱 Форматированный результат для Telegram:")
+            telegram_text = analytics.format_metrics_for_telegram(metrics)
+            print(telegram_text)
+            
+        except Exception as e:
+            print(f"❌ Ошибка тестирования: {e}")
+    
+    asyncio.run(test_portfolio_analytics())
+
+
+if __name__ == "__main__":
+    main()
