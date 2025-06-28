@@ -153,15 +153,17 @@ class PortfolioAnalytics:
         # Создаем портфель на основе весов позиций
         portfolio_values = []
         
-        # Определяем общий период (пересечение всех дат)
-        all_dates = set()
+        # Получаем все возможные дни для анализа
+        max_days = 0
         for ticker_data in historical_data.values():
-            for price_point in ticker_data:
-                all_dates.add(price_point["date"])
+            if len(ticker_data) > max_days:
+                max_days = len(ticker_data)
         
-        if not all_dates:
+        if max_days == 0:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
         
+        # Создаем список дат на основе индексов
+        all_dates = [f"day_{i}" for i in range(max_days)]
         sorted_dates = sorted(all_dates)
         
         # Рассчитываем портфельные значения для каждой даты
