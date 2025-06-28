@@ -311,10 +311,10 @@ class TradingTelegramBot:
                 )
                 logger.warning("Торговые счета не найдены")
                 return
-            accounts_message = "💼 **Ваши торговые счета** ({len(accounts)} шт.)\n\n"
+            accounts_message = f"💼 **Ваши торговые счета** ({len(accounts)} шт.)\n\n"
             for i, account in enumerate(accounts, 1):
                 account_id = account.id
-                account_name = account.name if account.name else "Счет {i}"
+                account_name = account.name if account.name else f"Счет {i}"
                 account_type = account.type.name if hasattr(account, "type") else "UNSPECIFIED"
                 accounts_message += f"""
 **🏦 Счет {i}:**
@@ -324,14 +324,14 @@ class TradingTelegramBot:
 🏛️ Режим: Песочница
 ---
                 """
-            accounts_message += """
+            accounts_message += f"""
 ✅ **Всего активных счетов:** {len(accounts)}
 🛡️ **Безопасность:** Все операции в песочнице
 💡 **Следующий шаг:** Попробуйте `/price SBER`
 ⚠️ **Помните:** Это тестовые счета, реальные деньги не используются!
             """
             await update.message.reply_text(accounts_message, parse_mode="Markdown")
-            logger.info("Список счетов успешно отправлен: {len(accounts)} счетов")
+            logger.info(f"Список счетов успешно отправлен: {len(accounts)} счетов")
         except Exception as e:
             logger.error(f"Ошибка в команде accounts: {e}")
             await update.message.reply_text(
