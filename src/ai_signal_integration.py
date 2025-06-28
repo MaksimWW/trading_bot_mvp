@@ -8,11 +8,10 @@ AI Signal Integration для торгового бота.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from config import get_ticker_info
 from news_analyzer import NewsAnalyzer
 from technical_analysis import TechnicalAnalyzer
 
