@@ -7,8 +7,8 @@ Portfolio Analytics для торгового бота.
 """
 
 import logging
-import numpy as np
-import pandas as pd
+import math
+from statistics import mean, stdev
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
