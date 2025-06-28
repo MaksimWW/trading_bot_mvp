@@ -141,22 +141,26 @@ class PortfolioAnalytics:
 
         return historical_data
 
-    def _calculate_returns(self, historical_data: Dict[str, List[float]], positions: List[Dict]) -> Dict:
+    def _calculate_returns(
+        self, historical_data: Dict[str, List[float]], positions: List[Dict]
+    ) -> Dict:
         """Расчет доходности портфеля"""
         if not historical_data or not positions:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
-        
+
         portfolio_values = self._calculate_portfolio_values(historical_data, positions)
         if len(portfolio_values) < 2:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
-        
+
         return self._calculate_return_metrics(portfolio_values)
-    
-    def _calculate_portfolio_values(self, historical_data: Dict[str, List[float]], positions: List[Dict]) -> List[float]:
+
+    def _calculate_portfolio_values(
+        self, historical_data: Dict[str, List[float]], positions: List[Dict]
+    ) -> List[float]:
         """Расчет стоимости портфеля по дням"""
         min_length = min(len(data) for data in historical_data.values()) if historical_data else 0
         portfolio_values = []
-        
+
         for day_index in range(min_length):
             daily_value = 0
             for position in positions:
@@ -166,20 +170,26 @@ class PortfolioAnalytics:
                     quantity = position["quantity"]
                     daily_value += price * quantity
             portfolio_values.append(daily_value)
-        
+
         return portfolio_values
-    
+
     def _calculate_return_metrics(self, portfolio_values: List[float]) -> Dict:
         """Расчет метрик доходности"""
         daily_returns = []
         for i in range(1, len(portfolio_values)):
-            if portfolio_values[i-1] != 0:
-                ret = (portfolio_values[i] / portfolio_values[i-1]) - 1
+            if portfolio_values[i - 1] != 0:
+                ret = (portfolio_values[i] / portfolio_values[i - 1]) - 1
                 daily_returns.append(ret)
-        
-        total_return = (portfolio_values[-1] / portfolio_values[0] - 1) * 100 if portfolio_values[0] != 0 else 0
-        annualized_return = total_return * (365 / len(portfolio_values)) if len(portfolio_values) > 0 else 0
-        
+
+        total_return = (
+            (portfolio_values[-1] / portfolio_values[0] - 1) * 100
+            if portfolio_values[0] != 0
+            else 0
+        )
+        annualized_return = (
+            total_return * (365 / len(portfolio_values)) if len(portfolio_values) > 0 else 0
+        )
+
         return {
             "total_return": total_return,
             "annualized_return": annualized_return,
@@ -266,48 +276,47 @@ class PortfolioAnalytics:
         """Расчет метрик корреляции"""
         if len(historical_data) < 2:
             return {"avg_correlation": 0.0, "diversification_ratio": 1.0}
-        
+
         returns_data = self._calculate_ticker_returns(historical_data)
         correlations = self._calculate_pairwise_correlations(returns_data)
-        
+
         avg_correlation = sum(correlations) / len(correlations) if correlations else 0.0
         diversification_ratio = 1.0 / (1.0 + avg_correlation) if avg_correlation > -1 else 1.0
-        
-        return {
-            "avg_correlation": avg_correlation,
-            "diversification_ratio": diversification_ratio
-        }
-    
-    def _calculate_ticker_returns(self, historical_data: Dict[str, List[float]]) -> Dict[str, List[float]]:
+
+        return {"avg_correlation": avg_correlation, "diversification_ratio": diversification_ratio}
+
+    def _calculate_ticker_returns(
+        self, historical_data: Dict[str, List[float]]
+    ) -> Dict[str, List[float]]:
         """Расчет доходности по тикерам"""
         returns_data = {}
-        
+
         for ticker, ticker_data in historical_data.items():
             if len(ticker_data) > 1:
                 daily_returns = []
                 for i in range(1, len(ticker_data)):
-                    prev_price = float(ticker_data[i-1]) if ticker_data[i-1] != 0 else 0.0
+                    prev_price = float(ticker_data[i - 1]) if ticker_data[i - 1] != 0 else 0.0
                     curr_price = float(ticker_data[i])
-                    
+
                     if prev_price != 0:
                         ret = (curr_price / prev_price) - 1
                         daily_returns.append(ret)
-                
+
                 if daily_returns:
                     returns_data[ticker] = daily_returns
-        
+
         return returns_data
-    
+
     def _calculate_pairwise_correlations(self, returns_data: Dict[str, List[float]]) -> List[float]:
         """Расчет попарных корреляций"""
         correlations = []
         tickers = list(returns_data.keys())
-        
+
         for i in range(len(tickers)):
             for j in range(i + 1, len(tickers)):
                 ticker1, ticker2 = tickers[i], tickers[j]
                 returns1, returns2 = returns_data[ticker1], returns_data[ticker2]
-                
+
                 min_len = min(len(returns1), len(returns2))
                 if min_len > 1:
                     r1 = returns1[-min_len:]
@@ -315,7 +324,7 @@ class PortfolioAnalytics:
                     correlation = self._calculate_correlation(r1, r2)
                     if correlation is not None:
                         correlations.append(correlation)
-        
+
         return correlations
 
     def _calculate_correlation(self, x: List[float], y: List[float]) -> Optional[float]:
