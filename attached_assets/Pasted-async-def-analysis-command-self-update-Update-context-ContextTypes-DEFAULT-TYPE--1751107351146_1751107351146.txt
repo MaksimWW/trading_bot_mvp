@@ -1,0 +1,147 @@
+async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Команда /analysis TICKER - технический анализ акции"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "📊 **Технический анализ акции**\n\n"
+                    "Использование: `/analysis TICKER`\n\n"
+                    "Примеры:\n"
+                    "• `/analysis SBER` - анализ Сбербанка\n"
+                    "• `/analysis GAZP` - анализ Газпрома\n"
+                    "• `/analysis YNDX` - анализ Яндекса\n\n"
+                    "📈 Показывает: RSI, MACD, Bollinger Bands, торговые сигналы",
+                    parse_mode="Markdown"
+                )
+                return
+
+            ticker = context.args[0].upper()
+            loading_msg = await update.message.reply_text(
+                f"📊 Выполняю технический анализ {ticker}...",
+                parse_mode="Markdown"
+            )
+
+            try:
+                from technical_analysis import get_ticker_analysis_for_telegram
+                result_text = await get_ticker_analysis_for_telegram(ticker)
+                
+                await loading_msg.edit_text(result_text, parse_mode="Markdown")
+                logger.info(f"Технический анализ {ticker} выполнен успешно")
+                    
+            except Exception as e:
+                await loading_msg.edit_text(
+                    f"❌ Ошибка технического анализа {ticker}: {str(e)[:100]}...\n\n"
+                    "💡 Попробуйте:\n"
+                    "• Проверить тикер акции\n"
+                    "• Повторить запрос через несколько секунд\n"
+                    "• Использовать /status для проверки систем",
+                    parse_mode="Markdown"
+                )
+                logger.error(f"Ошибка analysis_command для {ticker}: {e}")
+                
+        except Exception as e:
+            await update.message.reply_text(
+                "❌ Произошла неожиданная ошибка при анализе. Попробуйте позже.",
+                parse_mode="Markdown"
+            )
+            logger.error(f"Критическая ошибка analysis_command: {e}")
+
+    async def signal_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Команда /signal TICKER - комбинированный торговый сигнал"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "🎯 **Комбинированный торговый сигнал**\n\n"
+                    "Использование: `/signal TICKER`\n\n"
+                    "Примеры:\n"
+                    "• `/signal SBER` - сигнал по Сбербанку\n"
+                    "• `/signal GAZP` - сигнал по Газпрому\n"
+                    "• `/signal YNDX` - сигнал по Яндексу\n\n"
+                    "🧠 Объединяет: технический анализ (60%) + анализ новостей (40%)",
+                    parse_mode="Markdown"
+                )
+                return
+
+            ticker = context.args[0].upper()
+            loading_msg = await update.message.reply_text(
+                f"🎯 Генерирую торговый сигнал для {ticker}...\n"
+                f"🔄 Анализирую технические данные и новости...",
+                parse_mode="Markdown"
+            )
+
+            try:
+                from ai_signal_integration import AISignalIntegration
+                ai_signal = AISignalIntegration()
+                signal_result = await ai_signal.generate_comprehensive_signal(ticker)
+                
+                if signal_result and signal_result.get("success"):
+                    # Форматируем результат для Telegram
+                    result_text = f"🎯 **ТОРГОВЫЙ СИГНАЛ {ticker}**\n\n"
+                    
+                    # Комбинированный сигнал
+                    signal_strength = signal_result.get("signal_strength", "HOLD")
+                    combined_score = signal_result.get("combined_score", 0)
+                    confidence = signal_result.get("confidence", 0)
+                    
+                    signal_emoji = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}.get(signal_strength, "⚪")
+                    
+                    result_text += f"{signal_emoji} **Рекомендация: {signal_strength}**\n"
+                    result_text += f"📊 Итоговая оценка: {combined_score:+.2f}\n"
+                    result_text += f"🎯 Уверенность: {confidence:.0%}\n\n"
+                    
+                    # Компоненты анализа
+                    technical_score = signal_result.get("technical_score", 0)
+                    news_score = signal_result.get("news_score", 0)
+                    
+                    result_text += f"📊 **ТЕХНИЧЕСКИЙ АНАЛИЗ (60% веса):**\n"
+                    result_text += f"📈 Оценка: {technical_score:+.2f}\n\n"
+                    
+                    result_text += f"📰 **АНАЛИЗ НОВОСТЕЙ (40% веса):**\n"
+                    result_text += f"🤖 Оценка: {news_score:+.2f}\n\n"
+                    
+                    result_text += f"⚖️ Формула: ({technical_score:+.2f} × 0.6) + ({news_score:+.2f} × 0.4) = {combined_score:+.2f}\n\n"
+                    
+                    # Рекомендации
+                    result_text += f"💡 **Рекомендации:**\n"
+                    if abs(combined_score) > 0.4:
+                        result_text += f"• Сильный сигнал - можно рассмотреть действие\n"
+                    else:
+                        result_text += f"• Слабый сигнал - рекомендуется выжидать\n"
+                        
+                    result_text += f"• Размер позиции: не более 5% портфеля\n"
+                    result_text += f"• Обязательный стоп-лосс: 7%\n\n"
+                    
+                    result_text += f"⏰ Время анализа: {datetime.now().strftime('%H:%M:%S')}\n\n"
+                    result_text += f"💡 **Что дальше?**\n"
+                    result_text += f"• `/analysis {ticker}` - детальный технический анализ\n"
+                    result_text += f"• `/news {ticker}` - подробный анализ новостей\n"
+                    result_text += f"• `/risk {ticker}` - анализ рисков покупки\n\n"
+                    result_text += "⚠️ *Не является инвестиционной рекомендацией*"
+                    
+                    await loading_msg.edit_text(result_text, parse_mode="Markdown")
+                    logger.info(f"Торговый сигнал {ticker} сгенерирован: {signal_strength} ({combined_score:+.2f})")
+                else:
+                    await loading_msg.edit_text(
+                        f"❌ Не удалось сгенерировать сигнал для {ticker}.\n\n"
+                        "💡 Попробуйте использовать отдельно:\n"
+                        f"• `/analysis {ticker}` - технический анализ\n"
+                        f"• `/news {ticker}` - анализ новостей",
+                        parse_mode="Markdown"
+                    )
+                
+            except Exception as e:
+                await loading_msg.edit_text(
+                    f"❌ Ошибка генерации сигнала {ticker}: {str(e)[:100]}...\n\n"
+                    "💡 Попробуйте:\n"
+                    "• Проверить тикер акции\n"
+                    "• Повторить запрос через несколько секунд\n"
+                    "• Использовать отдельно /analysis и /news",
+                    parse_mode="Markdown"
+                )
+                logger.error(f"Ошибка signal_command для {ticker}: {e}")
+                
+        except Exception as e:
+            await update.message.reply_text(
+                "❌ Произошла неожиданная ошибка при генерации сигнала. Попробуйте позже.",
+                parse_mode="Markdown"
+            )
+            logger.error(f"Критическая ошибка signal_command: {e}")
