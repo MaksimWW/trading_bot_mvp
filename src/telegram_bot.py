@@ -672,7 +672,7 @@ class TradingTelegramBot:
             error_msg += "• Повторить запрос через несколько секунд\n"
             error_msg += "• Использоватьde `/portfolio` для проверки позиций"
 
-            await loading_msg.edit_text(error_msg, parse_mode=ParseMARKDOWN)
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Analytics command error: {e}")
 
     async def buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
