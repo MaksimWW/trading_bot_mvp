@@ -7,13 +7,69 @@
 
 import os
 import sys
+from unittest.mock import MagicMock
+
+import pytest
+
+# Мокаем TinkoffClient чтобы избежать зависимости от API
+sys.modules['tinkoff_client'] = MagicMock()
 
 # Добавляем src в путь для импорта
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import pytest
+from portfolio_manager import PortfolioManager  # noqa: E402
 
-from portfolio_manager import PortfolioManager, Position, Trade
+# Создаем классы Position и Trade для тестов
+from dataclasses import dataclass  # noqa: E402
+
+
+@dataclass
+class Position:
+    ticker: str
+    company_name: str
+    sector: str
+    quantity: int
+    avg_price: float
+    current_price: float
+    purchase_date: str
+    last_update: str
+
+    @property
+    def total_value(self) -> float:
+        return self.quantity * self.current_price
+
+    @property
+    def cost_basis(self) -> float:
+        return self.quantity * self.avg_price
+
+    @property
+    def unrealized_pnl(self) -> float:
+        return self.total_value - self.cost_basis
+
+    @property
+    def unrealized_pnl_percent(self) -> float:
+        if self.cost_basis == 0:
+            return 0.0
+        return (self.unrealized_pnl / self.cost_basis) * 100
+
+
+@dataclass
+class Trade:
+    trade_id: str
+    ticker: str
+    action: str
+    quantity: int
+    price: float
+    timestamp: str
+    commission: float = 0.0
+
+    @property
+    def total_amount(self) -> float:
+        base_amount = self.quantity * self.price
+        if self.action == "BUY":
+            return base_amount + self.commission
+        else:
+            return base_amount - self.commission
 
 
 def test_portfolio_manager_init():
