@@ -262,57 +262,61 @@ class PortfolioAnalytics:
             "var_99": var_99,
         }
 
-    def _calculate_correlation_metrics(self, historical_data: Dict[str, List[Dict]]) -> Dict:
-        """Расчет корреляционных метрик."""
+    def _calculate_correlation_metrics(self, historical_data: Dict[str, List[float]]) -> Dict:
+        """Расчет метрик корреляции"""
         if len(historical_data) < 2:
             return {"avg_correlation": 0.0, "diversification_ratio": 1.0}
-
-        # Создаем матрицу доходностей
+        
+        returns_data = self._calculate_ticker_returns(historical_data)
+        correlations = self._calculate_pairwise_correlations(returns_data)
+        
+        avg_correlation = sum(correlations) / len(correlations) if correlations else 0.0
+        diversification_ratio = 1.0 / (1.0 + avg_correlation) if avg_correlation > -1 else 1.0
+        
+        return {
+            "avg_correlation": avg_correlation,
+            "diversification_ratio": diversification_ratio
+        }
+    
+    def _calculate_ticker_returns(self, historical_data: Dict[str, List[float]]) -> Dict[str, List[float]]:
+        """Расчет доходности по тикерам"""
         returns_data = {}
-
+        
         for ticker, ticker_data in historical_data.items():
             if len(ticker_data) > 1:
                 daily_returns = []
                 for i in range(1, len(ticker_data)):
-                    # Работаем с данными как с массивом float значений
-                    prev_price = float(ticker_data[i - 1]) if ticker_data[i - 1] != 0 else 0.0
+                    prev_price = float(ticker_data[i-1]) if ticker_data[i-1] != 0 else 0.0
                     curr_price = float(ticker_data[i])
-
+                    
                     if prev_price != 0:
                         ret = (curr_price / prev_price) - 1
                         daily_returns.append(ret)
+                
                 if daily_returns:
                     returns_data[ticker] = daily_returns
-
-        if len(returns_data) < 2:
-            return {"avg_correlation": 0.0, "diversification_ratio": 1.0}
-
-        # Вычисляем корреляции между всеми парами
-        tickers = list(returns_data.keys())
+        
+        return returns_data
+    
+    def _calculate_pairwise_correlations(self, returns_data: Dict[str, List[float]]) -> List[float]:
+        """Расчет попарных корреляций"""
         correlations = []
-
+        tickers = list(returns_data.keys())
+        
         for i in range(len(tickers)):
             for j in range(i + 1, len(tickers)):
                 ticker1, ticker2 = tickers[i], tickers[j]
                 returns1, returns2 = returns_data[ticker1], returns_data[ticker2]
-
-                # Выравниваем длины массивов
+                
                 min_len = min(len(returns1), len(returns2))
                 if min_len > 1:
                     r1 = returns1[-min_len:]
                     r2 = returns2[-min_len:]
-
-                    # Вычисляем корреляцию
                     correlation = self._calculate_correlation(r1, r2)
                     if correlation is not None:
                         correlations.append(correlation)
-
-        avg_correlation = mean(correlations) if correlations else 0.0
-
-        # Коэффициент диверсификации
-        diversification_ratio = max(0.0, 1.0 - abs(avg_correlation))
-
-        return {"avg_correlation": avg_correlation, "diversification_ratio": diversification_ratio}
+        
+        return correlations
 
     def _calculate_correlation(self, x: List[float], y: List[float]) -> Optional[float]:
         """Вычисление коэффициента корреляции Пирсона."""
