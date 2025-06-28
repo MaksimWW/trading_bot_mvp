@@ -671,7 +671,7 @@ class TradingTelegramBot:
             error_msg += "• Повторить запрос через несколько секунд\n"
             error_msg += "• Использоватьde `/portfolio` для проверки позиций"
 
-            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
+            await loading_msg.edit_text(error_msg, parse_mode=ParseMARKDOWN)
             logger.error(f"Analytics command error: {e}")
 
     async def buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -789,10 +789,10 @@ class TradingTelegramBot:
             try:
                 from technical_analysis import get_ticker_analysis_for_telegram
                 result_text = await get_ticker_analysis_for_telegram(ticker)
-                
+
                 await loading_msg.edit_text(result_text, parse_mode="Markdown")
                 logger.info(f"Технический анализ {ticker} выполнен успешно")
-                    
+
             except Exception as e:
                 await loading_msg.edit_text(
                     f"❌ Ошибка технического анализа {ticker}: {str(e)[:100]}...\n\n"
@@ -803,7 +803,7 @@ class TradingTelegramBot:
                     parse_mode="Markdown"
                 )
                 logger.error(f"Ошибка analysis_command для {ticker}: {e}")
-                
+
         except Exception as e:
             await update.message.reply_text(
                 "❌ Произошла неожиданная ошибка при анализе. Попробуйте позже.",
@@ -836,56 +836,65 @@ class TradingTelegramBot:
 
             try:
                 from ai_signal_integration import AISignalIntegration
-                from datetime import datetime
                 ai_signal = AISignalIntegration()
-                signal_result = await ai_signal.generate_comprehensive_signal(ticker)
-                
-                if signal_result and signal_result.get("success"):
+                signal_result = await ai_signal.analyze_ticker(ticker)
+
+                if signal_result:
                     # Форматируем результат для Telegram
                     result_text = f"🎯 **ТОРГОВЫЙ СИГНАЛ {ticker}**\n\n"
-                    
+
                     # Комбинированный сигнал
-                    signal_strength = signal_result.get("signal_strength", "HOLD")
-                    combined_score = signal_result.get("combined_score", 0)
-                    confidence = signal_result.get("confidence", 0)
-                    
+                    signal_strength = str(signal_result.signal_strength).replace("SignalStrength.", "")
+                    combined_score = signal_result.combined_score
+                    confidence = signal_result.confidence
+
                     signal_emoji = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}.get(signal_strength, "⚪")
-                    
+
                     result_text += f"{signal_emoji} **Рекомендация: {signal_strength}**\n"
                     result_text += f"📊 Итоговая оценка: {combined_score:+.2f}\n"
                     result_text += f"🎯 Уверенность: {confidence:.0%}\n\n"
-                    
+
                     # Компоненты анализа
-                    technical_score = signal_result.get("technical_score", 0)
-                    news_score = signal_result.get("news_score", 0)
-                    
+                    technical_score = signal_result.technical_score
+                    news_score = signal_result.news_sentiment_score
+
                     result_text += f"📊 **ТЕХНИЧЕСКИЙ АНАЛИЗ (60% веса):**\n"
-                    result_text += f"📈 Оценка: {technical_score:+.2f}\n\n"
-                    
+                    result_text += f"📈 Оценка: {technical_score:+.2f}\n"
+
+                    # Технические индикаторы
+                    tech_indicators = signal_result.technical_indicators
+                    current_price = tech_indicators.get('current_price', 0)
+                    rsi_data = tech_indicators.get('rsi', {})
+                    macd_data = tech_indicators.get('macd', {})
+
+                    result_text += f"• RSI: {rsi_data.get('value', 0):.1f} ({rsi_data.get('level', 'N/A')})\n"
+                    result_text += f"• MACD: {macd_data.get('trend', 'N/A')}\n\n"
+
                     result_text += f"📰 **АНАЛИЗ НОВОСТЕЙ (40% веса):**\n"
-                    result_text += f"🤖 Оценка: {news_score:+.2f}\n\n"
-                    
+                    result_text += f"🤖 Оценка: {news_score:+.2f}\n"
+                    result_text += f"📝 Сводка: {signal_result.news_summary}\n\n"
+
                     result_text += f"⚖️ Формула: ({technical_score:+.2f} × 0.6) + ({news_score:+.2f} × 0.4) = {combined_score:+.2f}\n\n"
-                    
-                    # Рекомендации
-                    result_text += f"💡 **Рекомендации:**\n"
-                    if abs(combined_score) > 0.4:
-                        result_text += f"• Сильный сигнал - можно рассмотреть действие\n"
-                    else:
-                        result_text += f"• Слабый сигнал - рекомендуется выжидать\n"
-                        
-                    result_text += f"• Размер позиции: не более 5% портфеля\n"
-                    result_text += f"• Обязательный стоп-лосс: 7%\n\n"
-                    
-                    result_text += f"⏰ Время анализа: {datetime.now().strftime('%H:%M:%S')}\n\n"
-                    result_text += f"💡 **Что дальше?**\n"
+
+                    # Торговые рекомендации
+                    result_text += f"💰 **ТОРГОВЫЕ РЕКОМЕНДАЦИИ:**\n"
+                    result_text += f"💵 Цена входа: {current_price:.2f} ₽\n"
+                    result_text += f"🛑 Стоп-лосс: {signal_result.stop_loss_price:.2f} ₽\n"
+                    result_text += f"🎯 Тейк-профит: {signal_result.take_profit_price:.2f} ₽\n"
+                    result_text += f"📊 Размер позиции: {signal_result.recommended_position_size:.1%} портфеля\n"
+                    result_text += f"⚖️ Риск: {str(signal_result.risk_level).replace('RiskLevel.', '')}\n\n"
+
+                    # Дополнительная информация и команды
+                    result_text += f"⏰ Время анализа: {signal_result.analysis_time.strftime('%H:%M:%S')}\n\n"
+                    result_text += "💡 **Что дальше?**\n"
                     result_text += f"• `/analysis {ticker}` - детальный технический анализ\n"
                     result_text += f"• `/news {ticker}` - подробный анализ новостей\n"
                     result_text += f"• `/risk {ticker}` - анализ рисков покупки\n\n"
                     result_text += "⚠️ *Не является инвестиционной рекомендацией*"
-                    
+
                     await loading_msg.edit_text(result_text, parse_mode="Markdown")
                     logger.info(f"Торговый сигнал {ticker} сгенерирован: {signal_strength} ({combined_score:+.2f})")
+
                 else:
                     await loading_msg.edit_text(
                         f"❌ Не удалось сгенерировать сигнал для {ticker}.\n\n"
@@ -894,7 +903,7 @@ class TradingTelegramBot:
                         f"• `/news {ticker}` - анализ новостей",
                         parse_mode="Markdown"
                     )
-                
+
             except Exception as e:
                 await loading_msg.edit_text(
                     f"❌ Ошибка генерации сигнала {ticker}: {str(e)[:100]}...\n\n"
@@ -905,7 +914,7 @@ class TradingTelegramBot:
                     parse_mode="Markdown"
                 )
                 logger.error(f"Ошибка signal_command для {ticker}: {e}")
-                
+
         except Exception as e:
             await update.message.reply_text(
                 "❌ Произошла неожиданная ошибка при генерации сигнала. Попробуйте позже.",
