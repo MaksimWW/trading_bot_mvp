@@ -478,7 +478,7 @@ class AISignalIntegration:
 
         # Торговые рекомендации
         if signal.recommended_position_size > 0:
-            text += f"💡 *AI Рекомендации:*\n"
+            text += "💡 *AI Рекомендации:*\n"
             text += f"Position Size: {signal.recommended_position_size:.1%} портфеля\n"
             text += f"Entry Strategy: {signal.entry_strategy}\n"
 
