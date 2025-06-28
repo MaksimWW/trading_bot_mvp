@@ -160,9 +160,6 @@ class PortfolioAnalytics:
         if max_days == 0:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
 
-        # Создаем список дат на основе индексов
-        all_dates = [f"day_{i}" for i in range(max_days)]
-
         # Упрощенный расчет стоимости портфеля по дням
         portfolio_values = []
 
