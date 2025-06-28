@@ -6,7 +6,7 @@ Telegram Bot для управления торговым ботом
 """
 
 import logging
-from typing import List
+from typing import Dict, List
 
 from telegram import Update
 from telegram.constants import ParseMode
