@@ -640,7 +640,7 @@ class TradingTelegramBot:
 
             await loading_msg.edit_text(
                 result_text,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=None
             )
 
             logger.info(f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
