@@ -1344,8 +1344,7 @@ class TradingTelegramBot:
             mode = status.get('execution_mode', 'unknown')
             enabled_tickers = status.get('enabled_tickers', [])
             daily_executions = status.get('daily_executions', 0)
-            max_daily = status.get('max_daily_trades', ```python
-5)
+            max_daily = status.get('max_daily_trades', 5)
             total_executions = status.get('total_executions', 0)
 
             if mode == "automatic":
