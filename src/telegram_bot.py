@@ -517,7 +517,7 @@ class TradingTelegramBot:
 
         ticker = context.args[0].upper()
         loading_msg = await update.message.reply_text(
-            "⚖️ Анализирую риски для *{ticker}*...\n" "📊 Получаю данные и рассчитываю параметры...",
+            "🔍 Анализирую риски для *{ticker}*...\n" "📊 Получаю данные и рассчитываю параметры...",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -577,111 +577,193 @@ class TradingTelegramBot:
     async def portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /portfolio."""
         loading_msg = await update.message.reply_text(
-            "📊 Анализирую портфель...\n" "🔍 Оцениваю риски и составляю рекомендации...",
-            parse_mode=ParseMode.MARKDOWN,
+            "💼 Обновляю данные портфеля...",
+            parse_mode=ParseMode.MARKDOWN
         )
 
         try:
-            # Создаем risk manager
-            risk_manager = RiskManager()
+            # Обновляем цены и получаем сводку
+            await self.portfolio.update_portfolio_prices()
+            summary = self.portfolio.get_portfolio_summary()
 
-            # Примерные позиции для демонстрации
-            sample_positions = [
-                {
-                    "ticker": "SBER",
-                    "shares": 100,
-                    "entry_price": 95.0,
-                    "current_price": 99.95,
-                    "risk_percent": 2.1,
-                    "sector": "Финансы",
-                },
-                {
-                    "ticker": "GAZP",
-                    "shares": 50,
-                    "entry_price": 180.0,
-                    "current_price": 175.0,
-                    "risk_percent": 1.8,
-                    "sector": "Энергетика",
-                },
-            ]
+            if "error" in summary:
+                await loading_msg.edit_text(
+                    f"❌ Ошибка получения портфеля: {summary['error']}",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
 
-            # Анализ портфеля
-            portfolio_analysis = risk_manager.assess_portfolio_risk(sample_positions)
+            # Форматируем ответ
+            portfolio_text = self._format_portfolio_summary(summary)
 
-            # Форматируем результат
-            result_text = "📊 *АНАЛИЗ ПОРТФЕЛЯ*\n\n"
-
-            # Общая статистика
-            result_text += "📈 *Общая статистика:*\n"
-            result_text += f"🔢 Позиций в портфеле: {portfolio_analysis['positions_count']}\n"
-            result_text += f"⚖️ Общий риск: {portfolio_analysis['total_risk_percent']:.1f}%\n"
-            result_text += (
-                "📊 Использование лимита: {portfolio_analysis['risk_utilization']:.1f}%\n"
+            await loading_msg.edit_text(
+                portfolio_text,
+                parse_mode=ParseMode.MARKDOWN
             )
 
-            # Уровень риска с эмодзи
-            risk_emoji = {
-                "LOW": "🟢 Низкий",
-                "MEDIUM": "🟡 Средний",
-                "HIGH": "🟠 Высокий",
-                "EXTREME": "🔴 Критический",
-            }
-            risk_text = risk_emoji.get(portfolio_analysis["risk_level"], "⚪ Неизвестный")
-            result_text += f"🎯 Уровень риска: {risk_text}\n\n"
+            logger.info("Сводка портфеля отправлена")
 
-            # Текущие позиции
-            if sample_positions:
-                result_text += "💼 *Текущие позиции:*\n"
-                for pos in sample_positions:
-                    pnl = ((pos["current_price"] - pos["entry_price"]) / pos["entry_price"]) * 100
-                    pnl_emoji = "📈" if pnl >= 0 else "📉"
-                    result_text += f"• *{pos['ticker']}*: {pos['shares']} шт.\n"
-                    result_text += (
-                        f"  {pnl_emoji} P&L: {pnl:+.1f}% | Риск: {pos['risk_percent']:.1f}%\n"
-                    )
-                result_text += "\n"
+        except Exception as e:
+            await loading_msg.edit_text(
+                f"❌ Ошибка при получении портфеля: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Portfolio command error: {e}")
 
-            # Секторальное распределение
-            if "sector_exposure" in portfolio_analysis:
-                result_text += "🏭 *Секторальное распределение:*\n"
-                for sector, exposure in portfolio_analysis["sector_exposure"].items():
-                    result_text += f"• {sector}: {exposure:.1f}%\n"
-                result_text += "\n"
+    async def buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /buy TICKER QUANTITY."""
+        if len(context.args) < 2:
+            await update.message.reply_text(
+                "💰 *Покупка акций (виртуальная)*\n\n"
+                "Использование: `/buy TICKER QUANTITY`\n\n"
+                "Примеры:\n"
+                "• `/buy SBER 100` - купить 100 акций Сбербанка\n"
+                "• `/buy GAZP 50` - купить 50 акций Газпрома\n\n"
+                "💡 Покупка осуществляется по текущей рыночной цене",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
 
-            # Рекомендации
-            result_text += "💡 *Рекомендации:*\n"
-            for recommendation in portfolio_analysis["recommendations"]:
-                result_text += f"• {recommendation}\n"
-            result_text += "\n"
+        ticker = context.args[0].upper()
+        try:
+            quantity = int(context.args[1])
+        except ValueError:
+            await update.message.reply_text(
+                "❌ Количество акций должно быть числом",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
 
-            # Лимиты риск-менеджмента
-            result_text += "⚙️ *Настройки риск-менеджмента:*\n"
-            result_text += f"• Макс. риск портфеля: {portfolio_analysis['max_allowed_risk']:.1f}%\n"
-            result_text += "• Макс. позиция: 5.0% депозита\n"
-            result_text += "• Макс. дневной убыток: 3.0%\n"
-            result_text += "• Макс. сделок в день: 5\n\n"
+        if quantity <= 0:
+            await update.message.reply_text(
+                "❌ Количество акций должно быть положительным числом",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
 
-            # Подсказки
-            result_text += "*🛠️ Управление портфелем:*\n"
-            result_text += "• `/risk TICKER` - анализ новой позиции\n"
-            result_text += "• `/settings` - настройки риск-менеджмента\n\n"
+        loading_msg = await update.message.reply_text(
+            f"💰 Покупаю {quantity} акций {ticker}...",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
-            result_text += "⚠️ *Примечание:* Показаны демонстрационные данные. "
-            result_text += "В боевом режиме будут использоваться реальные позиции."
+        try:
+            result = await self.portfolio.buy_stock(ticker, quantity)
 
-            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+            if result["success"]:
+                buy_text = f"""
+💰 *ПОКУПКА ВЫПОЛНЕНА*
 
-            logger.info(
-                "Анализ портфеля завершен: риск {portfolio_analysis['total_risk_percent']:.1f}%"
+🎯 *Акция:* {ticker}
+📊 *Количество:* {result['quantity']} шт
+💵 *Цена:* {result['price']:.2f} ₽
+💸 *Комиссия:* {result['commission']:.2f} ₽
+💳 *Общая сумма:* {result['total_cost']:,.0f} ₽
+
+💰 *Баланс после покупки:* {result['new_cash_balance']:,.0f} ₽
+
+🎉 Акции добавлены в ваш виртуальный портфель!
+
+💡 Используйте `/portfolio` для просмотра портфеля
+                """
+            else:
+                buy_text = f"""
+❌ *ОШИБКА ПОКУПКИ*
+
+🎯 *Акция:* {ticker}
+📊 *Количество:* {quantity} шт
+
+❌ *Причина:* {result['error']}
+
+💡 *Советы:*
+- Проверьте достаточность средств
+- Убедитесь в правильности тикера
+- Используйте `/portfolio` для проверки баланса
+                """
+
+            await loading_msg.edit_text(
+                buy_text,
+                parse_mode=ParseMode.MARKDOWN
             )
 
         except Exception as e:
-            error_msg = "❌ *Ошибка анализа портфеля*\n\n"
-            error_msg += "Причина: {str(e)}\n\n"
-            error_msg += "💡 Попробуйте повторить запрос через несколько секунд"
+            await loading_msg.edit_text(
+                f"❌ Ошибка при покупке {ticker}: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Buy command error for {ticker}: {e}")
 
-            await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
-            logger.error(f"Portfolio command error: {e}")
+    async def sell_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /sell TICKER QUANTITY."""
+        await update.message.reply_text(
+            "📈 *Продажа акций*\n\n"
+            "⚠️ Функция продажи будет реализована в следующей версии.\n\n"
+            "Пока доступны:\n"
+            "• `/buy TICKER QUANTITY` - покупка акций\n"
+            "• `/portfolio` - просмотр портфеля\n"
+            "• `/price TICKER` - текущие цены",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+    def _format_portfolio_summary(self, summary: dict) -> str:
+        """Форматирование сводки портфеля для Telegram."""
+        portfolio_value = summary['portfolio_value']
+        cash_balance = summary['cash_balance']
+        unrealized_pnl = summary['unrealized_pnl']
+        unrealized_pnl_percent = summary['unrealized_pnl_percent']
+        positions_count = summary['positions_count']
+        positions = summary['positions']
+
+        # Эмодзи для P&L
+        pnl_emoji = "📈" if unrealized_pnl >= 0 else "📉"
+        pnl_sign = "+" if unrealized_pnl >= 0 else ""
+
+        text = f"""
+💼 *ВИРТУАЛЬНЫЙ ПОРТФЕЛЬ*
+
+💰 *Общая стоимость:* {portfolio_value:,.0f} ₽
+💵 *Наличные:* {cash_balance:,.0f} ₽
+{pnl_emoji} *P&L:* {pnl_sign}{unrealized_pnl:,.0f} ₽ ({pnl_sign}{unrealized_pnl_percent:.2f}%)
+
+📊 *Позиций:* {positions_count}
+        """
+
+        if positions_count > 0:
+            text += "\n📋 *ПОЗИЦИИ:*\n"
+
+            for pos in positions[:10]:  # Показываем первые 10 позиций
+                pos_pnl = pos['unrealized_pnl']
+                pos_pnl_percent = pos['unrealized_pnl_percent']
+                pos_emoji = "🟢" if pos_pnl >= 0 else "🔴"
+                pos_sign = "+" if pos_pnl >= 0 else ""
+
+                text += f"""
+{pos_emoji} *{pos['ticker']}* - {pos['company_name']}
+   📊 {pos['quantity']} шт × {pos['current_price']:.2f} ₽ = {pos['total_value']:,.0f} ₽
+   💹 P&L: {pos_sign}{pos_pnl:,.0f} ₽ ({pos_sign}{pos_pnl_percent:.1f}%)
+   📈 Вес: {pos['weight_percent']:.1f}%
+                """
+
+            if len(positions) > 10:
+                text += f"\n📋 И ещё {len(positions) - 10} позиций...\n"
+
+        # Секторное распределение
+        if 'sector_allocation' in summary and summary['sector_allocation']:
+            text += "\n🏭 *РАСПРЕДЕЛЕНИЕ ПО СЕКТОРАМ:*\n"
+            for sector, weight in summary['sector_allocation'].items():
+                text += f"• {sector}: {weight:.1f}%\n"
+
+        text += f"""
+
+💡 *Команды для торговли:*
+- `/buy TICKER QUANTITY` - купить акции
+- `/price TICKER` - узнать цену
+- `/news TICKER` - анализ новостей
+- `/analysis TICKER` - технический анализ
+
+⚠️ *Это виртуальный портфель для тестирования*
+        """
+
+        return text
 
     async def automation_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /automation."""
@@ -1032,6 +1114,8 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("portfolio", self.portfolio_command))
         self.application.add_handler(CommandHandler("analysis", self.analysis_command))
         self.application.add_handler(CommandHandler("signal", self.signal_command))
+        self.application.add_handler(CommandHandler("buy", self.buy_command))
+        self.application.add_handler(CommandHandler("sell", self.sell_command))
         # Автоматизация
         self.application.add_handler(CommandHandler("automation", self.automation_command))
         self.application.add_handler(CommandHandler("scan", self.scan_command))

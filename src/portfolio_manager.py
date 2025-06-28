@@ -333,6 +333,25 @@ class PortfolioManager:
             "avg_trade_size": total_volume / len(self.trades) if self.trades else 0.0,
             "total_volume": total_volume
         }
+    
+    async def update_portfolio_prices(self):
+        """Обновление текущих цен для всех позиций в портфеле."""
+        try:
+            for ticker, position in self.positions.items():
+                instrument = self.tinkoff.search_instrument(ticker)
+                if instrument:
+                    price_data = self.tinkoff.get_last_price(instrument["figi"])
+                    if price_data:
+                        # Извлекаем цену из Quotation объекта
+                        current_price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
+                        position.current_price = current_price
+                        position.last_update = datetime.now().isoformat()
+                        
+            logger.info(f"Обновлены цены для {len(self.positions)} позиций")
+            
+        except Exception as e:
+            logger.error(f"Ошибка обновления цен портфеля: {e}")
+            # Продолжаем работу даже если обновление цен не удалось
 
 
 # Глобальный экземпляр портфеля (singleton pattern)
