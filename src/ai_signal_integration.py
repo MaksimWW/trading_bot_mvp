@@ -154,7 +154,20 @@ class AISignalIntegration:
     async def _get_technical_analysis(self, ticker: str) -> Dict:
         """Получение результатов технического анализа."""
         try:
-            return await self.technical_analyzer.get_comprehensive_analysis(ticker)
+            # Используем существующий метод analyze_ticker
+            analysis_result = await self.technical_analyzer.analyze_ticker(ticker)
+            
+            # Преобразуем в нужный формат
+            return {
+                "combined_signal": analysis_result.get("combined_signal", 0.0),
+                "indicators": {
+                    "current_price": analysis_result.get("current_price"),
+                    "rsi": analysis_result.get("rsi", {}),
+                    "macd": analysis_result.get("macd", {}),
+                    "bollinger_bands": analysis_result.get("bollinger_bands", {}),
+                    "moving_averages": analysis_result.get("moving_averages", {})
+                }
+            }
         except Exception as e:
             logger.error(f"Ошибка технического анализа {ticker}: {e}")
             raise
