@@ -141,31 +141,22 @@ class PortfolioAnalytics:
 
         return historical_data
 
-    def _calculate_returns(
-        self, historical_data: Dict[str, List[Dict]], positions: List[Dict]
-    ) -> Dict:
-        """Расчет доходности портфеля."""
-        if not historical_data:
+    def _calculate_returns(self, historical_data: Dict[str, List[float]], positions: List[Dict]) -> Dict:
+        """Расчет доходности портфеля"""
+        if not historical_data or not positions:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
-
-        # Создаем портфель на основе весов позиций
-        portfolio_values = []
-
-        # Получаем все возможные дни для анализа
-        max_days = 0
-        for ticker_data in historical_data.values():
-            if len(ticker_data) > max_days:
-                max_days = len(ticker_data)
-
-        if max_days == 0:
+        
+        portfolio_values = self._calculate_portfolio_values(historical_data, positions)
+        if len(portfolio_values) < 2:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
-
-        # Упрощенный расчет стоимости портфеля по дням
-        portfolio_values = []
-
-        # Используем минимальную длину данных среди всех тикеров
+        
+        return self._calculate_return_metrics(portfolio_values)
+    
+    def _calculate_portfolio_values(self, historical_data: Dict[str, List[float]], positions: List[Dict]) -> List[float]:
+        """Расчет стоимости портфеля по дням"""
         min_length = min(len(data) for data in historical_data.values()) if historical_data else 0
-
+        portfolio_values = []
+        
         for day_index in range(min_length):
             daily_value = 0
             for position in positions:
@@ -174,32 +165,21 @@ class PortfolioAnalytics:
                     price = float(historical_data[ticker][day_index])
                     quantity = position["quantity"]
                     daily_value += price * quantity
-
             portfolio_values.append(daily_value)
-
-        if len(portfolio_values) < 2:
-            return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
-
-        # Рассчитываем дневные доходности
+        
+        return portfolio_values
+    
+    def _calculate_return_metrics(self, portfolio_values: List[float]) -> Dict:
+        """Расчет метрик доходности"""
         daily_returns = []
         for i in range(1, len(portfolio_values)):
-            if portfolio_values[i - 1] != 0:
-                ret = (portfolio_values[i] / portfolio_values[i - 1]) - 1
+            if portfolio_values[i-1] != 0:
+                ret = (portfolio_values[i] / portfolio_values[i-1]) - 1
                 daily_returns.append(ret)
-
-        # Общая доходность
-        total_return = (
-            (portfolio_values[-1] / portfolio_values[0] - 1) * 100
-            if portfolio_values[0] != 0
-            else 0
-        )
-
-        # Годовая доходность
-        days_count = len(portfolio_values)
-        annualized_return = (
-            ((1 + total_return / 100) ** (365 / days_count) - 1) * 100 if days_count > 0 else 0
-        )
-
+        
+        total_return = (portfolio_values[-1] / portfolio_values[0] - 1) * 100 if portfolio_values[0] != 0 else 0
+        annualized_return = total_return * (365 / len(portfolio_values)) if len(portfolio_values) > 0 else 0
+        
         return {
             "total_return": total_return,
             "annualized_return": annualized_return,
