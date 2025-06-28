@@ -1,0 +1,60 @@
+Отредактируй файл src/telegram_bot.py. Найди метод setup_handlers и добавь новую команду после portfolio команды:
+
+        # Управление портфелем
+        app.add_handler(CommandHandler("portfolio", self.portfolio_command))
+        app.add_handler(CommandHandler("analytics", self.analytics_command))
+        app.add_handler(CommandHandler("buy", self.buy_command))
+
+Затем найди метод help_command и добавь описание новой команды в секцию "💼 УПРАВЛЕНИЕ ПОРТФЕЛЕМ:":
+
+- `/analytics` - продвинутая аналитика портфеля (Sharpe, VaR, корреляции)
+
+Затем добавь новый метод analytics_command перед методом unknown_command:
+
+    async def analytics_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /analytics."""
+        loading_msg = await update.message.reply_text(
+            "📊 Рассчитываю продвинутые метрики портфеля...\n"
+            "🔢 Анализирую доходность и риски...\n"
+            "📈 Вычисляю Sharpe ratio и VaR...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            # Импортируем Portfolio Analytics
+            from portfolio_analytics import PortfolioAnalytics
+            
+            analytics = PortfolioAnalytics(self.portfolio_manager)
+            
+            # Определяем период анализа
+            days = 30
+            if context.args and context.args[0].isdigit():
+                days = min(90, max(7, int(context.args[0])))
+            
+            # Рассчитываем метрики
+            metrics = await analytics.calculate_portfolio_metrics(days=days)
+            
+            # Форматируем результат для Telegram
+            result_text = analytics.format_metrics_for_telegram(metrics)
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
+                       f"Sharpe {metrics.sharpe_ratio:.2f}")
+            
+        except Exception as e:
+            error_msg = "❌ *Ошибка расчета аналитики портфеля*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += "💡 Попробуйте:\n"
+            error_msg += "• Убедиться что есть позиции в портфеле\n"
+            error_msg += "• Повторить запрос через несколько секунд\n"
+            error_msg += "• Использовать /portfolio для проверки позиций"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Analytics command error: {e}")
