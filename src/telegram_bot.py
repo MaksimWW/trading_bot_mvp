@@ -777,21 +777,21 @@ class TradingTelegramBot:
                     "• `/analysis GAZP` - анализ Газпрома\n"
                     "• `/analysis YNDX` - анализ Яндекса\n\n"
                     "📈 Показывает: RSI, MACD, Bollinger Bands, торговые сигналы",
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
                 return
 
             ticker = context.args[0].upper()
             loading_msg = await update.message.reply_text(
                 f"📊 Выполняю технический анализ {ticker}...",
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
 
             try:
                 from technical_analysis import get_ticker_analysis_for_telegram
                 result_text = await get_ticker_analysis_for_telegram(ticker)
 
-                await loading_msg.edit_text(result_text, parse_mode="Markdown")
+                await loading_msg.edit_text(result_text, parse_mode="HTML")
                 logger.info(f"Технический анализ {ticker} выполнен успешно")
 
             except Exception as e:
@@ -801,14 +801,14 @@ class TradingTelegramBot:
                     "• Проверить тикер акции\n"
                     "• Повторить запрос через несколько секунд\n"
                     "• Использовать /status для проверки систем",
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
                 logger.error(f"Ошибка analysis_command для {ticker}: {e}")
 
         except Exception as e:
             await update.message.reply_text(
                 "❌ Произошла неожиданная ошибка при анализе. Попробуйте позже.",
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
             logger.error(f"Критическая ошибка analysis_command: {e}")
 
