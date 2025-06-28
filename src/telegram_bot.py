@@ -584,13 +584,13 @@ class TradingTelegramBot:
     def _format_portfolio_summary(self, summary: Dict) -> str:
         """Форматирование сводки портфеля для Telegram."""
         from datetime import datetime
-        
+
         text = "💼 **ПОРТФЕЛЬ**\n\n"
         text += f"💰 **Баланс:** {summary['cash_balance']:,.0f} ₽\n"
         text += f"📈 **Стоимость позиций:** {summary['total_portfolio_value'] - summary['cash_balance']:,.0f} ₽\n"
         text += f"💎 **Общая стоимость:** {summary['total_portfolio_value']:,.0f} ₽\n"
         text += f"📊 **P&L:** {summary['total_unrealized_pnl']:+,.0f} ₽ ({summary['total_unrealized_pnl_percent']:+.2f}%)\n\n"
-        
+
         if summary['positions']:
             text += "📋 **ПОЗИЦИИ:**\n"
             for pos in summary['positions']:
@@ -599,7 +599,7 @@ class TradingTelegramBot:
                 text += f"   P&L: {pos['unrealized_pnl']:+,.0f} ₽ ({pos['unrealized_pnl_percent']:+.2f}%) | Вес: {pos['weight_percent']:.1f}%\n\n"
         else:
             text += "📋 **Позиций нет**\n\n"
-            
+
         text += f"🕐 **Обновлено:** {datetime.now().strftime('%H:%M:%S')}"
         return text
 
@@ -674,7 +674,7 @@ class TradingTelegramBot:
             error_msg += "💡 Попробуйте:\n"
             error_msg += "• Убедиться что есть позиции в портфеле\n"
             error_msg += "• Повторить запрос через несколько секунд\n"
-            error_msg += "• Использовать /portfolio для проверки позиций"
+            error_msg += "• Использоватьde `/portfolio` для проверки позиций"
 
             await loading_msg.edit_text(
                 error_msg,
