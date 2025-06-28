@@ -253,7 +253,7 @@ class TradingTelegramBot:
         )
         sources_text = ", ".join(sources[:3])
         if len(sources) > 3:
-            sources_text += " и ещё {len(sources) - 3}"
+            sources_text += f" и ещё {len(sources) - 3}"
         # Добавляем sentiment анализ через OpenAI
         sentiment_block = await self._get_sentiment_analysis(ticker, news_results)
         result_text = f"""📰 <b>НОВОСТИ ПО {ticker}</b>
@@ -283,7 +283,7 @@ class TradingTelegramBot:
 """
         if len(news_results) > 3:
             result_text += f"📋 И ещё {len(news_results) - 3} новостей...\n\n"
-        result_text += """🕐 <b>Время анализа:</b> {ticker} проанализирован
+        result_text += f"""🕐 <b>Время анализа:</b> {ticker} проанализирован
 💡 <b>Что дальше?</b>
 - <code>/price {ticker}</code> - текущая цена
 - <code>/accounts</code> - торговые счета
@@ -369,7 +369,7 @@ class TradingTelegramBot:
                 news_results = perplexity.search_ticker_news(ticker, hours=24)
                 result_text = await self._format_news_result(ticker, news_results)
             except ImportError:
-                result_text = """❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
+                result_text = f"""❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
 🔧 Необходимо создать файл <code>perplexity_client.py</code>
 💡 Пока что используйте:
 - <code>/price {ticker}</code> - текущая цена акции
@@ -388,7 +388,7 @@ class TradingTelegramBot:
 - <code>/price {ticker}</code> - текущая цена
 - <code>/accounts</code> - торговые счета"""
             await loading_msg.edit_text(result_text, parse_mode="HTML")
-            logger.info("Команда news выполнена для {ticker}")
+            logger.info(f"Команда news выполнена для {ticker}")
         except Exception as e:
             logger.error(f"Ошибка в команде news: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
