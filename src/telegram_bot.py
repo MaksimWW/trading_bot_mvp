@@ -1211,10 +1211,10 @@ class TradingTelegramBot:
         except Exception as e:
             error_msg = f"❌ *Ошибка AI анализа {ticker}*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
-            error_msg += f"💡 Попробуйте:\n"
-            error_msg += f"• Проверить правильность тикера\n"
-            error_msg += f"• Повторить запрос через несколько секунд\n"
-            error_msg += f"• Использовать /status для проверки систем"
+            error_msg += "💡 Попробуйте:\n"
+            error_msg += "• Проверить правильность тикера\n"
+            error_msg += "• Повторить запрос через несколько секунд\n"
+            error_msg += "• Использовать /status для проверки систем"
 
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"AI analysis command error for {ticker}: {e}")
