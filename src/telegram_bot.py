@@ -589,7 +589,7 @@ class TradingTelegramBot:
         text += f"💰 **Баланс:** {summary['cash_balance']:,.0f} ₽\n"
         text += f"📈 **Стоимость позиций:** {summary['portfolio_value'] - summary['cash_balance']:,.0f} ₽\n"
         text += f"💎 **Общая стоимость:** {summary['portfolio_value']:,.0f} ₽\n"
-        text += f"📊 **P&L:** {summary['total_unrealized_pnl']:+,.0f} ₽ ({summary['total_unrealized_pnl_percent']:+.2f}%)\n\n"
+        text += f"📊 **P&L:** {summary['unrealized_pnl']:+,.0f} ₽ ({summary['unrealized_pnl_percent']:+.2f}%)\n\n"
 
         if summary['positions']:
             text += "📋 **ПОЗИЦИИ:**\n"
