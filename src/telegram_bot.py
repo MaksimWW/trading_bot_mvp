@@ -40,6 +40,9 @@ class TradingTelegramBot:
         self.tinkoff_client = TinkoffClient()
         self.application = None
         logger.info("🤖 Инициализация Trading Telegram Bot")
+        # Импорт PortfolioManager
+        from portfolio_manager import get_portfolio_manager
+        self.portfolio = get_portfolio_manager()
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /start - приветствие"""
@@ -1150,6 +1153,10 @@ class TradingTelegramBot:
             logger.error(f"❌ Критическая ошибка запуска бота: {e}")
             print("❌ Ошибка запуска: {e}")
             print("💡 Проверьте TELEGRAM_TOKEN в .env файле")
+
+        # Импорт PortfolioManager
+        from portfolio_manager import get_portfolio_manager
+        self.portfolio = get_portfolio_manager()
 
 
 def main():
