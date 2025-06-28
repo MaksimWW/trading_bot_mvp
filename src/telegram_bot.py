@@ -1024,19 +1024,19 @@ class TradingTelegramBot:
             success = engine.start_strategy(strategy_id, [ticker])
 
             if success:
-                result_text = f"✅ *СТРАТЕГИЯ ЗАПУЩЕНА*\n\n"
+                result_text = "✅ *СТРАТЕГИЯ ЗАПУЩЕНА*\n\n"
                 result_text += f"🎯 Стратегия: *{strategy_id}*\n"
                 result_text += f"📈 Тикер: *{ticker}*\n"
                 result_text += f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}\n\n"
                 result_text += f"💡 Стратегия будет генерировать сигналы для {ticker}\n"
                 result_text += f"Используйте `/strategy_signals {ticker}` для получения сигналов"
             else:
-                result_text = f"❌ *ОШИБКА ЗАПУСКА*\n\n"
+                result_text = "❌ *ОШИБКА ЗАПУСКА*\n\n"
                 result_text += f"Не удалось запустить стратегию *{strategy_id}*\n\n"
-                result_text += f"Возможные причины:\n"
-                result_text += f"• Неизвестная стратегия\n"
-                result_text += f"• Тикер не поддерживается\n"
-                result_text += f"• Стратегия уже активна"
+                result_text += "Возможные причины:\n"
+                result_text += "• Неизвестная стратегия\n"
+                result_text += "• Тикер не поддерживается\n"
+                result_text += "• Стратегия уже активна"
 
             await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
 
@@ -1070,11 +1070,11 @@ class TradingTelegramBot:
             success = engine.stop_strategy(strategy_id)
 
             if success:
-                result_text = f"✅ *СТРАТЕГИЯ ОСТАНОВЛЕНА*\n\n"
+                result_text = "✅ *СТРАТЕГИЯ ОСТАНОВЛЕНА*\n\n"
                 result_text += f"🎯 Стратегия: *{strategy_id}*\n"
                 result_text += f"⏰ Время остановки: {datetime.now().strftime('%H:%M:%S')}"
             else:
-                result_text = f"⚠️ *СТРАТЕГИЯ НЕ АКТИВНА*\n\n"
+                result_text = "⚠️ *СТРАТЕГИЯ НЕ АКТИВНА*\n\n"
                 result_text += f"Стратегия *{strategy_id}* не была запущена"
 
             await update.message.reply_text(result_text, parse_mode=ParseMode.MARKDOWN)
@@ -1176,7 +1176,7 @@ class TradingTelegramBot:
                 if result["sell_signals"] > 0:
                     signals_text += f"🔴 SELL сигналов: {result['sell_signals']}\n"
 
-                signals_text += f"\n*📋 ДЕТАЛИ СИГНАЛОВ:*\n"
+                signals_text += "\n*📋 ДЕТАЛИ СИГНАЛОВ:*\n"
                 for signal in result["signals"]:
                     signal_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(
                         signal["action"], "⚪"
