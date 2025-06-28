@@ -119,11 +119,11 @@ class PortfolioManager:
         try:
             # Получаем текущую цену если не указана
             if price is None:
-                instrument = await self.tinkoff.search_instrument(ticker)
+                instrument = self.tinkoff.search_instrument(ticker)
                 if not instrument:
                     return {"success": False, "error": f"Инструмент {ticker} не найден"}
                 
-                price = await self.tinkoff.get_last_price(instrument["figi"])
+                price = self.tinkoff.get_last_price(instrument["figi"])
                 if not price:
                     return {"success": False, "error": f"Не удалось получить цену {ticker}"}
             
