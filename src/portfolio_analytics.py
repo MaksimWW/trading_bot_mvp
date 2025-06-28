@@ -132,7 +132,7 @@ class PortfolioAnalytics:
             ticker = position["ticker"]
             try:
                 # Получаем исторические цены
-                prices = await self.tinkoff_client.get_historical_prices(ticker, days + 10)
+                prices = await self.tinkoff_client.get_price_history(ticker, days + 10)
                 
                 if prices and len(prices) >= days:
                     # Сортируем по дате и берем последние дни
