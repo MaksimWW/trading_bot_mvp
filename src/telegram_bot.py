@@ -195,7 +195,7 @@ class TradingTelegramBot:
 ⏰ Данные актуальны на: сейчас
 """
             await update.message.reply_text(price_message, parse_mode="Markdown")
-            logger.info("Цена {ticker} успешно получена: {price_rub:.2f} ₽")
+            logger.info(f"Цена {ticker} успешно получена: {price_rub:.2f} ₽")
         except Exception as e:
             logger.error(f"Ошибка в команде price: {e}")
             ticker_name = context.args[0].upper() if context.args else "акции"
