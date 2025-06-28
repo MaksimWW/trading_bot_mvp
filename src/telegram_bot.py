@@ -618,32 +618,32 @@ class TradingTelegramBot:
             "📈 Вычисляю Sharpe ratio и VaR...",
             parse_mode=ParseMode.MARKDOWN
         )
-        
+
         try:
             # Импортируем Portfolio Analytics
             from portfolio_analytics import PortfolioAnalytics
-            
+
             analytics = PortfolioAnalytics(self.portfolio_manager)
-            
+
             # Определяем период анализа
             days = 30
             if context.args and context.args[0].isdigit():
                 days = min(90, max(7, int(context.args[0])))
-            
+
             # Рассчитываем метрики
             metrics = await analytics.calculate_portfolio_metrics(days=days)
-            
+
             # Форматируем результат для Telegram
             result_text = analytics.format_metrics_for_telegram(metrics)
-            
+
             await loading_msg.edit_text(
                 result_text,
                 parse_mode=ParseMode.MARKDOWN
             )
-            
+
             logger.info(f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
                        f"Sharpe {metrics.sharpe_ratio:.2f}")
-            
+
         except Exception as e:
             error_msg = "❌ *Ошибка расчета аналитики портфеля*\n\n"
             error_msg += f"Причина: {str(e)}\n\n"
@@ -651,7 +651,7 @@ class TradingTelegramBot:
             error_msg += "• Убедиться что есть позиции в портфеле\n"
             error_msg += "• Повторить запрос через несколько секунд\n"
             error_msg += "• Использовать /portfolio для проверки позиций"
-            
+
             await loading_msg.edit_text(
                 error_msg,
                 parse_mode=ParseMode.MARKDOWN
@@ -697,7 +697,7 @@ class TradingTelegramBot:
 
             if result["success"]:
                 buy_text = f"""
-💰 *ПОКУПКА ВЫПОЛНЕНА*
+💰 *ПОКУПКАВЫПОЛНЕНА*
 
 🎯 *Акция:* {ticker}
 📊 *Количество:* {result['quantity']} шт
@@ -747,3 +747,37 @@ class TradingTelegramBot:
                 "📊 Используйте `/portfolio` для просмотра позиций",
                 parse_mode=ParseMode.MARKDOWN
             )
+
+    def setup_handlers(self, app: Application):
+        """Настройка обработчиков команд"""
+        # Команды для всех пользователей
+        app.add_handler(CommandHandler("start", self.start_command))
+        app.add_handler(CommandHandler("help", self.help_command))
+        app.add_handler(CommandHandler("status", self.status_command))
+        app.add_handler(CommandHandler("price", self.price_command))
+        app.add_handler(CommandHandler("accounts", self.accounts_command))
+        app.add_handler(CommandHandler("news", self.news_command))
+        app.add_handler(CommandHandler("risk", self.risk_command))
+        # Команды портфеля
+        app.add_handler(CommandHandler("portfolio", self.portfolio_command))
+        app.add_handler(CommandHandler("analytics", self.analytics_command))
+        app.add_handler(CommandHandler("buy", self.buy_command))
+        app.add_handler(CommandHandler("sell", self.sell_command))
+        # Обработчик текстовых сообщений
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.help_command))
+        logger.info("✅ Обработчики команд настроены")
+
+    def run(self):
+        """Запуск бота"""
+        try:
+            logger.info("🚀 Запуск Trading Bot...")
+            self.application = Application.builder().token(self.token).build()
+            self.setup_handlers(self.application)
+            self.application.run_polling()
+        except Exception as e:
+            logger.error(f"❌ Ошибка при запуске бота: {e}")
+
+
+if __name__ == "__main__":
+    bot = TradingTelegramBot()
+    bot.run()
