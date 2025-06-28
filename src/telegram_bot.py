@@ -1267,6 +1267,48 @@ class TradingTelegramBot:
             )
             logger.error(f"Auto trading command error: {e}")
 
+    def _handle_ticker_list(self, executor) -> str:
+        """Обработка команды списка тикеров."""
+        status = executor.get_execution_status()
+        enabled_tickers = status.get('enabled_tickers', [])
+        
+        text = "📋 *ТИКЕРЫ ДЛЯ АВТОМАТИЧЕСКОГО ИСПОЛНЕНИЯ*\n\n"
+        if enabled_tickers:
+            text += "✅ Активные тикеры:\n"
+            for ticker in enabled_tickers:
+                text += f"  • {ticker}\n"
+        else:
+            text += "❌ Нет активных тикеров\n"
+        text += "\n💡 Используйте `/auto_execute TICKER` для добавления"
+        return text
+    
+    def _handle_ticker_remove(self, executor, ticker: str) -> str:
+        """Обработка удаления тикера."""
+        success = executor.remove_ticker_from_execution(ticker)
+        if success:
+            return f"✅ Тикер *{ticker}* удален из автоматического исполнения"
+        else:
+            return f"❌ Не удалось удалить тикер {ticker}"
+    
+    def _handle_ticker_add(self, executor, ticker: str) -> str:
+        """Обработка добавления тикера."""
+        supported_tickers = ["SBER", "GAZP", "YNDX", "LKOH", "ROSN", "NVTK", "GMKN"]
+        
+        if ticker not in supported_tickers:
+            text = f"❌ Тикер {ticker} не поддерживается\n\n"
+            text += f"Поддерживаемые: {', '.join(supported_tickers)}"
+            return text
+        
+        success = executor.add_ticker_for_execution(ticker)
+        if success:
+            text = f"✅ *{ticker}* добавлен для автоматического исполнения\n\n"
+            text += f"🤖 Теперь торговые сигналы для {ticker} будут исполняться автоматически\n"
+            text += "⚙️ При условии превышения порога уверенности\n\n"
+            text += "💡 Проверьте статус: `/execution_status`"
+            return text
+        else:
+            return f"❌ Не удалось добавить тикер {ticker}"
+
     async def auto_execute_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /auto_execute TICKER."""
         if not context.args:
@@ -1277,58 +1319,29 @@ class TradingTelegramBot:
                 "• `/auto_execute remove SBER` - убрать SBER из автоматического исполнения\n"
                 "• `/auto_execute list` - список активных тикеров\n\n"
                 "Поддерживаемые тикеры: SBER, GAZP, YNDX, LKOH, ROSN, NVTK, GMKN",
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode=ParseMode.MARKDOWN
             )
             return
 
         try:
             from strategy_executor import get_strategy_executor
-
             executor = get_strategy_executor()
-
+            
             if context.args[0].lower() == "list":
-                status = executor.get_execution_status()
-                enabled_tickers = status.get("enabled_tickers", [])
-
-                text = "📋 *ТИКЕРЫ ДЛЯ АВТОМАТИЧЕСКОГО ИСПОЛНЕНИЯ*\n\n"
-                if enabled_tickers:
-                    text += "✅ Активные тикеры:\n"
-                    for ticker in enabled_tickers:
-                        text += f"  • {ticker}\n"
-                else:
-                    text += "❌ Нет активных тикеров\n"
-                text += "\n💡 Используйте `/auto_execute TICKER` для добавления"
-
+                text = self._handle_ticker_list(executor)
             elif len(context.args) >= 2 and context.args[0].lower() == "remove":
                 ticker = context.args[1].upper()
-                success = executor.remove_ticker_from_execution(ticker)
-                if success:
-                    text = f"✅ Тикер *{ticker}* удален из автоматического исполнения"
-                else:
-                    text = f"❌ Не удалось удалить тикер {ticker}"
-
+                text = self._handle_ticker_remove(executor, ticker)
             else:
                 ticker = context.args[0].upper()
-                supported_tickers = ["SBER", "GAZP", "YNDX", "LKOH", "ROSN", "NVTK", "GMKN"]
-
-                if ticker not in supported_tickers:
-                    text = f"❌ Тикер {ticker} не поддерживается\n\n"
-                    text += f"Поддерживаемые: {', '.join(supported_tickers)}"
-                else:
-                    success = executor.add_ticker_for_execution(ticker)
-                    if success:
-                        text = f"✅ *{ticker}* добавлен для автоматического исполнения\n\n"
-                        text += f"🤖 Теперь торговые сигналы для {ticker} будут исполняться автоматически\n"
-                        text += "⚙️ При условии превышения порога уверенности\n\n"
-                        text += "💡 Проверьте статус: `/execution_status`"
-                    else:
-                        text = f"❌ Не удалось добавить тикер {ticker}"
-
+                text = self._handle_ticker_add(executor, ticker)
+            
             await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
-
+            
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка управления тикерами: {str(e)}", parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка управления тикерами: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Auto execute command error: {e}")
 
