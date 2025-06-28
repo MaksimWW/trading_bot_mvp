@@ -44,6 +44,23 @@ PORTFOLIO_CONFIG = {
     "min_trade_amount": 1000,  # 1,000 ₽
 }
 
+# Настройки логирования
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Настройки Strategy Engine
+STRATEGY_CONFIG = {
+    "max_active_strategies": 5,
+    "signal_history_limit": 1000,
+    "auto_execution_enabled": False,
+    "default_position_size_pct": 0.02,  # 2% от портфеля
+    "risk_management": {
+        "max_daily_trades": 10,
+        "max_position_risk": 0.05,  # 5% от депозита на позицию
+        "min_confidence_threshold": 0.6
+    }
+}
+
 
 # Функция для получения информации о тикерах
 def get_ticker_info(ticker):
