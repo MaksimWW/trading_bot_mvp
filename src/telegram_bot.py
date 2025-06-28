@@ -43,9 +43,6 @@ class TradingTelegramBot:
         self.application = None
         logger.info("🤖 Инициализация Trading Telegram Bot")
 
-        self.portfolio = get_portfolio_manager()
-        self.portfolio_manager = PortfolioManager()
-
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /start - приветствие"""
         try:
