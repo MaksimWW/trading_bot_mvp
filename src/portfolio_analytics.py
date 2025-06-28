@@ -387,16 +387,16 @@ class PortfolioAnalytics:
     def format_metrics_for_telegram(self, metrics: PortfolioMetrics) -> str:
         """Форматирование метрик для отправки в Telegram."""
         if metrics.positions_count == 0:
-            return """
-📊 *АНАЛИТИКА ПОРТФЕЛЯ*
+            return f"""
+📊 АНАЛИТИКА ПОРТФЕЛЯ
 
-💼 *Статус:* Портфель пуст
-📅 *Период анализа:* {metrics.analysis_period_days} дней
+💼 Статус: Портфель пуст
+📅 Период анализа: {metrics.analysis_period_days} дней
 
-💡 *Рекомендация:* Добавьте позиции для начала анализа
+💡 Рекомендация: Добавьте позиции для начала анализа
 - /buy TICKER QUANTITY - покупка акций
 - /ai_analysis TICKER - анализ перед покупкой
-""".format(metrics=metrics)
+"""
         
         # Эмодзи для метрик
         return_emoji = "📈" if metrics.total_return >= 0 else "📉"
@@ -404,37 +404,37 @@ class PortfolioAnalytics:
         risk_emoji = "🟢" if metrics.max_drawdown < 5 else "🟡" if metrics.max_drawdown < 10 else "🔴"
         
         text = f"""
-📊 *АНАЛИТИКА ПОРТФЕЛЯ*
+📊 АНАЛИТИКА ПОРТФЕЛЯ
 
-💰 *ДОХОДНОСТЬ:*
-{return_emoji} *Общая:* {metrics.total_return:+.2f}%
-📈 *Годовая:* {metrics.annualized_return:+.2f}%
+💰 ДОХОДНОСТЬ:
+{return_emoji} Общая: {metrics.total_return:+.2f}%
+📈 Годовая: {metrics.annualized_return:+.2f}%
 
-⚡ *РИСК-МЕТРИКИ:*
-📊 *Волатильность:* {metrics.volatility:.1f}%
-{risk_emoji} *Макс. просадка:* {metrics.max_drawdown:.1f}%
-{sharpe_emoji} *Sharpe ratio:* {metrics.sharpe_ratio:.2f}
-🎯 *Sortino ratio:* {metrics.sortino_ratio:.2f}
+⚡ РИСК-МЕТРИКИ:
+📊 Волатильность: {metrics.volatility:.1f}%
+{risk_emoji} Макс. просадка: {metrics.max_drawdown:.1f}%
+{sharpe_emoji} Sharpe ratio: {metrics.sharpe_ratio:.2f}
+🎯 Sortino ratio: {metrics.sortino_ratio:.2f}
 
-🛡️ *VALUE AT RISK:*
-⚠️ *VaR 95%:* {metrics.var_95:.2f}%
-🚨 *VaR 99%:* {metrics.var_99:.2f}%
+🛡️ VALUE AT RISK:
+⚠️ VaR 95%: {metrics.var_95:.2f}%
+🚨 VaR 99%: {metrics.var_99:.2f}%
 
-🔗 *ДИВЕРСИФИКАЦИЯ:*
-📊 *Средняя корреляция:* {metrics.avg_correlation:.2f}
-🎯 *Коэф. диверсификации:* {metrics.diversification_ratio:.2f}
+🔗 ДИВЕРСИФИКАЦИЯ:
+📊 Средняя корреляция: {metrics.avg_correlation:.2f}
+🎯 Коэф. диверсификации: {metrics.diversification_ratio:.2f}
 
-📋 *СВОДКА:*
-- *Позиций:* {metrics.positions_count}
-- *Период:* {metrics.analysis_period_days} дней
-- *Расчет:* {metrics.calculation_timestamp.strftime('%H:%M:%S %d.%m.%Y')}
+📋 СВОДКА:
+- Позиций: {metrics.positions_count}
+- Период: {metrics.analysis_period_days} дней
+- Расчет: {metrics.calculation_timestamp.strftime('%H:%M:%S %d.%m.%Y')}
 
-💡 *Интерпретация:*
+💡 Интерпретация:
 - Sharpe > 1.0 = отличная доходность с учетом риска
 - Max DD < 5% = низкий риск портфеля
 - Корреляция < 0.5 = хорошая диверсификация
 
-⚠️ *Дисклеймер:* Метрики рассчитаны на основе исторических данных
+⚠️ Дисклеймер: Метрики рассчитаны на основе исторических данных
 """
         
         return text
