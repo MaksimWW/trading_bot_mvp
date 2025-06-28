@@ -4,6 +4,7 @@ Telegram Bot для управления торговым ботом
 """
 
 import logging
+from datetime import datetime
 from typing import Dict, List
 
 from telegram import Update
