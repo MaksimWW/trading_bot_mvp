@@ -166,30 +166,22 @@ class PortfolioAnalytics:
         all_dates = [f"day_{i}" for i in range(max_days)]
         sorted_dates = sorted(all_dates)
         
-        # Рассчитываем портфельные значения для каждой даты
-        for date in sorted_dates:
-            daily_portfolio_value = 0.0
-            total_weight = 0.0
+        # Упрощенный расчет стоимости портфеля по дням
+        portfolio_values = []
+        
+        # Используем минимальную длину данных среди всех тикеров
+        min_length = min(len(data) for data in historical_data.values()) if historical_data else 0
+        
+        for day_index in range(min_length):
+            daily_value = 0
+            for position in positions:
+                ticker = position["ticker"]
+                if ticker in historical_data and day_index < len(historical_data[ticker]):
+                    price = float(historical_data[ticker][day_index])
+                    quantity = position["quantity"]
+                    daily_value += price * quantity
             
-            for ticker, ticker_data in historical_data.items():
-                # Находим позицию для этого тикера
-                position = next((p for p in positions if p["ticker"] == ticker), None)
-                if not position:
-                    continue
-                
-                # Находим цену на эту дату (или ближайшую предыдущую)
-                price = None
-                for price_point in ticker_data:
-                    if price_point["date"] <= date:
-                        price = price_point["price"]
-                
-                if price is not None:
-                    weight = position["current_value"] / sum(p["current_value"] for p in positions)
-                    daily_portfolio_value += price * weight
-                    total_weight += weight
-            
-            if total_weight > 0:
-                portfolio_values.append(daily_portfolio_value)
+            portfolio_values.append(daily_value)
         
         if len(portfolio_values) < 2:
             return {"total_return": 0.0, "annualized_return": 0.0, "daily_returns": []}
