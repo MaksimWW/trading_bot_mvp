@@ -205,32 +205,36 @@ class StrategyExecutor:
             logger.error(f"Ошибка расчета размера позиции для {ticker}: {e}")
             return 0
 
-    def _validate_signal_execution(self, ticker: str, signal: TradingSignal, execution_record: ExecutionRecord) -> bool:
+    def _validate_signal_execution(
+        self, ticker: str, signal: TradingSignal, execution_record: ExecutionRecord
+    ) -> bool:
         """Валидация возможности исполнения сигнала."""
         # Проверка режима исполнения
         if self.execution_mode == ExecutionMode.DISABLED:
             execution_record.status = ExecutionStatus.REJECTED
             execution_record.error_message = "Автоматическое исполнение отключено"
             return False
-        
+
         # Проверка тикера в разрешенных
         if ticker not in self.enabled_tickers:
             execution_record.status = ExecutionStatus.REJECTED
-            execution_record.error_message = f"Тикер {ticker} не включен в автоматическое исполнение"
+            execution_record.error_message = (
+                f"Тикер {ticker} не включен в автоматическое исполнение"
+            )
             return False
-        
+
         # Проверка минимальной уверенности
         if signal.confidence < self.min_confidence_threshold:
             execution_record.status = ExecutionStatus.REJECTED
             execution_record.error_message = f"Низкая уверенность сигнала: {signal.confidence:.2f}"
             return False
-        
+
         # Проверка дневных лимитов
         if not self._check_daily_limits():
             execution_record.status = ExecutionStatus.REJECTED
             execution_record.error_message = "Превышены дневные лимиты"
             return False
-        
+
         return True
 
     def _execute_trade(self, ticker: str, signal: TradingSignal, quantity: int) -> Dict:
@@ -245,22 +249,22 @@ class StrategyExecutor:
     async def execute_signal(self, ticker: str, signal: TradingSignal) -> ExecutionRecord:
         """
         Исполнение торгового сигнала.
-        
+
         Args:
             ticker: Тикер акции
             signal: Торговый сигнал
-            
+
         Returns:
             Запись об исполнении
         """
         execution_record = ExecutionRecord(signal, ticker)
-        
+
         try:
             # Валидация возможности исполнения
             if not self._validate_signal_execution(ticker, signal, execution_record):
                 self.execution_history.append(execution_record)
                 return execution_record
-            
+
             # Расчет размера позиции
             quantity = self.calculate_position_size(ticker, signal)
             if quantity <= 0:
@@ -268,36 +272,38 @@ class StrategyExecutor:
                 execution_record.error_message = "Не удалось рассчитать размер позиции"
                 self.execution_history.append(execution_record)
                 return execution_record
-            
+
             execution_record.quantity = quantity
-            
+
             # Исполнение сделки
             result = self._execute_trade(ticker, signal, quantity)
-            
+
             # Обработка результата
             if result.get("success", False):
                 execution_record.status = ExecutionStatus.EXECUTED
                 execution_record.execution_price = result.get("price")
                 execution_record.commission = result.get("commission")
                 execution_record.portfolio_impact = result.get("total_cost")
-                
+
                 # Обновление счетчиков
                 self.daily_executions += 1
-                
-                logger.info(f"Сигнал исполнен: {signal.action} {quantity} {ticker} "
-                           f"по цене {execution_record.execution_price:.2f}₽")
+
+                logger.info(
+                    f"Сигнал исполнен: {signal.action} {quantity} {ticker} "
+                    f"по цене {execution_record.execution_price:.2f}₽"
+                )
             else:
                 execution_record.status = ExecutionStatus.FAILED
                 execution_record.error_message = result.get("error", "Неизвестная ошибка")
-                
+
         except Exception as e:
             execution_record.status = ExecutionStatus.FAILED
             execution_record.error_message = str(e)
             logger.error(f"Ошибка исполнения сигнала для {ticker}: {e}")
-        
+
         # Сохранение в историю
         self.execution_history.append(execution_record)
-        
+
         return execution_record
 
     def _check_daily_limits(self) -> bool:
