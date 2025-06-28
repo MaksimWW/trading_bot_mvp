@@ -300,8 +300,12 @@ class PortfolioAnalytics:
             if len(ticker_data) > 1:
                 daily_returns = []
                 for i in range(1, len(ticker_data)):
-                    if ticker_data[i-1]["price"] != 0:
-                        ret = (ticker_data[i]["price"] / ticker_data[i-1]["price"]) - 1
+                    # Работаем с данными как с массивом float значений
+                    prev_price = float(ticker_data[i-1]) if ticker_data[i-1] != 0 else 0.0
+                    curr_price = float(ticker_data[i])
+                    
+                    if prev_price != 0:
+                        ret = (curr_price / prev_price) - 1
                         daily_returns.append(ret)
                 if daily_returns:
                     returns_data[ticker] = daily_returns
