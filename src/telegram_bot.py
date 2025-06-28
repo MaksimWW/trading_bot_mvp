@@ -940,180 +940,269 @@ class TradingTelegramBot:
             logger.error(f"Критическая ошибка signal_command: {e}")
 
     async def strategies_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /strategies - список доступных стратегий"""
-        try:
-            loading_msg = await update.message.reply_text(
-                "🤖 Загружаю информацию о стратегиях...", parse_mode="Markdown"
-            )
-
-            try:
-                from strategy_engine import get_strategy_engine
-
-                engine = get_strategy_engine()
-                all_strategies = engine.get_all_strategies()
-                active_strategies = engine.get_active_strategies()
-
-                result_text = "🤖 **АВТОМАТИЧЕСКИЕ ТОРГОВЫЕ СТРАТЕГИИ**\n\n"
-                result_text += f"📊 Доступно стратегий: {len(all_strategies)}\n"
-                result_text += f"✅ Активных стратегий: {len(active_strategies)}\n\n"
-
-                # Доступные стратегии
-                result_text += "📋 **ДОСТУПНЫЕ СТРАТЕГИИ:**\n"
-                for strategy_id, info in all_strategies.items():
-                    status_emoji = "✅" if info["status"] == "active" else "⏸️"
-                    result_text += f"{status_emoji} **{info['name']}**\n"
-                    result_text += f"   ID: `{strategy_id}`\n"
-                    result_text += f"   Статус: {info['status']}\n"
-                    result_text += f"   Описание: {info['description']}\n"
-                    result_text += f"   Тикеры: {', '.join(info['supported_tickers'])}\n"
-                    if info['signals_generated'] > 0:
-                        result_text += f"   Сигналов: {info['signals_generated']}\n"
-                    result_text += "\n"
-
-                if active_strategies:
-                    result_text += "🔥 **АКТИВНЫЕ СТРАТЕГИИ:**\n"
-                    for strategy_id, info in active_strategies.items():
-                        result_text += f"• {info['name']} - работает\n"
-
-                result_text += "🛠️ **УПРАВЛЕНИЕ:**\n"
-                result_text += "• `/start_strategy ID` - запуск стратегии\n"
-                result_text += "• `/stop_strategy ID` - остановка стратегии\n\n"
-                result_text += "📖 **ПРИМЕРЫ:**\n"
-                result_text += "• `/start_strategy rsi_mean_reversion`\n"
-                result_text += "• `/stop_strategy macd_trend_following`\n\n"
-                result_text += "⚠️ **Примечание:** Все стратегии работают в тестовом режиме"
-
-                await loading_msg.edit_text(result_text, parse_mode="Markdown")
-                logger.info("Список стратегий отправлен")
-
-            except Exception as e:
-                await loading_msg.edit_text(
-                    f"❌ Ошибка загрузки стратегий: {str(e)[:100]}...\n\n"
-                    "💡 Возможные причины:\n"
-                    "• Strategy Engine не инициализирован\n"
-                    "• Проблемы с техническим анализом\n"
-                    "• Используйте /status для диагностики",
-                    parse_mode="Markdown",
-                )
-                logger.error(f"Ошибка strategies_command: {e}")
-
-        except Exception as e:
-            await update.message.reply_text(
-                "❌ Произошла ошибка при получении списка стратегий.",
-                parse_mode="Markdown",
-            )
-            logger.error(f"Критическая ошибка strategies_command: {e}")
-
-    async def start_strategy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /start_strategy ID - запуск стратегии"""
-        if not context.args:
-            await update.message.reply_text(
-                "🤖 **Запуск автоматической стратегии**\n\n"
-                "Использование: `/start_strategy STRATEGY_ID`\n\n"
-                "Доступные стратегии:\n"
-                "• `rsi_mean_reversion` - RSI стратегия возврата к среднему\n"
-                "• `macd_trend_following` - MACD трендовая стратегия\n\n"
-                "Примеры:\n"
-                "• `/start_strategy rsi_mean_reversion`\n"
-                "• `/start_strategy macd_trend_following`\n\n"
-                "📋 Используйте `/strategies` для полного списка",
-                parse_mode="Markdown",
-            )
-            return
-
-        strategy_id = context.args[0]
+        """Обработчик команды /strategies."""
         loading_msg = await update.message.reply_text(
-            f"🚀 Запускаю стратегию `{strategy_id}`...", parse_mode="Markdown"
+            "📊 Получаю список доступных стратегий...",
+            parse_mode=ParseMode.MARKDOWN
         )
-
+        
         try:
             from strategy_engine import get_strategy_engine
-
             engine = get_strategy_engine()
-            success = engine.start_strategy(strategy_id)
-
-            if success:
-                strategy_info = engine.strategies.get(strategy_id)
-                result_text = f"✅ **СТРАТЕГИЯ ЗАПУЩЕНА**\n\n"
-                result_text += f"🎯 **Название:** {strategy_info.name}\n"
-                result_text += f"🆔 **ID:** `{strategy_id}`\n"
-                result_text += f"📊 **Тикеры:** {', '.join(strategy_info.get_supported_tickers())}\n"
-                result_text += f"📝 **Описание:** {strategy_info.get_description()}\n\n"
-                result_text += "✅ Стратегия активна и будет анализировать рынок\n"
-                result_text += "📈 Сигналы будут генерироваться автоматически\n\n"
-                result_text += "🛠️ **Управление:**\n"
-                result_text += f"• `/stop_strategy {strategy_id}` - остановить\n"
-                result_text += "• `/strategies` - посмотреть все стратегии"
+            
+            # Получаем все стратегии
+            all_strategies = engine.get_all_strategies()
+            active_strategies = engine.get_active_strategies()
+            
+            strategies_text = "*📊 АВТОМАТИЧЕСКИЕ ТОРГОВЫЕ СТРАТЕГИИ*\n\n"
+            
+            for strategy_id, info in all_strategies.items():
+                status_emoji = {
+                    "inactive": "⚫",
+                    "active": "🟢", 
+                    "paused": "🟡",
+                    "error": "🔴",
+                    "stopped": "⚪"
+                }.get(info["status"], "❓")
+                
+                strategies_text += f"*{info['name']}*\n"
+                strategies_text += f"{status_emoji} Статус: {info['status'].upper()}\n"
+                strategies_text += f"📝 Описание: {info['description']}\n"
+                strategies_text += f"📈 Тикеры: {', '.join(info['supported_tickers'])}\n"
+                strategies_text += f"🎯 Сигналов создано: {info['signals_generated']}\n\n"
+            
+            strategies_text += "*💡 КОМАНДЫ УПРАВЛЕНИЯ:*\n"
+            strategies_text += "• `/start_strategy rsi_mean_reversion SBER` - запуск стратегии\n"
+            strategies_text += "• `/stop_strategy rsi_mean_reversion` - остановка стратегии\n"
+            strategies_text += "• `/strategy_status` - статус активных стратегий\n"
+            strategies_text += "• `/strategy_signals SBER` - сигналы для тикера\n\n"
+            
+            if active_strategies:
+                strategies_text += f"*🚀 АКТИВНЫХ СТРАТЕГИЙ: {len(active_strategies)}*"
             else:
-                result_text = f"❌ **ОШИБКА ЗАПУСКА СТРАТЕГИИ**\n\n"
-                result_text += f"🆔 Стратегия: `{strategy_id}`\n"
-                result_text += "❌ Не удалось запустить\n\n"
-                result_text += "💡 Возможные причины:\n"
-                result_text += "• Неверный ID стратегии\n"
-                result_text += "• Стратегия уже активна\n"
-                result_text += "• Системная ошибка\n\n"
-                result_text += "📋 Используйте `/strategies` для проверки доступных стратегий"
-
-            await loading_msg.edit_text(result_text, parse_mode="Markdown")
-
+                strategies_text += "*💤 Нет активных стратегий*"
+            
+            await loading_msg.edit_text(
+                strategies_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка при запуске стратегии `{strategy_id}`: {str(e)[:100]}...",
-                parse_mode="Markdown",
+                f"❌ Ошибка получения стратегий: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
             )
-            logger.error(f"Ошибка start_strategy_command для {strategy_id}: {e}")
+            logger.error(f"Strategies command error: {e}")
+
+    async def start_strategy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /start_strategy."""
+        if len(context.args) < 2:
+            await update.message.reply_text(
+                "*🚀 ЗАПУСК СТРАТЕГИИ*\n\n"
+                "Использование: `/start_strategy STRATEGY_ID TICKER`\n\n"
+                "Примеры:\n"
+                "• `/start_strategy rsi_mean_reversion SBER`\n"
+                "• `/start_strategy macd_trend_following GAZP`\n\n"
+                "Доступные стратегии:\n"
+                "• `rsi_mean_reversion` - RSI Mean Reversion\n"
+                "• `macd_trend_following` - MACD Trend Following\n\n"
+                "Используйте `/strategies` для подробной информации",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        strategy_id = context.args[0]
+        ticker = context.args[1].upper()
+        
+        loading_msg = await update.message.reply_text(
+            f"🚀 Запускаю стратегию *{strategy_id}* для *{ticker}*...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            from strategy_engine import get_strategy_engine
+            engine = get_strategy_engine()
+            
+            # Запускаем стратегию
+            success = engine.start_strategy(strategy_id, [ticker])
+            
+            if success:
+                result_text = f"✅ *СТРАТЕГИЯ ЗАПУЩЕНА*\n\n"
+                result_text += f"🎯 Стратегия: *{strategy_id}*\n"
+                result_text += f"📈 Тикер: *{ticker}*\n"
+                result_text += f"⏰ Время запуска: {datetime.now().strftime('%H:%M:%S')}\n\n"
+                result_text += f"💡 Стратегия будет генерировать сигналы для {ticker}\n"
+                result_text += f"Используйте `/strategy_signals {ticker}` для получения сигналов"
+            else:
+                result_text = f"❌ *ОШИБКА ЗАПУСКА*\n\n"
+                result_text += f"Не удалось запустить стратегию *{strategy_id}*\n\n"
+                result_text += f"Возможные причины:\n"
+                result_text += f"• Неизвестная стратегия\n"
+                result_text += f"• Тикер не поддерживается\n"
+                result_text += f"• Стратегия уже активна"
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+        except Exception as e:
+            await loading_msg.edit_text(
+                f"❌ Ошибка запуска стратегии: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Start strategy error: {e}")
 
     async def stop_strategy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /stop_strategy ID - остановка стратегии"""
+        """Обработчик команды /stop_strategy."""
         if not context.args:
             await update.message.reply_text(
-                "🛑 **Остановка автоматической стратегии**\n\n"
+                "*🛑 ОСТАНОВКА СТРАТЕГИИ*\n\n"
                 "Использование: `/stop_strategy STRATEGY_ID`\n\n"
                 "Примеры:\n"
                 "• `/stop_strategy rsi_mean_reversion`\n"
                 "• `/stop_strategy macd_trend_following`\n\n"
-                "📋 Используйте `/strategies` для просмотра активных стратегий",
-                parse_mode="Markdown",
+                "Используйте `/strategy_status` для списка активных стратегий",
+                parse_mode=ParseMode.MARKDOWN
             )
             return
-
+        
         strategy_id = context.args[0]
-        loading_msg = await update.message.reply_text(
-            f"🛑 Останавливаю стратегию `{strategy_id}`...", parse_mode="Markdown"
-        )
-
+        
         try:
             from strategy_engine import get_strategy_engine
-
             engine = get_strategy_engine()
+            
             success = engine.stop_strategy(strategy_id)
-
+            
             if success:
-                result_text = f"✅ **СТРАТЕГИЯ ОСТАНОВЛЕНА**\n\n"
-                result_text += f"🆔 **ID:** `{strategy_id}`\n"
-                result_text += "🛑 Стратегия деактивирована\n"
-                result_text += "📊 Генерация сигналов прекращена\n\n"
-                result_text += "🛠️ **Что дальше:**\n"
-                result_text += f"• `/start_strategy {strategy_id}` - запустить снова\n"
-                result_text += "• `/strategies` - посмотреть все стратегии"
+                result_text = f"✅ *СТРАТЕГИЯ ОСТАНОВЛЕНА*\n\n"
+                result_text += f"🎯 Стратегия: *{strategy_id}*\n"
+                result_text += f"⏰ Время остановки: {datetime.now().strftime('%H:%M:%S')}"
             else:
-                result_text = f"❌ **ОШИБКА ОСТАНОВКИ СТРАТЕГИИ**\n\n"
-                result_text += f"🆔 Стратегия: `{strategy_id}`\n"
-                result_text += "❌ Не удалось остановить\n\n"
-                result_text += "💡 Возможные причины:\n"
-                result_text += "• Стратегия не была активна\n"
-                result_text += "• Неверный ID стратегии\n"
-                result_text += "• Системная ошибка\n\n"
-                result_text += "📋 Используйте `/strategies` для проверки активных стратегий"
+                result_text = f"⚠️ *СТРАТЕГИЯ НЕ АКТИВНА*\n\n"
+                result_text += f"Стратегия *{strategy_id}* не была запущена"
+            
+            await update.message.reply_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка остановки стратегии: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Stop strategy error: {e}")
 
-            await loading_msg.edit_text(result_text, parse_mode="Markdown")
+    async def strategy_status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /strategy_status."""
+        try:
+            from strategy_engine import get_strategy_engine
+            engine = get_strategy_engine()
+            
+            active_strategies = engine.get_active_strategies()
+            
+            if not active_strategies:
+                status_text = "*📊 СТАТУС СТРАТЕГИЙ*\n\n"
+                status_text += "💤 *Нет активных стратегий*\n\n"
+                status_text += "Используйте `/strategies` для просмотра доступных стратегий"
+            else:
+                status_text = f"*📊 АКТИВНЫЕ СТРАТЕГИИ ({len(active_strategies)})*\n\n"
+                
+                for strategy_id, info in active_strategies.items():
+                    status_text += f"🟢 *{info['name']}*\n"
+                    status_text += f"🆔 ID: `{strategy_id}`\n"
+                    status_text += f"📈 Тикеры: {', '.join(info['supported_tickers'])}\n"
+                    status_text += f"🎯 Сигналов: {info['signals_generated']}\n"
+                    
+                    if info['last_execution']:
+                        last_exec = datetime.fromisoformat(info['last_execution'])
+                        status_text += f"⏰ Последнее выполнение: {last_exec.strftime('%H:%M:%S')}\n"
+                    
+                    status_text += "\n"
+                
+                status_text += "*💡 Команды:*\n"
+                status_text += "• `/stop_strategy STRATEGY_ID` - остановить\n"
+                status_text += "• `/strategy_signals TICKER` - получить сигналы"
+            
+            await update.message.reply_text(
+                status_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка получения статуса: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Strategy status error: {e}")
 
+    async def strategy_signals_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /strategy_signals."""
+        if not context.args:
+            await update.message.reply_text(
+                "*🎯 СТРАТЕГИЧЕСКИЕ СИГНАЛЫ*\n\n"
+                "Использование: `/strategy_signals TICKER`\n\n"
+                "Примеры:\n"
+                "• `/strategy_signals SBER`\n"
+                "• `/strategy_signals GAZP`\n\n"
+                "Команда покажет сигналы от всех активных стратегий",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        ticker = context.args[0].upper()
+        
+        loading_msg = await update.message.reply_text(
+            f"🎯 Генерирую стратегические сигналы для *{ticker}*...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            from strategy_engine import get_strategy_engine
+            engine = get_strategy_engine()
+            
+            # Генерируем сигналы
+            result = await engine.execute_strategy_signals(ticker)
+            
+            if result['signals_count'] == 0:
+                signals_text = f"*🎯 СТРАТЕГИЧЕСКИЕ СИГНАЛЫ {ticker}*\n\n"
+                signals_text += "💤 *Нет активных стратегий*\n\n"
+                signals_text += result['message']
+            else:
+                signals_text = f"*🎯 СТРАТЕГИЧЕСКИЕ СИГНАЛЫ {ticker}*\n\n"
+                
+                # Итоговая рекомендация
+                rec_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(result['recommendation'], "⚪")
+                signals_text += f"{rec_emoji} *ИТОГОВАЯ РЕКОМЕНДАЦИЯ: {result['recommendation']}*\n"
+                signals_text += f"🎯 Уверенность: {result['confidence']:.2f}\n"
+                signals_text += f"📊 Сигналов проанализировано: {result['signals_count']}\n\n"
+                
+                # Детализация по сигналам
+                if result['buy_signals'] > 0:
+                    signals_text += f"🟢 BUY сигналов: {result['buy_signals']}\n"
+                if result['sell_signals'] > 0:
+                    signals_text += f"🔴 SELL сигналов: {result['sell_signals']}\n"
+                
+                signals_text += f"\n*📋 ДЕТАЛИ СИГНАЛОВ:*\n"
+                for signal in result['signals']:
+                    signal_emoji = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}.get(signal['action'], "⚪")
+                    signals_text += f"{signal_emoji} {signal['strategy_id']}: {signal['action']} ({signal['confidence']:.2f})\n"
+                
+                signals_text += f"\n⏰ Время генерации: {datetime.now().strftime('%H:%M:%S')}"
+            
+            await loading_msg.edit_text(
+                signals_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка при остановке стратегии `{strategy_id}`: {str(e)[:100]}...",
-                parse_mode="Markdown",
+                f"❌ Ошибка генерации сигналов: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
             )
-            logger.error(f"Ошибка stop_strategy_command для {strategy_id}: {e}")
+            logger.error(f"Strategy signals error: {e}")
 
     def setup_handlers(self, app: Application):
         """Настройка обработчиков команд"""
@@ -1137,6 +1226,8 @@ class TradingTelegramBot:
         app.add_handler(CommandHandler("strategies", self.strategies_command))
         app.add_handler(CommandHandler("start_strategy", self.start_strategy_command))
         app.add_handler(CommandHandler("stop_strategy", self.stop_strategy_command))
+        app.add_handler(CommandHandler("strategy_status", self.strategy_status_command))
+        app.add_handler(CommandHandler("strategy_signals", self.strategy_signals_command))
         # Обработчик текстовых сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.help_command))
         logger.info("✅ Обработчики команд настроены")
