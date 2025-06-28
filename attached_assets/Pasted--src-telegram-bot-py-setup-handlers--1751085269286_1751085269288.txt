@@ -1,0 +1,69 @@
+Отредактируй файл src/telegram_bot.py. Найди метод setup_handlers и добавь новую команду после существующих:
+
+        # Аналитика
+        app.add_handler(CommandHandler("news", self.news_command))
+        app.add_handler(CommandHandler("ai_analysis", self.ai_analysis_command))
+
+Затем найди метод help_command и добавь описание новой команды в секцию "📰 АНАЛИТИКА И НОВОСТИ:":
+
+- `/ai_analysis TICKER` - комплексный AI анализ с торговыми рекомендациями
+
+Затем добавь новый метод ai_analysis_command перед методом unknown_command:
+
+    async def ai_analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /ai_analysis TICKER."""
+        if not context.args:
+            await update.message.reply_text(
+                "🤖 *Комплексный AI анализ инструмента*\n\n"
+                "Использование: `/ai_analysis TICKER`\n\n"
+                "Примеры:\n"
+                "• `/ai_analysis SBER` - полный AI анализ Сбербанка\n"
+                "• `/ai_analysis GAZP` - анализ Газпрома\n"
+                "• `/ai_analysis YNDX` - анализ Яндекса\n\n"
+                "🧠 Включает: технический анализ + новости + торговые рекомендации\n"
+                "⏱️ Время обработки: 5-10 секунд",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        ticker = context.args[0].upper()
+        
+        # Отправляем сообщение о начале анализа
+        loading_msg = await update.message.reply_text(
+            f"🤖 Запускаю AI анализ *{ticker}*...\n"
+            f"📊 Собираю технические индикаторы...\n"
+            f"📰 Анализирую новости...\n"
+            f"🧠 Генерирую торговые рекомендации...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            # Импортируем и используем AI Signal Integration
+            from ai_signal_integration import get_ai_signal_integration
+            
+            ai_integration = get_ai_signal_integration()
+            ai_signal = await ai_integration.analyze_ticker(ticker)
+            
+            # Форматируем результат для Telegram
+            result_text = ai_integration.format_signal_for_telegram(ai_signal)
+            
+            await loading_msg.edit_text(
+                result_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"AI анализ {ticker} отправлен пользователю: {ai_signal.signal_strength.value}")
+            
+        except Exception as e:
+            error_msg = f"❌ *Ошибка AI анализа {ticker}*\n\n"
+            error_msg += f"Причина: {str(e)}\n\n"
+            error_msg += f"💡 Попробуйте:\n"
+            error_msg += f"• Проверить правильность тикера\n"
+            error_msg += f"• Повторить запрос через несколько секунд\n"
+            error_msg += f"• Использовать /status для проверки систем"
+            
+            await loading_msg.edit_text(
+                error_msg,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"AI analysis command error for {ticker}: {e}")
