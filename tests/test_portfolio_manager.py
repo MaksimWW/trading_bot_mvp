@@ -87,8 +87,8 @@ def test_purchase_validation():
     assert not result["valid"]
     assert "максимальный размер позиции" in result["reason"]
     
-    # Тест валидной покупки
-    result = portfolio._validate_purchase("SBER", 100, 200.0, 20000.0)
+    # Тест валидной покупки (4000 < 5000 лимит)
+    result = portfolio._validate_purchase("SBER", 20, 200.0, 4000.0)
     assert result["valid"]
     assert result["reason"] == "OK"
 
