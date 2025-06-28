@@ -359,7 +359,7 @@ class TradingTelegramBot:
             ticker = context.args[0].upper()
             # Отправляем сообщение о начале анализа
             loading_msg = await update.message.reply_text(
-                "🔍 Ищу новости о <b>{ticker}</b>...\n" "🤖 Анализирую через Perplexity AI...",
+                f"🔍 Ищу новости о <b>{ticker}</b>...\n" "🤖 Анализирую через Perplexity AI...",
                 parse_mode="HTML",
             )
             try:
