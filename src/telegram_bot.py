@@ -1,5 +1,3 @@
-from datetime import datetime
-
 """
 Telegram Bot для управления торговым ботом
 Полная базовая версия с основными командами и интеграцией
@@ -21,9 +19,7 @@ from telegram.ext import (
 from config import TELEGRAM_TOKEN
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
-from signal_generator import get_trading_signal_for_telegram
 from tinkoff_client import TinkoffClient
-from trading_engine import TradingEngine, TradingMode
 
 # Настройка логирования
 logging.basicConfig(
