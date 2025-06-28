@@ -15,7 +15,7 @@ from enum import Enum
 from strategy_engine import get_strategy_engine, TradingSignal
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
-from config import TRADING_CONFIG
+from config import PORTFOLIO_CONFIG, STRATEGY_CONFIG
 
 
 logger = logging.getLogger(__name__)
@@ -295,7 +295,7 @@ class StrategyExecutor:
                 self.last_reset_date = current_date
             
             # Проверка лимита сделок
-            max_daily_trades = TRADING_CONFIG.get("max_daily_trades", 5)
+            max_daily_trades = PORTFOLIO_CONFIG.get("max_daily_trades", 5)
             if self.daily_executions >= max_daily_trades:
                 logger.warning(f"Достигнут дневной лимит сделок: {max_daily_trades}")
                 return False
@@ -319,7 +319,7 @@ class StrategyExecutor:
                 "enabled_tickers": list(self.enabled_tickers),
                 "min_confidence_threshold": self.min_confidence_threshold,
                 "daily_executions": self.daily_executions,
-                "max_daily_trades": TRADING_CONFIG.get("max_daily_trades", 5),
+                "max_daily_trades": PORTFOLIO_CONFIG.get("max_daily_trades", 5),
                 "total_executions": len(self.execution_history),
                 "recent_executions": recent_executions
             }
