@@ -697,15 +697,94 @@ class TradingTelegramBot:
 
     async def sell_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /sell TICKER QUANTITY."""
-        await update.message.reply_text(
-            "📈 *Продажа акций*\n\n"
-            "⚠️ Функция продажи будет реализована в следующей версии.\n\n"
-            "Пока доступны:\n"
-            "• `/buy TICKER QUANTITY` - покупка акций\n"
-            "• `/portfolio` - просмотр портфеля\n"
-            "• `/price TICKER` - текущие цены",
+        if len(context.args) < 2:
+            await update.message.reply_text(
+                "📈 *Продажа акций (виртуальная)*\n\n"
+                "Использование: `/sell TICKER QUANTITY`\n\n"
+                "Примеры:\n"
+                "• `/sell SBER 25` - продать 25 акций Сбербанка\n"
+                "• `/sell GAZP 30` - продать 30 акций Газпрома\n\n"
+                "💡 Продажа осуществляется по текущей рыночной цене\n"
+                "📊 Используйте `/portfolio` для просмотра позиций",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        ticker = context.args[0].upper()
+        try:
+            quantity = int(context.args[1])
+        except ValueError:
+            await update.message.reply_text(
+                "❌ Количество акций должно быть числом",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        if quantity <= 0:
+            await update.message.reply_text(
+                "❌ Количество акций должно быть положительным числом",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return
+        
+        loading_msg = await update.message.reply_text(
+            f"📈 Продаю {quantity} акций {ticker}...",
             parse_mode=ParseMode.MARKDOWN
         )
+        
+        try:
+            result = await self.portfolio.sell_stock(ticker, quantity)
+            
+            if result["success"]:
+                realized_pnl = result['realized_pnl']
+                pnl_emoji = "💚" if realized_pnl >= 0 else "❤️"
+                pnl_sign = "+" if realized_pnl >= 0 else ""
+                remaining = result.get('remaining_quantity', 0)
+                
+                sell_text = f"""
+📈 *ПРОДАЖА ВЫПОЛНЕНА*
+
+🎯 *Акция:* {ticker}
+📊 *Количество:* {result['quantity']} шт
+💵 *Цена:* {result['price']:.2f} ₽
+💸 *Комиссия:* {result['commission']:.2f} ₽
+💳 *Получено:* {result['total_revenue']:,.0f} ₽
+
+{pnl_emoji} *Реализованная прибыль:* {pnl_sign}{realized_pnl:,.0f} ₽
+
+💰 *Баланс после продажи:* {result['new_cash_balance']:,.0f} ₽
+📊 *Осталось акций {ticker}:* {remaining} шт
+
+🎉 Средства добавлены на ваш виртуальный счет!
+
+💡 Используйте `/portfolio` для просмотра портфеля
+                """
+            else:
+                sell_text = f"""
+❌ *ОШИБКА ПРОДАЖИ*
+
+🎯 *Акция:* {ticker}
+📊 *Количество:* {quantity} шт
+
+❌ *Причина:* {result['error']}
+
+💡 *Советы:*
+- Проверьте наличие позиции в портфеле
+- Убедитесь что у вас достаточно акций
+- Используйте `/portfolio` для проверки позиций
+                """
+            
+            await loading_msg.edit_text(
+                sell_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+        except Exception as e:
+            await loading_msg.edit_text(
+                f"❌ Ошибка при продаже {ticker}: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Sell command error for {ticker}: {e}")
 
     def _format_portfolio_summary(self, summary: dict) -> str:
         """Форматирование сводки портфеля для Telegram."""

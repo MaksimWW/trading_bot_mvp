@@ -334,6 +334,104 @@ class PortfolioManager:
             "total_volume": total_volume
         }
     
+    async def sell_stock(self, ticker: str, quantity: int,
+                        price: Optional[float] = None) -> Dict:
+        """
+        Виртуальная продажа акций.
+        
+        Args:
+            ticker: Тикер акции
+            quantity: Количество акций
+            price: Цена продажи (если None, используется текущая рыночная цена)
+            
+        Returns:
+            Результат операции продажи
+        """
+        try:
+            # Проверка наличия позиции
+            if ticker not in self.positions:
+                return {"success": False, "error": f"Нет позиции по {ticker}"}
+            
+            position = self.positions[ticker]
+            if position.quantity < quantity:
+                return {
+                    "success": False, 
+                    "error": f"Недостаточно акций {ticker}: есть {position.quantity}, нужно {quantity}"
+                }
+            
+            # Получаем текущую цену если не указана
+            if price is None:
+                instrument = self.tinkoff.search_instrument(ticker)
+                if not instrument:
+                    return {"success": False, "error": f"Инструмент {ticker} не найден"}
+                
+                price_data = self.tinkoff.get_last_price(instrument["figi"])
+                if not price_data:
+                    return {"success": False, "error": f"Не удалось получить цену {ticker}"}
+                
+                # Извлекаем цену из Quotation объекта
+                price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
+            
+            # Расчет комиссии и общей суммы
+            commission = quantity * price * self.default_commission_rate
+            total_revenue = quantity * price - commission
+            
+            # Расчет прибыли/убытка по продаваемой части
+            avg_cost_per_share = position.avg_price
+            cost_basis_sold = quantity * avg_cost_per_share
+            realized_pnl = (quantity * price) - cost_basis_sold - commission
+            
+            # Выполнение продажи
+            trade_id = f"SELL_{ticker}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            trade = Trade(
+                trade_id=trade_id,
+                ticker=ticker,
+                action="SELL",
+                quantity=quantity,
+                price=price,
+                timestamp=datetime.now().isoformat(),
+                commission=commission
+            )
+            
+            # Обновление баланса
+            self.cash_balance += total_revenue
+            
+            # Обновление позиции
+            await self._update_position_after_sell(ticker, quantity)
+            
+            # Запись сделки
+            self.trades.append(trade)
+            
+            logger.info(f"Продажа выполнена: {quantity} {ticker} по {price:.2f} ₽")
+            
+            return {
+                "success": True,
+                "trade_id": trade_id,
+                "ticker": ticker,
+                "action": "SELL",
+                "quantity": quantity,
+                "price": price,
+                "commission": commission,
+                "total_revenue": total_revenue,
+                "realized_pnl": realized_pnl,
+                "new_cash_balance": self.cash_balance,
+                "remaining_quantity": self.positions.get(ticker, Position("", "", "", 0, 0, 0, "", "")).quantity
+            }
+            
+        except Exception as e:
+            logger.error(f"Ошибка при продаже {ticker}: {e}")
+            return {"success": False, "error": f"Ошибка продажи: {str(e)}"}
+    
+    async def _update_position_after_sell(self, ticker: str, quantity: int):
+        """Обновление позиции после продажи."""
+        position = self.positions[ticker]
+        position.quantity -= quantity
+        position.last_update = datetime.now().isoformat()
+        
+        # Удаляем позицию если акций не осталось
+        if position.quantity <= 0:
+            del self.positions[ticker]
+
     async def update_portfolio_prices(self):
         """Обновление текущих цен для всех позиций в портфеле."""
         try:
