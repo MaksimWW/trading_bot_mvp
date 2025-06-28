@@ -169,21 +169,21 @@ class TradingTelegramBot:
                 )
                 return
             ticker = context.args[0].upper()
-            await update.message.reply_text("🔍 Ищу цену для {ticker}...")
-            logger.info("Запрос цены для тикера: {ticker}")
+            await update.message.reply_text(f"🔍 Ищу цену для {ticker}...")
+            logger.info(f"Запрос цены для тикера: {ticker}")
             # Ищем инструмент
             instrument = self.tinkoff_client.search_instrument(ticker)
             if not instrument:
-                await update.message.reply_text("❌ Акция {ticker} не найдена. Проверьте тикер.")
-                logger.warning("Инструмент {ticker} не найден")
+                await update.message.reply_text(f"❌ Акция {ticker} не найдена. Проверьте тикер.")
+                logger.warning(f"Инструмент {ticker} не найден")
                 return
             # Получаем цену
             price_data = self.tinkoff_client.get_last_price(instrument["figi"])
             if not price_data:
                 await update.message.reply_text(
-                    "❌ Не удалось получить цену для {ticker}. Попробуйте позже."
+                    f"❌ Не удалось получить цену для {ticker}. Попробуйте позже."
                 )
-                logger.error("Не удалось получить цену для {ticker}")
+                logger.error(f"Не удалось получить цену для {ticker}")
                 return
             # Конвертируем цену
             price_rub = price_data.price.units + price_data.price.nano / 1_000_000_000
