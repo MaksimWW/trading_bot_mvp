@@ -819,7 +819,7 @@ class TradingTelegramBot:
             for sector, weight in summary["sector_allocation"].items():
                 text += f"• {sector}: {weight:.1f}%\n"
 
-        text += f"""
+        text += """
 
 💡 *Команды для торговли:*
 - `/buy TICKER QUANTITY` - купить акции

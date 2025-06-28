@@ -6,11 +6,10 @@ Portfolio Manager для торгового бота.
 """
 
 import asyncio
-import json
 import logging
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from config import PORTFOLIO_CONFIG
 from tinkoff_client import TinkoffClient
