@@ -581,6 +581,28 @@ class TradingTelegramBot:
             await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             logger.error(f"Risk command error for {ticker}: {e}")
 
+    def _format_portfolio_summary(self, summary: Dict) -> str:
+        """Форматирование сводки портфеля для Telegram."""
+        from datetime import datetime
+        
+        text = "💼 **ПОРТФЕЛЬ**\n\n"
+        text += f"💰 **Баланс:** {summary['cash_balance']:,.0f} ₽\n"
+        text += f"📈 **Стоимость позиций:** {summary['total_portfolio_value'] - summary['cash_balance']:,.0f} ₽\n"
+        text += f"💎 **Общая стоимость:** {summary['total_portfolio_value']:,.0f} ₽\n"
+        text += f"📊 **P&L:** {summary['total_unrealized_pnl']:+,.0f} ₽ ({summary['total_unrealized_pnl_percent']:+.2f}%)\n\n"
+        
+        if summary['positions']:
+            text += "📋 **ПОЗИЦИИ:**\n"
+            for pos in summary['positions']:
+                pnl_emoji = "🟢" if pos['unrealized_pnl'] >= 0 else "🔴"
+                text += f"{pnl_emoji} **{pos['ticker']}**: {pos['quantity']} шт × {pos['current_price']:.2f} ₽\n"
+                text += f"   P&L: {pos['unrealized_pnl']:+,.0f} ₽ ({pos['unrealized_pnl_percent']:+.2f}%) | Вес: {pos['weight_percent']:.1f}%\n\n"
+        else:
+            text += "📋 **Позиций нет**\n\n"
+            
+        text += f"🕐 **Обновлено:** {datetime.now().strftime('%H:%M:%S')}"
+        return text
+
     async def portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /portfolio."""
         loading_msg = await update.message.reply_text(
