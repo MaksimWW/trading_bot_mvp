@@ -127,17 +127,8 @@ class PortfolioManager:
                 if not price_data:
                     return {"success": False, "error": f"Не удалось получить цену {ticker}"}
                 
-                # Отладка: посмотрим структуру объекта
-                print(f"DEBUG: price_data type: {type(price_data)}")
-                print(f"DEBUG: price_data attributes: {dir(price_data)}")
-                if hasattr(price_data, 'price'):
-                    print(f"DEBUG: price_data.price: {price_data.price}")
-                    if hasattr(price_data.price, 'units'):
-                        price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
-                    else:
-                        price = float(price_data.price)
-                else:
-                    price = float(price_data)
+                # Извлекаем цену из Quotation объекта
+                price = float(price_data.price.units + price_data.price.nano / 1_000_000_000)
             
             # Расчет комиссии и общей суммы
             commission = quantity * price * self.default_commission_rate
