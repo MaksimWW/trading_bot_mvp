@@ -777,18 +777,18 @@ class TradingTelegramBot:
                     "• `/analysis GAZP` - анализ Газпрома\n"
                     "• `/analysis YNDX` - анализ Яндекса\n\n"
                     "📈 Показывает: RSI, MACD, Bollinger Bands, торговые сигналы",
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
                 return
 
             ticker = context.args[0].upper()
             loading_msg = await update.message.reply_text(
-                f"📊 Выполняю технический анализ {ticker}...",
-                parse_mode="HTML"
+                f"📊 Выполняю технический анализ {ticker}...", parse_mode="HTML"
             )
 
             try:
                 from technical_analysis import get_ticker_analysis_for_telegram
+
                 result_text = await get_ticker_analysis_for_telegram(ticker)
 
                 await loading_msg.edit_text(result_text, parse_mode="HTML")
@@ -801,14 +801,13 @@ class TradingTelegramBot:
                     "• Проверить тикер акции\n"
                     "• Повторить запрос через несколько секунд\n"
                     "• Использовать /status для проверки систем",
-                    parse_mode="HTML"
+                    parse_mode="HTML",
                 )
                 logger.error(f"Ошибка analysis_command для {ticker}: {e}")
 
         except Exception as e:
             await update.message.reply_text(
-                "❌ Произошла неожиданная ошибка при анализе. Попробуйте позже.",
-                parse_mode="HTML"
+                "❌ Произошла неожиданная ошибка при анализе. Попробуйте позже.", parse_mode="HTML"
             )
             logger.error(f"Критическая ошибка analysis_command: {e}")
 
@@ -824,7 +823,7 @@ class TradingTelegramBot:
                     "• `/signal GAZP` - сигнал по Газпрому\n"
                     "• `/signal YNDX` - сигнал по Яндексу\n\n"
                     "🧠 Объединяет: технический анализ (60%) + анализ новостей (40%)",
-                    parse_mode="Markdown"
+                    parse_mode="Markdown",
                 )
                 return
 
@@ -832,11 +831,12 @@ class TradingTelegramBot:
             loading_msg = await update.message.reply_text(
                 f"🎯 Генерирую торговый сигнал для {ticker}...\n"
                 f"🔄 Анализирую технические данные и новости...",
-                parse_mode="Markdown"
+                parse_mode="Markdown",
             )
 
             try:
                 from ai_signal_integration import AISignalIntegration
+
                 ai_signal = AISignalIntegration()
                 signal_result = await ai_signal.analyze_ticker(ticker)
 
@@ -845,11 +845,19 @@ class TradingTelegramBot:
                     result_text = f"🎯 **ТОРГОВЫЙ СИГНАЛ {ticker}**\n\n"
 
                     # Комбинированный сигнал
-                    signal_strength = str(signal_result.signal_strength).replace("SignalStrength.", "")
+                    signal_strength = str(signal_result.signal_strength).replace(
+                        "SignalStrength.", ""
+                    )
                     combined_score = signal_result.combined_score
                     confidence = signal_result.confidence
 
-                    signal_emoji = {"STRONG_BUY": "💚", "BUY": "🟢", "HOLD": "🟡", "SELL": "🟠", "STRONG_SELL": "🔴"}.get(signal_strength, "⚪")
+                    signal_emoji = {
+                        "STRONG_BUY": "💚",
+                        "BUY": "🟢",
+                        "HOLD": "🟡",
+                        "SELL": "🟠",
+                        "STRONG_SELL": "🔴",
+                    }.get(signal_strength, "⚪")
 
                     result_text += f"{signal_emoji} **Рекомендация: {signal_strength}**\n"
                     result_text += f"📊 Итоговая оценка: {combined_score:+.2f}\n"
@@ -864,11 +872,13 @@ class TradingTelegramBot:
 
                     # Технические индикаторы
                     tech_indicators = signal_result.technical_indicators
-                    current_price = tech_indicators.get('current_price', 0)
-                    rsi_data = tech_indicators.get('rsi', {})
-                    macd_data = tech_indicators.get('macd', {})
+                    current_price = tech_indicators.get("current_price", 0)
+                    rsi_data = tech_indicators.get("rsi", {})
+                    macd_data = tech_indicators.get("macd", {})
 
-                    result_text += f"• RSI: {rsi_data.get('value', 0):.1f} ({rsi_data.get('level', 'N/A')})\n"
+                    result_text += (
+                        f"• RSI: {rsi_data.get('value', 0):.1f} ({rsi_data.get('level', 'N/A')})\n"
+                    )
                     result_text += f"• MACD: {macd_data.get('trend', 'N/A')}\n\n"
 
                     result_text += f"📰 **АНАЛИЗ НОВОСТЕЙ (40% веса):**\n"
@@ -883,7 +893,9 @@ class TradingTelegramBot:
                     result_text += f"🛑 Стоп-лосс: {signal_result.stop_loss_price:.2f} ₽\n"
                     result_text += f"🎯 Тейк-профит: {signal_result.take_profit_price:.2f} ₽\n"
                     result_text += f"📊 Размер позиции: {signal_result.recommended_position_size:.1%} портфеля\n"
-                    result_text += f"⚖️ Риск: {str(signal_result.risk_level).replace('RiskLevel.', '')}\n\n"
+                    result_text += (
+                        f"⚖️ Риск: {str(signal_result.risk_level).replace('RiskLevel.', '')}\n\n"
+                    )
 
                     # Дополнительная информация и команды
                     result_text += f"⏰ Время анализа: {datetime.now().strftime('%H:%M:%S')}\n\n"
@@ -894,7 +906,9 @@ class TradingTelegramBot:
                     result_text += "⚠️ *Не является инвестиционной рекомендацией*"
 
                     await loading_msg.edit_text(result_text, parse_mode="Markdown")
-                    logger.info(f"Торговый сигнал {ticker} сгенерирован: {signal_strength} ({combined_score:+.2f})")
+                    logger.info(
+                        f"Торговый сигнал {ticker} сгенерирован: {signal_strength} ({combined_score:+.2f})"
+                    )
 
                 else:
                     await loading_msg.edit_text(
@@ -902,7 +916,7 @@ class TradingTelegramBot:
                         "💡 Попробуйте использовать отдельно:\n"
                         f"• `/analysis {ticker}` - технический анализ\n"
                         f"• `/news {ticker}` - анализ новостей",
-                        parse_mode="Markdown"
+                        parse_mode="Markdown",
                     )
 
             except Exception as e:
@@ -912,14 +926,14 @@ class TradingTelegramBot:
                     "• Проверить тикер акции\n"
                     "• Повторить запрос через несколько секунд\n"
                     "• Использовать отдельно /analysis и /news",
-                    parse_mode="Markdown"
+                    parse_mode="Markdown",
                 )
                 logger.error(f"Ошибка signal_command для {ticker}: {e}")
 
         except Exception as e:
             await update.message.reply_text(
                 "❌ Произошла неожиданная ошибка при генерации сигнала. Попробуйте позже.",
-                parse_mode="Markdown"
+                parse_mode="Markdown",
             )
             logger.error(f"Критическая ошибка signal_command: {e}")
 
