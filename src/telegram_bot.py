@@ -38,6 +38,7 @@ class TradingTelegramBot:
         """Инициализация бота"""
         self.token = TELEGRAM_TOKEN
         self.tinkoff_client = TinkoffClient()
+        self.portfolio_manager = PortfolioManager()
         self.application = None
         logger.info("🤖 Инициализация Trading Telegram Bot")
         # Импорт PortfolioManager
