@@ -1165,6 +1165,52 @@ class TradingTelegramBot:
         except Exception as e:
             logger.error(f"Ошибка в обработке неизвестной команды: {e}")
             await update.message.reply_text("❌ Произошла ошибка. Попробуйте `/help`")
+            
+    async def ai_analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /ai_analysis TICKER."""
+        if not context.args:
+            await update.message.reply_text(
+                "🤖 *Комплексный AI анализ акции*\n\n"
+                "Использование: `/ai_analysis TICKER`\n\n"
+                "Примеры:\n"
+                "• `/ai_analysis SBER` - анализ Сбербанка\n"
+                "• `/ai_analysis GAZP` - анализ Газпрома\n"
+                "• `/ai_analysis YNDX` - анализ Яндекса\n\n"
+                "🧠 Объединяет: технический анализ, новости, настроения, прогнозы\n"
+                "⏱️ Время обработки: 7-15 секунд",
+                parse_mode="Markdown",
+            )
+            return
+
+        ticker = context.args[0].upper()
+
+        loading_msg = await update.message.reply_text(
+            "🤖 Запускаю комплексный AI анализ для *{ticker}*...\n"
+            "📊 Анализирую технические индикаторы...\n"
+            "📰 Обрабатываю новостной фон и настроения...\n"
+            "🔮 Формирую прогноз и торговые рекомендации...",
+            parse_mode="Markdown",
+        )
+
+        try:
+            #Здесь будет логика AI анализа. Сейчас заглушка
+            result_text = f"""
+🤖 *AI АНАЛИЗ АКЦИИ {ticker} (Бета-версия)*
+
+⚠️ В разработке. Результаты носят ознакомительный характер.
+"""
+            await loading_msg.edit_text(result_text, parse_mode="Markdown")
+            logger.info(f"AI анализ {ticker} завершен (заглушка)")
+
+        except Exception as e:
+            error_msg = "❌ *Ошибка AI анализа {ticker}*\n\n"
+            error_msg += "Причина: {str(e)}\n\n"
+            error_msg += "💡 Попробуйте:\n"
+            error_msg += "• Проверить тикер (SBER, GAZP, YNDX)\n"
+            error_msg += "• Повторить запрос через несколько секунд"
+
+            await loading_msg.edit_text(error_msg, parse_mode="Markdown")
+            logger.error(f"AI Analysis command error for {ticker}: {e}")
 
     def setup_handlers(self):
         """Настройка обработчиков команд"""
@@ -1175,8 +1221,10 @@ class TradingTelegramBot:
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("price", self.price_command))
         self.application.add_handler(CommandHandler("accounts", self.accounts_command))
-        # Аналитика и риски
+        # Аналитика
         self.application.add_handler(CommandHandler("news", self.news_command))
+        self.application.add_handler(CommandHandler("ai_analysis", self.ai_analysis_command))
+        # Аналитика и риски
         self.application.add_handler(CommandHandler("risk", self.risk_command))
         self.application.add_handler(CommandHandler("portfolio", self.portfolio_command))
         self.application.add_handler(CommandHandler("analysis", self.analysis_command))
