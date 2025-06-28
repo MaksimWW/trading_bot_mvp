@@ -589,8 +589,8 @@ class TradingTelegramBot:
 
         try:
             # Обновляем цены и получаем сводку
-            await self.portfolio.update_portfolio_prices()
-            summary = self.portfolio.get_portfolio_summary()
+            await self.portfolio_manager.update_portfolio_prices()
+            summary = self.portfolio_manager.get_portfolio_summary()
 
             if "error" in summary:
                 await loading_msg.edit_text(
@@ -695,7 +695,7 @@ class TradingTelegramBot:
         )
 
         try:
-            result = await self.portfolio.buy_stock(ticker, quantity)
+            result = await self.portfolio_manager.buy_stock(ticker, quantity)
 
             if result["success"]:
                 buy_text = f"""
