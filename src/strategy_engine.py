@@ -318,31 +318,57 @@ class StrategyEngine:
             for strategy_id, strategy in self.active_strategies.items()
         }
 
-    def start_strategy(self, strategy_id: str, tickers: Optional[List[str]] = None) -> bool:
-        """Запуск стратегии."""
+    def start_strategy(self, strategy_id: str, tickers: List[str]) -> Dict[str, Any]:
+        """
+        Запустить стратегию для указанных тикеров.
+        
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+            
+        Returns:
+            Результат запуска стратегии
+        """
         if strategy_id not in self.strategies:
-            logger.error(f"Стратегия {strategy_id} не найдена")
-            return False
-
+            return {
+                "success": False,
+                "message": f"Стратегия {strategy_id} не найдена",
+                "available_strategies": list(self.strategies.keys())
+            }
+        
         strategy = self.strategies[strategy_id]
-
-        # Проверяем поддерживаемые тикеры
-        if tickers:
-            supported_tickers = strategy.get_supported_tickers()
-            invalid_tickers = [t for t in tickers if t not in supported_tickers]
-            if invalid_tickers:
-                logger.error(
-                    f"Неподдерживаемые тикеры для стратегии {strategy_id}: {invalid_tickers}"
-                )
-                return False
-
-        strategy.start()
-        self.active_strategies[strategy_id] = strategy
-
-        logger.info(
-            f"Стратегия {strategy_id} запущена для тикеров: {tickers or 'все поддерживаемые'}"
-        )
-        return True
+        
+        try:
+            # Обновляем active_tickers стратегии
+            if not hasattr(strategy, 'active_tickers'):
+                strategy.active_tickers = []
+            
+            # Добавляем новые тикеры
+            for ticker in tickers:
+                if ticker not in strategy.active_tickers:
+                    strategy.active_tickers.append(ticker)
+            
+            # Сохраняем состояние через State Manager
+            state_manager = get_strategy_state_manager()
+            state_manager.start_strategy(strategy_id, tickers)
+            
+            logger.info(f"Стратегия {strategy.name} запущена")
+            logger.info(f"Стратегия {strategy_id} запущена для тикеров: {tickers}")
+            
+            return {
+                "success": True,
+                "message": f"Стратегия {strategy.name} запущена для {len(tickers)} тикеров",
+                "strategy_name": strategy.name,
+                "tickers": tickers,
+                "total_active_tickers": len(strategy.active_tickers)
+            }
+            
+        except Exception as e:
+            logger.error(f"Ошибка запуска стратегии {strategy_id}: {e}")
+            return {
+                "success": False,
+                "message": f"Ошибка: {str(e)}"
+            }
 
     def stop_strategy(self, strategy_id: str) -> bool:
         """Остановка стратегии."""
