@@ -31,8 +31,34 @@ class StrategyStateManager:
         """Загрузка состояния из файла."""
         if self.state_file.exists():
             try:
-                with open(self.state_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                with open(self.state_file, 'r', encoding='utf-8') as f:
+                    loaded_state = json.load(f)
+                
+                # Миграция со старого формата
+                if 'strategies' in loaded_state and 'active_strategies' not in loaded_state:
+                    logger.info("Мигрируем со старого формата состояния")
+                    # Конвертируем старый формат в новый
+                    active_strategies = {}
+                    for strategy_id, data in loaded_state.get('strategies', {}).items():
+                        if data.get('status') == 'active':
+                            active_strategies[strategy_id] = {
+                                "tickers": data.get('active_tickers', []),
+                                "start_time": data.get('started_at', datetime.now().isoformat()),
+                                "status": "active"
+                            }
+                    
+                    migrated_state = self._get_default_state()
+                    migrated_state['active_strategies'] = active_strategies
+                    migrated_state['last_update'] = loaded_state.get('last_updated', datetime.now().isoformat())
+                    return migrated_state
+                
+                # Проверяем что state имеет правильную структуру
+                default_state = self._get_default_state()
+                for key in default_state:
+                    if key not in loaded_state:
+                        loaded_state[key] = default_state[key]
+                return loaded_state
+                
             except Exception as e:
                 logger.error(f"Ошибка загрузки состояния: {e}")
                 return self._get_default_state()
