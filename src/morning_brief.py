@@ -4,11 +4,10 @@ Morning Brief System для торгового бота
 """
 
 import asyncio
-import json
 import logging
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
 import feedparser  # Импорт RSS parser
 
