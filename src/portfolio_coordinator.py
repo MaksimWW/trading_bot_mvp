@@ -250,7 +250,7 @@ class PortfolioCoordinator:
             logger.info(f"✅ Strategy Engine получен: {type(strategy_engine)}")
             
             logger.info("📋 Получаем список стратегий")
-            strategies = strategy_engine.get_strategies()
+            strategies = strategy_engine.get_all_strategies()
             logger.info(f"📊 Найдено стратегий: {len(strategies)}")
             
             for strategy_id, strategy in strategies.items():
