@@ -252,66 +252,56 @@ class PortfolioCoordinator:
     async def _sync_with_strategy_engine(self):
         """Синхронизация с Strategy Engine для получения активных стратегий."""
         logger.info("🔄 Начинаем синхронизацию с Strategy Engine")
-
         try:
-            logger.info("📊 Получаем Strategy Engine instance")
-            strategy_engine = get_strategy_engine()
-            logger.info(f"✅ Strategy Engine получен: {type(strategy_engine)}")
-
-            logger.info("📋 Получаем список стратегий")
-            strategies = strategy_engine.get_all_strategies()
-            logger.info(f"📊 Найдено стратегий: {len(strategies)}")
-
-            for strategy_id, strategy in strategies.items():
-                logger.info(f"🎯 Обрабатываем стратегию: {strategy_id}")
-
-            # Получаем все стратегии и проверяем их active_tickers
-            all_strategies = self.strategy_engine.strategies
-
-            for strategy_id, strategy_obj in all_strategies.items():
-                active_tickers = getattr(strategy_obj, "active_tickers", [])
-                logger.info(
-                    f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})"
-                )
-                if active_tickers:
-                    logger.info(f"Стратегия {strategy_id} добавлена как активная")
-                    logger.info(
-                        f"🔍 DEBUG: self.active_strategies размер: {len(self.active_strategies)}"
-                    )
-                    logger.info(
-                        f"🔍 DEBUG: self.active_strategies keys: {list(self.active_strategies.keys())}"
-                    )
-
-            logger.info(
-                f"Strategy Engine содержит {len(self.active_strategies)} активных стратегий"
-            )
-
-            for strategy_id, strategy_obj in self.active_strategies.items():
-                # Получаем активные тикеры из стратегии
-                if hasattr(strategy_obj, "active_tickers"):
-                    active_tickers = strategy_obj.active_tickers
-                else:
-                    active_tickers = ["SBER"]  # Fallback
-
-                # Добавляем каждый тикер в портфель
-                for ticker in active_tickers:
-                    allocation_key = f"{strategy_id}_{ticker}"
-
-                    # Добавляем стратегию в портфель если её нет
-                    if allocation_key not in self.strategy_allocations:
-                        success = self.add_strategy_to_portfolio(strategy_id, ticker)
-                        if success:
-                            logger.info(f"Auto-sync: добавлена стратегия {allocation_key}")
-
-            logger.info(
-                f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}"
-            )
-
+            strategy_engine = self._get_strategy_engine_instance()
+            strategies = self._get_strategies_from_engine(strategy_engine)
+            self._process_strategy_sync(strategies)
+            self._add_strategies_to_portfolio()
+            logger.info(f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}")
         except Exception as e:
             logger.error(f"Ошибка синхронизации с Strategy Engine: {e}")
             import traceback
-
             logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def _get_strategy_engine_instance(self):
+        """Получение экземпляра Strategy Engine."""
+        logger.info("📊 Получаем Strategy Engine instance")
+        strategy_engine = get_strategy_engine()
+        logger.info(f"✅ Strategy Engine получен: {type(strategy_engine)}")
+        return strategy_engine
+
+    def _get_strategies_from_engine(self, strategy_engine):
+        """Получение списка стратегий из engine."""
+        logger.info("📋 Получаем список стратегий")
+        strategies = strategy_engine.get_all_strategies()
+        logger.info(f"📊 Найдено стратегий: {len(strategies)}")
+        return strategies
+
+    def _process_strategy_sync(self, strategies):
+        """Обработка синхронизации стратегий."""
+        for strategy_id, strategy in strategies.items():
+            logger.info(f"🎯 Обрабатываем стратегию: {strategy_id}")
+        
+        all_strategies = self.strategy_engine.strategies
+        for strategy_id, strategy_obj in all_strategies.items():
+            active_tickers = getattr(strategy_obj, "active_tickers", [])
+            logger.info(f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})")
+            if active_tickers:
+                logger.info(f"Стратегия {strategy_id} добавлена как активная")
+
+    def _add_strategies_to_portfolio(self):
+        """Добавление активных стратегий в портфель."""
+        logger.info(f"Strategy Engine содержит {len(self.active_strategies)} активных стратегий")
+        
+        for strategy_id, strategy_obj in self.active_strategies.items():
+            active_tickers = getattr(strategy_obj, "active_tickers", ["SBER"])
+            
+            for ticker in active_tickers:
+                allocation_key = f"{strategy_id}_{ticker}"
+                if allocation_key not in self.strategy_allocations:
+                    success = self.add_strategy_to_portfolio(strategy_id, ticker)
+                    if success:
+                        logger.info(f"Auto-sync: добавлена стратегия {allocation_key}")
 
     async def _calculate_portfolio_weights(self):
         """Расчет и обновление весов стратегий в портфеле."""
