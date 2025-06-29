@@ -267,7 +267,6 @@ class PortfolioCoordinator:
 
             # Получаем все стратегии и проверяем их active_tickers
             all_strategies = self.strategy_engine.strategies
-            active_strategies = {}
 
             for strategy_id, strategy_obj in all_strategies.items():
                 active_tickers = getattr(strategy_obj, "active_tickers", [])
