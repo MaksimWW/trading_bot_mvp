@@ -172,7 +172,7 @@ class NewsAnalyzerWithFallback:
         message += f"📈 Новостей: {news_count}\n"
         message += f"{reliability_emoji} Надежность: {reliability}\n"
         message += "📡 Источник: RSS резерв\n\n"
-        summary = analysis_result.get('news_summary', 'Резюме недоступно')
+        summary = analysis_result.get("news_summary", "Резюме недоступно")
         message += f"💬 {summary}\n\n"
         message += "⚠️ Использован резервный RSS источник"
 
