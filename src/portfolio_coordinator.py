@@ -302,6 +302,8 @@ class PortfolioCoordinator:
             
         except Exception as e:
             logger.error(f"Ошибка синхронизации с Strategy Engine: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _aggregate_signals(self, strategy_signals: Dict[str, TradingSignal]) -> Dict[str, float]:
         """
