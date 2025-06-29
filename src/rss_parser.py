@@ -186,7 +186,9 @@ class RSSParser:
         all_news.sort(key=lambda x: x.published_parsed or datetime.min, reverse=True)
         return all_news
 
-    async def _fetch_source_news(self, url: str, source_name: str, cutoff_time: datetime) -> List[NewsItem]:
+    async def _fetch_source_news(
+        self, url: str, source_name: str, cutoff_time: datetime
+    ) -> List[NewsItem]:
         """Получение новостей из одного RSS источника"""
         try:
             response_data = await self._get_rss_response(url)
@@ -210,7 +212,9 @@ class RSSParser:
                 return None
             return await response.text()
 
-    def _parse_rss_entries(self, content: str, source_name: str, cutoff_time: datetime) -> List[NewsItem]:
+    def _parse_rss_entries(
+        self, content: str, source_name: str, cutoff_time: datetime
+    ) -> List[NewsItem]:
         """Парсинг RSS записей"""
         feed = feedparser.parse(content)
 
@@ -234,18 +238,18 @@ class RSSParser:
     def _create_news_item(self, entry, source_name: str) -> Optional[NewsItem]:
         """Создание объекта новости из RSS записи"""
         published_dt = None
-        if hasattr(entry, 'published_parsed') and entry.published_parsed:
+        if hasattr(entry, "published_parsed") and entry.published_parsed:
             published_dt = datetime(*entry.published_parsed[:6])
-        elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+        elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
             published_dt = datetime(*entry.updated_parsed[:6])
 
         return NewsItem(
-            title=self._clean_text(entry.get('title', '')),
-            description=self._clean_text(entry.get('description', '') or entry.get('summary', '')),
-            link=entry.get('link', ''),
-            published=entry.get('published', ''),
+            title=self._clean_text(entry.get("title", "")),
+            description=self._clean_text(entry.get("description", "") or entry.get("summary", "")),
+            link=entry.get("link", ""),
+            published=entry.get("published", ""),
             published_parsed=published_dt,
-            source=source_name
+            source=source_name,
         )
 
     def _filter_news_by_ticker(
