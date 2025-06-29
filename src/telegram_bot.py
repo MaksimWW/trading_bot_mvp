@@ -675,8 +675,7 @@ class TradingTelegramBot:
 
             logger.info(
                 f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
-                ```python
-f"Sharpe {metrics_ratio:.2f}"
+                f"Sharpe {metrics.sharpe_ratio:.2f}"
             )
 
         except Exception as e:
