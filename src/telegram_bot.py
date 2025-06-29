@@ -21,6 +21,7 @@ from config import TELEGRAM_TOKEN
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
+from morning_brief import get_morning_brief_for_telegram
 
 # Настройка логирования
 logging.basicConfig(
@@ -85,6 +86,7 @@ class TradingTelegramBot:
 • `/news TICKER` - анализ новостей по акции (RSS)
 • `/analysis TICKER` - технический анализ акции
 • `/signal TICKER` - комбинированный торговый сигнал
+• `/morning_brief` - утренний анализ рынка 🌅
 ⚖️ **Управление рисками:**
 • `/risk TICKER` - анализ рисков позиции
 
@@ -1739,6 +1741,48 @@ class TradingTelegramBot:
             )
             logger.error(f"Portfolio performance command error: {e}")
 
+    async def morning_brief_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Команда /morning_brief - Утренний анализ рынка
+        """
+        try:
+            user_id = str(update.effective_user.id)
+            
+            # Отправляем сообщение о начале генерации
+            loading_msg = await update.message.reply_text(
+                "🌅 Генерирую утренний брифинг...\n"
+                "📊 Анализирую рынок\n"
+                "🎯 Формирую рекомендации...",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            # Генерируем брифинг
+            brief_text = await get_morning_brief_for_telegram(user_id)
+            
+            # Отправляем результат
+            await loading_msg.edit_text(
+                brief_text,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            logger.info(f"Morning brief успешно сгенерирован для пользователя {user_id}")
+            
+        except Exception as e:
+            error_msg = (
+                "❌ *Ошибка генерации утреннего брифинга*\n\n"
+                f"Причина: {str(e)}\n\n"
+                "💡 Попробуйте:\n"
+                "• Повторить запрос через несколько секунд\n"
+                "• Проверить /status систем"
+            )
+            
+            if 'loading_msg' in locals():
+                await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
+            else:
+                await update.message.reply_text(error_msg, parse_mode=ParseMode.MARKDOWN)
+            
+            logger.error(f"Morning brief command error: {e}")
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик неизвестных команд."""
         await update.message.reply_text(
@@ -1759,6 +1803,7 @@ class TradingTelegramBot:
         # Команды портфеля
         app.add_handler(CommandHandler("portfolio", self.portfolio_command))
         app.add_handler(CommandHandler("analytics", self.analytics_command))
+        app.add_handler(CommandHandler("morning_brief", self.morning_brief_command))
         app.add_handler(CommandHandler("buy", self.buy_command))
         app.add_handler(CommandHandler("sell", self.sell_command))
         # Команды анализа
