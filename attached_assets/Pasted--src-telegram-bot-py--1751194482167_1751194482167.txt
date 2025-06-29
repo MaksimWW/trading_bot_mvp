@@ -1,0 +1,66 @@
+Отредактируй файл src/telegram_bot.py. Найди строки где регистрируются обработчики команд:
+
+        self.application.add_handler(CommandHandler("morning_brief", self.morning_brief_command))
+
+И добавь после них:
+
+        self.application.add_handler(CommandHandler("rss_status", self.rss_status_command))
+
+Затем добавь новый метод rss_status_command перед методом morning_brief_command:
+
+    async def rss_status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Команда /rss_status - Проверка статуса RSS источников
+        """
+        try:
+            loading_msg = await update.message.reply_text(
+                "🔍 Проверяю RSS источники...",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+            # Проверяем RSS источники
+            from src.rss_parser import RSSParser
+            async with RSSParser() as parser:
+                working_count = await parser.check_sources_availability()
+                
+                # Получаем тестовые новости
+                market_news = await parser.get_market_news(6)
+                
+                status_text = f"""📡 *СТАТУС RSS ИСТОЧНИКОВ*
+
+✅ *Работающих источников:* {working_count}/4
+
+📰 *Последние новости ({len(market_news)}):*
+"""
+                
+                for i, news in enumerate(market_news[:3], 1):
+                    title = news['title'][:60] + "..." if len(news['title']) > 60 else news['title']
+                    source = news.get('source', 'N/A')
+                    status_text += f"{i}. {title}\n   📍 {source}\n\n"
+                
+                status_text += f"🕐 Проверено: {datetime.now().strftime('%H:%M')}"
+                
+                await loading_msg.edit_text(
+                    status_text,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            
+            logger.info("RSS status проверен успешно")
+            
+        except Exception as e:
+            error_msg = f"❌ *Ошибка проверки RSS:* {str(e)}"
+            
+            if 'loading_msg' in locals():
+                await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
+            else:
+                await update.message.reply_text(error_msg, parse_mode=ParseMode.MARKDOWN)
+            
+            logger.error(f"RSS status command error: {e}")
+
+И добавь в метод help_command новую строку в список команд:
+
+- `/rss_status` - Статус RSS источников 📡
+
+Также добавь импорт datetime в начало файла, если его еще нет:
+
+from datetime import datetime
