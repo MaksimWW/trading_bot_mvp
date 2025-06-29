@@ -258,8 +258,14 @@ class PortfolioCoordinator:
     async def _sync_with_strategy_engine(self):
         """Синхронизация с активными стратегиями из Strategy Engine."""
         try:
-            # Получаем активные стратегии из Strategy Engine
-            active_strategies = self.strategy_engine.active_strategies
+            # Получаем все стратегии и проверяем их active_tickers
+            all_strategies = self.strategy_engine.strategies
+            active_strategies = {}
+            
+            for strategy_id, strategy_obj in all_strategies.items():
+                active_tickers = getattr(strategy_obj, 'active_tickers', [])
+                if active_tickers:
+                    active_strategies[strategy_id] = strategy_obj
             
             logger.info(f"Strategy Engine содержит {len(active_strategies)} активных стратегий")
             
