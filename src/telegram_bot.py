@@ -39,6 +39,16 @@ class TradingTelegramBot:
         self.token = TELEGRAM_TOKEN
         self.tinkoff_client = TinkoffClient()
         self.portfolio_manager = PortfolioManager()
+        
+        # Инициализация анализаторов
+        from news_analyzer import get_news_analyzer
+        from technical_analysis import TechnicalAnalyzer
+        from rss_parser import RSSParser
+        
+        self.news_analyzer = get_news_analyzer()
+        self.technical_analyzer = TechnicalAnalyzer()
+        self.rss_parser = RSSParser()
+        
         self.application = None
 
         # Portfolio Coordinator
