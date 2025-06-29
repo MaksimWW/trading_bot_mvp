@@ -274,9 +274,9 @@ class PortfolioCoordinator:
                     logger.info(f"🔍 DEBUG: self.active_strategies размер: {len(self.active_strategies)}")
                     logger.info(f"🔍 DEBUG: self.active_strategies keys: {list(self.active_strategies.keys())}")
             
-            logger.info(f"Strategy Engine содержит {len(active_strategies)} активных стратегий")
+            logger.info(f"Strategy Engine содержит {len(self.active_strategies)} активных стратегий")
             
-            for strategy_id, strategy_obj in active_strategies.items():
+            for strategy_id, strategy_obj in self.active_strategies.items():
                 # Получаем поддерживаемые тикеры из объекта стратегии
                 if hasattr(strategy_obj, 'supported_tickers'):
                     supported_tickers = strategy_obj.supported_tickers
