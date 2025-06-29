@@ -39,11 +39,11 @@ class TradingTelegramBot:
         self.tinkoff_client = TinkoffClient()
         self.portfolio_manager = PortfolioManager()
         self.application = None
-        
+
         # Portfolio Coordinator
         from portfolio_coordinator import get_portfolio_coordinator
         self.portfolio_coordinator = get_portfolio_coordinator()
-        
+
         logger.info("🤖 Инициализация Trading Telegram Bot")
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1619,15 +1619,15 @@ class TradingTelegramBot:
             # Выполняем координацию
             result = await coordinator.coordinate_portfolio()
 
-            if result["status"] == "success":
+            if result["success"]:
                 text = f"""
 ✅ *КООРДИНАЦИЯ ПОРТФЕЛЯ ЗАВЕРШЕНА*
 
 📊 *Результаты:*
 - Обработано стратегий: {result['strategies_count']}
-- Агрегировано сигналов: {result['signals_aggregated']}
-- Ребалансировка: {'✅ Выполнена' if result['rebalance_executed'] else '➖ Не требовалась'}
-- Время выполнения: {result['timestamp'][-8:-3]}
+- Общий вес стратегий: {result['total_weight']:.1f}
+- Статус координации: {result['coordination_status']}
+- Время выполнения: {result.get('last_coordination', 'N/A')[-8:] if result.get('last_coordination') else 'N/A'}
 
 """
 
