@@ -184,6 +184,9 @@ class PortfolioCoordinator:
 
         try:
             logger.info("Начинаем координацию портфеля")
+            
+            # Auto-sync активных стратегий из Strategy Engine
+            await self._sync_with_strategy_engine()
 
             # 1. Получаем сигналы от всех стратегий
             strategy_signals = await self._gather_strategy_signals()
@@ -250,6 +253,28 @@ class PortfolioCoordinator:
 
         logger.info(f"Собрано {len(signals)} сигналов от стратегий")
         return signals
+
+    async def _sync_with_strategy_engine(self):
+        """Синхронизация с активными стратегиями из Strategy Engine."""
+        try:
+            # Получаем активные стратегии из Strategy Engine
+            active_strategies = self.strategy_engine.active_strategies
+            
+            for strategy_id, strategy_info in active_strategies.items():
+                # Для каждого тикера в стратегии
+                for ticker in strategy_info.get('tickers', []):
+                    allocation_key = f"{strategy_id}_{ticker}"
+                    
+                    # Добавляем стратегию в портфель если её нет
+                    if allocation_key not in self.strategy_allocations:
+                        success = self.add_strategy_to_portfolio(strategy_id, ticker)
+                        if success:
+                            logger.info(f"Auto-sync: добавлена стратегия {allocation_key}")
+            
+            logger.info(f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}")
+            
+        except Exception as e:
+            logger.error(f"Ошибка синхронизации с Strategy Engine: {e}")
 
     def _aggregate_signals(self, strategy_signals: Dict[str, TradingSignal]) -> Dict[str, float]:
         """
