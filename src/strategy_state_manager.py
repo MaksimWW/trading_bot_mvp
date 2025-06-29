@@ -31,7 +31,7 @@ class StrategyStateManager:
         """Загрузка состояния из файла."""
         if self.state_file.exists():
             try:
-                with open(self.state_file, 'r', encoding='utf-8') as f:
+                with open(self.state_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 logger.error(f"Ошибка загрузки состояния: {e}")
@@ -41,7 +41,7 @@ class StrategyStateManager:
     def _save_state(self):
         """Сохранение состояния в файл."""
         try:
-            with open(self.state_file, 'w', encoding='utf-8') as f:
+            with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(self.state, f, ensure_ascii=False, indent=2)
             logger.debug("Состояние стратегий сохранено")
         except Exception as e:
@@ -53,7 +53,7 @@ class StrategyStateManager:
             "active_strategies": {},
             "strategy_history": [],
             "last_update": datetime.now().isoformat(),
-            "version": "1.0"
+            "version": "1.0",
         }
 
     def start_strategy(self, strategy_id: str, tickers: List[str]):
@@ -67,7 +67,7 @@ class StrategyStateManager:
         self.state["active_strategies"][strategy_id] = {
             "tickers": tickers,
             "start_time": datetime.now().isoformat(),
-            "status": "active"
+            "status": "active",
         }
         self.state["last_update"] = datetime.now().isoformat()
         self._save_state()
@@ -132,15 +132,14 @@ class StrategyStateManager:
         """Получение сводки состояния."""
         active_count = len(self.state["active_strategies"])
         total_tickers = sum(
-            len(data["tickers"]) 
-            for data in self.state["active_strategies"].values()
+            len(data["tickers"]) for data in self.state["active_strategies"].values()
         )
 
         return {
             "active_strategies_count": active_count,
             "total_active_tickers": total_tickers,
             "strategies": list(self.state["active_strategies"].keys()),
-            "last_update": self.state["last_update"]
+            "last_update": self.state["last_update"],
         }
 
 
