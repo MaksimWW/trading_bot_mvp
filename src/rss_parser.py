@@ -6,11 +6,9 @@ RSS Parser для торгового бота - резервный источн�
 import asyncio
 import logging
 import re
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from urllib.parse import urljoin
 
 import aiohttp
 import feedparser
@@ -140,7 +138,7 @@ class RSSParser:
                                 published = datetime(*published[:6])
                             else:
                                 published = datetime.now()
-                        except:
+                        except Exception:
                             published = datetime.now()
 
                         if published < cutoff_time:
@@ -182,7 +180,7 @@ class RSSParser:
                         if response.status == 200:
                             source_available = True
                             break
-                except:
+                except Exception:
                     continue
             results[source] = source_available
 
