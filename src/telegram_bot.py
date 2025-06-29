@@ -576,7 +576,7 @@ class TradingTelegramBot:
                 ticker, position_analysis, sl_tp_analysis, entry_price, stop_loss_price
             )
 
-            await loading_msg.edit_text(result_text, parse_mode=ParseMode.MARKDOWN)
+            await loading_msg.edit_text(result_text)
             logger.info(
                 f"Анализ рисков {ticker} завершен: риск {position_analysis.get('risk_percent', 0):.2f}%"
             )
@@ -675,7 +675,7 @@ class TradingTelegramBot:
 
             logger.info(
                 f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
-                f"Sharpe {metrics.sharpe_ratio:.2f}"
+                f"Sharpe {metrics_ratio:.2f}"
             )
 
         except Exception as e:
