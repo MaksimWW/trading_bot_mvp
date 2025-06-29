@@ -22,6 +22,7 @@ from morning_brief import get_morning_brief_for_telegram
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
+from daily_report import get_daily_report_generator
 
 # Настройка логирования
 logging.basicConfig(
@@ -44,6 +45,26 @@ class TradingTelegramBot:
         from portfolio_coordinator import get_portfolio_coordinator
 
         self.portfolio_coordinator = get_portfolio_coordinator()
+
+        # Инициализация Daily Report Generator
+        try:
+            from news_analyzer import NewsAnalyzer
+            from technical_analysis import get_technical_analyzer
+            from rss_parser import RSSParser
+            
+            news_analyzer = NewsAnalyzer()
+            technical_analyzer = get_technical_analyzer()
+            rss_parser = RSSParser()
+            
+            self.daily_report_generator = get_daily_report_generator(
+                self.portfolio_manager,
+                news_analyzer,
+                technical_analyzer,
+                rss_parser
+            )
+        except Exception as e:
+            logger.warning(f"Daily report generator initialization failed: {e}")
+            self.daily_report_generator = None
 
         logger.info("🤖 Инициализация Trading Telegram Bot")
 
@@ -87,6 +108,7 @@ class TradingTelegramBot:
 • `/analysis TICKER` - технический анализ акции
 • `/signal TICKER` - комбинированный торговый сигнал
 • `/morning_brief` - утренний анализ рынка 🌅
+• `/daily_report` - ежедневный отчет по итогам дня 🌙
 • `/rss_status` - статус RSS источников 📡
 ⚖️ **Управление рисками:**
 • `/risk TICKER` - анализ рисков позиции
@@ -1799,6 +1821,50 @@ class TradingTelegramBot:
                 "❌ Ошибка при проверке статуса RSS источников. Попробуйте позже."
             )
 
+    async def daily_report_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /daily_report"""
+        try:
+            if not self.daily_report_generator:
+                await update.message.reply_text(
+                    "❌ Daily Report System недоступен.\n"
+                    "Проверьте конфигурацию системы.",
+                    parse_mode='Markdown'
+                )
+                return
+
+            user_id = str(update.effective_user.id)
+            
+            # Отправляем сообщение о генерации отчета
+            loading_msg = await update.message.reply_text(
+                "📊 Генерирую ежедневный отчет...\n"
+                "⏳ Анализирую торговую активность и портфель...",
+                parse_mode='Markdown'
+            )
+            
+            # Генерируем отчет
+            report = await self.daily_report_generator.generate_daily_report(user_id)
+            
+            # Отправляем отчет
+            await loading_msg.edit_text(
+                report,
+                parse_mode='Markdown'
+            )
+            
+            # Логируем использование
+            logger.info(f"Daily report generated for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Error in daily_report command: {e}")
+            error_message = (
+                "❌ Ошибка при генерации ежедневного отчета.\n"
+                "Попробуйте еще раз через несколько минут."
+            )
+            
+            if 'loading_msg' in locals():
+                await loading_msg.edit_text(error_message)
+            else:
+                await update.message.reply_text(error_message)
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик неизвестных команд."""
         await update.message.reply_text(
@@ -1821,6 +1887,7 @@ class TradingTelegramBot:
         app.add_handler(CommandHandler("analytics", self.analytics_command))
         app.add_handler(CommandHandler("morning_brief", self.morning_brief_command))
         app.add_handler(CommandHandler("rss_status", self.rss_status_command))
+        app.add_handler(CommandHandler("daily_report", self.daily_report_command))
         app.add_handler(CommandHandler("buy", self.buy_command))
         app.add_handler(CommandHandler("sell", self.sell_command))
         # Команды анализа
