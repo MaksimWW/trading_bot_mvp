@@ -18,11 +18,11 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
+from daily_report import get_daily_report_generator
 from morning_brief import get_morning_brief_for_telegram
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
-from daily_report import get_daily_report_generator
 
 # Настройка логирования
 logging.basicConfig(
@@ -39,16 +39,16 @@ class TradingTelegramBot:
         self.token = TELEGRAM_TOKEN
         self.tinkoff_client = TinkoffClient()
         self.portfolio_manager = PortfolioManager()
-        
+
         # Инициализация анализаторов
         from news_analyzer import get_news_analyzer
-        from technical_analysis import TechnicalAnalyzer
         from rss_parser import RSSParser
-        
+        from technical_analysis import TechnicalAnalyzer
+
         self.news_analyzer = get_news_analyzer()
         self.technical_analyzer = TechnicalAnalyzer()
         self.rss_parser = RSSParser()
-        
+
         self.application = None
 
         # Portfolio Coordinator
@@ -58,10 +58,7 @@ class TradingTelegramBot:
 
         # Инициализация Daily Report Generator
         self.daily_report_generator = get_daily_report_generator(
-            self.portfolio_manager,
-            self.news_analyzer,
-            self.technical_analyzer,
-            self.rss_parser
+            self.portfolio_manager, self.news_analyzer, self.technical_analyzer, self.rss_parser
         )
 
         logger.info("🤖 Инициализация Trading Telegram Bot")
@@ -1823,21 +1820,21 @@ class TradingTelegramBot:
         """Обработчик команды /daily_report"""
         try:
             user_id = str(update.effective_user.id)
-            
+
             loading_msg = await update.message.reply_text(
                 "📊 Генерирую ежедневный отчет...\n"
                 "⏳ Анализирую торговую активность и портфель...",
-                parse_mode='Markdown'
+                parse_mode="Markdown",
             )
-            
+
             report = await self.daily_report_generator.generate_daily_report(user_id)
-            
+
             await loading_msg.delete()
-            
-            await update.message.reply_text(report, parse_mode='Markdown')
-            
+
+            await update.message.reply_text(report, parse_mode="Markdown")
+
             logger.info(f"Daily report generated for user {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Error in daily_report command: {e}")
             await update.message.reply_text(
@@ -1849,21 +1846,21 @@ class TradingTelegramBot:
         """Обработчик команды /daily_report"""
         try:
             user_id = str(update.effective_user.id)
-            
+
             loading_msg = await update.message.reply_text(
                 "📊 Генерирую ежедневный отчет...\n"
                 "⏳ Анализирую торговую активность и портфель...",
-                parse_mode='Markdown'
+                parse_mode="Markdown",
             )
-            
+
             report = await self.daily_report_generator.generate_daily_report(user_id)
-            
+
             await loading_msg.delete()
-            
-            await update.message.reply_text(report, parse_mode='Markdown')
-            
+
+            await update.message.reply_text(report, parse_mode="Markdown")
+
             logger.info(f"Daily report generated for user {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Error in daily_report command: {e}")
             await update.message.reply_text(
