@@ -37,7 +37,7 @@ class StrategyStateManager:
                 logger.info(f"Состояние загружено из {self.state_file}")
                 return state
             else:
-                logger.info("Файл состояния не найден, создаем новое состояние")
+                logger.info("strategy_state.json не найден, создаем новое состояние")
                 return self._create_empty_state()
         except Exception as e:
             logger.error(f"Ошибка загрузки состояния: {e}")
@@ -53,9 +53,9 @@ class StrategyStateManager:
             self.state["last_updated"] = datetime.now().isoformat()
             with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(self.state, f, ensure_ascii=False, indent=2)
-            logger.info(f"Состояние сохранено в {self.state_file}")
+            logger.info("Состояние стратегий сохранено")
         except Exception as e:
-            logger.error(f"Ошибка сохранения состояния: {e}")
+            logger.error("Ошибка сохранения состояния")
 
     def start_strategy(self, strategy_id: str, tickers: List[str]):
         """
@@ -244,3 +244,653 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""Portfolio Coordinator - координирует запуск и остановку стратегий."""
+
+import asyncio
+import logging
+from typing import Dict, List
+
+from src.strategy_state_manager import get_strategy_state_manager
+
+logger = logging.getLogger(__name__)
+
+
+class PortfolioCoordinator:
+    """
+    Координатор портфеля.
+
+    Отвечает за запуск и остановку стратегий на основе внешних сигналов.
+    """
+
+    def __init__(self):
+        """Инициализация координатора."""
+        self.strategy_state_manager = get_strategy_state_manager()
+        self.is_running = False
+        logger.info("Portfolio Coordinator инициализирован")
+
+    async def start(self):
+        """Запуск координатора."""
+        if self.is_running:
+            logger.info("Portfolio Coordinator уже включен")
+            return
+
+        self.is_running = True
+        logger.info("Portfolio Coordinator запущен")
+
+    async def stop(self):
+        """Остановка координатора."""
+        if not self.is_running:
+            logger.info("Синхронизация отключена")
+            return
+
+        self.is_running = False
+        logger.info("Portfolio Coordinator остановлен")
+
+    def start_strategy(self, strategy_id: str, tickers: List[str]):
+        """
+        Запустить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+        """
+        self.strategy_state_manager.start_strategy(strategy_id, tickers)
+        logger.info(f"Запущена стратегия {strategy_id} для тикеров: {tickers}")
+
+    def stop_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """
+        Остановить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров (если None - остановить все)
+        """
+        self.strategy_state_manager.stop_strategy(strategy_id, tickers)
+        if tickers:
+            logger.info(f"Остановлена стратегия {strategy_id} для тикеров: {tickers}")
+        else:
+            logger.info(f"Остановлена стратегия {strategy_id} для всех тикеров")
+
+    def get_active_strategies(self) -> Dict[str, List[str]]:
+        """
+        Получить все активные стратегии и их тикеры.
+
+        Returns:
+            Словарь, где ключ - strategy_id, значение - список тикеров
+        """
+        return self.strategy_state_manager.get_all_active_strategies()
+
+    def is_strategy_active(self, strategy_id: str, ticker: str = None) -> bool:
+        """
+        Проверить, активна ли стратегия для указанного тикера.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            ticker: Тикер (если None - проверить общую активность стратегии)
+
+        Returns:
+            True, если стратегия активна для тикера (или в общем, если ticker=None)
+        """
+        return self.strategy_state_manager.is_strategy_active(strategy_id, ticker)
+
+    def get_strategy_state_summary(self) -> Dict:
+        """Получить сводку состояния стратегий."""
+        return self.strategy_state_manager.get_state_summary()
+
+
+# Singleton instance
+_portfolio_coordinator = None
+
+
+def get_portfolio_coordinator() -> PortfolioCoordinator:
+    """Получить экземпляр Portfolio Coordinator (Singleton)."""
+    global _portfolio_coordinator
+    if _portfolio_coordinator is None:
+        _portfolio_coordinator = PortfolioCoordinator()
+    return _portfolio_coordinator
+
+
+async def main():
+    """Тестирование Portfolio Coordinator."""
+    logging.basicConfig(level=logging.INFO)  # Настройка логирования
+
+    coordinator = get_portfolio_coordinator()
+    await coordinator.start()
+
+    # Эмуляция запуска и остановки стратегий
+    coordinator.start_strategy("strategy_1", ["AAPL", "MSFT"])
+    coordinator.start_strategy("strategy_2", ["GOOGL"])
+
+    print("Активные стратегии:", coordinator.get_active_strategies())
+
+    await asyncio.sleep(5)  # Пауза
+
+    coordinator.stop_strategy("strategy_1", ["AAPL"])
+    print("Активные стратегии после остановки:", coordinator.get_active_strategies())
+
+    await coordinator.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+"""Portfolio Coordinator - координирует запуск и остановку стратегий."""
+
+import asyncio
+import logging
+from typing import Dict, List
+
+from src.strategy_state_manager import get_strategy_state_manager
+
+logger = logging.getLogger(__name__)
+
+
+class PortfolioCoordinator:
+    """
+    Координатор портфеля.
+
+    Отвечает за запуск и остановку стратегий на основе внешних сигналов.
+    """
+
+    def __init__(self):
+        """Инициализация координатора."""
+        self.strategy_state_manager = get_strategy_state_manager()
+        self.is_running = False
+        logger.info("Portfolio Coordinator инициализирован")
+
+    async def start(self):
+        """Запуск координатора."""
+        if self.is_running:
+            logger.info("Portfolio Coordinator уже включен")
+            return
+
+        self.is_running = True
+        logger.info("Portfolio Coordinator запущен")
+
+    async def stop(self):
+        """Остановка координатора."""
+        if not self.is_running:
+            logger.info("Синхронизация отключена")
+            return
+
+        self.is_running = False
+        logger.info("Portfolio Coordinator остановлен")
+
+    def start_strategy(self, strategy_id: str, tickers: List[str]):
+        """
+        Запустить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+        """
+        self.strategy_state_manager.start_strategy(strategy_id, tickers)
+        logger.info(f"Запущена стратегия {strategy_id} для тикеров: {tickers}")
+
+    def stop_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """
+        Остановить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров (если None - остановить все)
+        """
+        self.strategy_state_manager.stop_strategy(strategy_id, tickers)
+        if tickers:
+            logger.info(f"Остановлена стратегия {strategy_id} для тикеров: {tickers}")
+        else:
+            logger.info(f"Остановлена стратегия {strategy_id} для всех тикеров")
+
+    def get_active_strategies(self) -> Dict[str, List[str]]:
+        """
+        Получить все активные стратегии и их тикеры.
+
+        Returns:
+            Словарь, где ключ - strategy_id, значение - список тикеров
+        """
+        return self.strategy_state_manager.get_all_active_strategies()
+
+    def is_strategy_active(self, strategy_id: str, ticker: str = None) -> bool:
+        """
+        Проверить, активна ли стратегия для указанного тикера.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            ticker: Тикер (если None - проверить общую активность стратегии)
+
+        Returns:
+            True, если стратегия активна для тикера (или в общем, если ticker=None)
+        """
+        return self.strategy_state_manager.is_strategy_active(strategy_id, ticker)
+
+    def get_strategy_state_summary(self) -> Dict:
+        """Получить сводку состояния стратегий."""
+        return self.strategy_state_manager.get_state_summary()
+
+
+# Singleton instance
+_portfolio_coordinator = None
+
+
+def get_portfolio_coordinator() -> PortfolioCoordinator:
+    """Получить экземпляр Portfolio Coordinator (Singleton)."""
+    global _portfolio_coordinator
+    if _portfolio_coordinator is None:
+        _portfolio_coordinator = PortfolioCoordinator()
+    return _portfolio_coordinator
+
+
+async def main():
+    """Тестирование Portfolio Coordinator."""
+    logging.basicConfig(level=logging.INFO)  # Настройка логирования
+
+    coordinator = get_portfolio_coordinator()
+    await coordinator.start()
+
+    # Эмуляция запуска и остановки стратегий
+    coordinator.start_strategy("strategy_1", ["AAPL", "MSFT"])
+    coordinator.start_strategy("strategy_2", ["GOOGL"])
+
+    print("Активные стратегии:", coordinator.get_active_strategies())
+
+    await asyncio.sleep(5)  # Пауза
+
+    coordinator.stop_strategy("strategy_1", ["AAPL"])
+    print("Активные стратегии после остановки:", coordinator.get_active_strategies())
+
+    await coordinator.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+"""Portfolio Coordinator - координирует запуск и остановку стратегий."""
+
+import asyncio
+import logging
+from typing import Dict, List
+
+from src.strategy_state_manager import get_strategy_state_manager
+
+logger = logging.getLogger(__name__)
+
+
+class PortfolioCoordinator:
+    """
+    Координатор портфеля.
+
+    Отвечает за запуск и остановку стратегий на основе внешних сигналов.
+    """
+
+    def __init__(self):
+        """Инициализация координатора."""
+        self.strategy_state_manager = get_strategy_state_manager()
+        self.is_running = False
+        logger.info("Portfolio Coordinator инициализирован")
+
+    async def start(self):
+        """Запуск координатора."""
+        if self.is_running:
+            logger.info("Portfolio Coordinator уже включен")
+            return
+
+        self.is_running = True
+        logger.info("Portfolio Coordinator запущен")
+
+    async def stop(self):
+        """Остановка координатора."""
+        if not self.is_running:
+            logger.info("Синхронизация отключена")
+            return
+
+        self.is_running = False
+        logger.info("Portfolio Coordinator остановлен")
+
+    def start_strategy(self, strategy_id: str, tickers: List[str]):
+        """
+        Запустить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+        """
+        self.strategy_state_manager.start_strategy(strategy_id, tickers)
+        logger.info(f"Запущена стратегия {strategy_id} для тикеров: {tickers}")
+
+    def stop_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """
+        Остановить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров (если None - остановить все)
+        """
+        self.strategy_state_manager.stop_strategy(strategy_id, tickers)
+        if tickers:
+            logger.info(f"Остановлена стратегия {strategy_id} для тикеров: {tickers}")
+        else:
+            logger.info(f"Остановлена стратегия {strategy_id} для всех тикеров")
+
+    def get_active_strategies(self) -> Dict[str, List[str]]:
+        """
+        Получить все активные стратегии и их тикеры.
+
+        Returns:
+            Словарь, где ключ - strategy_id, значение - список тикеров
+        """
+        return self.strategy_state_manager.get_all_active_strategies()
+
+    def is_strategy_active(self, strategy_id: str, ticker: str = None) -> bool:
+        """
+        Проверить, активна ли стратегия для указанного тикера.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            ticker: Тикер (если None - проверить общую активность стратегии)
+
+        Returns:
+            True, если стратегия активна для тикера (или в общем, если ticker=None)
+        """
+        return self.strategy_state_manager.is_strategy_active(strategy_id, ticker)
+
+    def get_strategy_state_summary(self) -> Dict:
+        """Получить сводку состояния стратегий."""
+        return self.strategy_state_manager.get_state_summary()
+
+
+# Singleton instance
+_portfolio_coordinator = None
+
+
+def get_portfolio_coordinator() -> PortfolioCoordinator:
+    """Получить экземпляр Portfolio Coordinator (Singleton)."""
+    global _portfolio_coordinator
+    if _portfolio_coordinator is None:
+        _portfolio_coordinator = PortfolioCoordinator()
+    return _portfolio_coordinator
+
+
+async def main():
+    """Тестирование Portfolio Coordinator."""
+    logging.basicConfig(level=logging.INFO)  # Настройка логирования
+
+    coordinator = get_portfolio_coordinator()
+    await coordinator.start()
+
+    # Эмуляция запуска и остановки стратегий
+    coordinator.start_strategy("strategy_1", ["AAPL", "MSFT"])
+    coordinator.start_strategy("strategy_2", ["GOOGL"])
+
+    print("Активные стратегии:", coordinator.get_active_strategies())
+
+    await asyncio.sleep(5)  # Пауза
+
+    coordinator.stop_strategy("strategy_1", ["AAPL"])
+    print("Активные стратегии после остановки:", coordinator.get_active_strategies())
+
+    await coordinator.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+"""Portfolio Coordinator - координирует запуск и остановку стратегий."""
+
+import asyncio
+import logging
+from typing import Dict, List
+
+from src.strategy_state_manager import get_strategy_state_manager
+
+logger = logging.getLogger(__name__)
+
+
+class PortfolioCoordinator:
+    """
+    Координатор портфеля.
+
+    Отвечает за запуск и остановку стратегий на основе внешних сигналов.
+    """
+
+    def __init__(self):
+        """Инициализация координатора."""
+        self.strategy_state_manager = get_strategy_state_manager()
+        self.is_running = False
+        logger.info("Portfolio Coordinator инициализирован")
+
+    async def start(self):
+        """Запуск координатора."""
+        if self.is_running:
+            logger.info("Portfolio Coordinator уже включен")
+            return
+
+        self.is_running = True
+        logger.info("Portfolio Coordinator запущен")
+
+    async def stop(self):
+        """Остановка координатора."""
+        if not self.is_running:
+            logger.info("Синхронизация отключена")
+            return
+
+        self.is_running = False
+        logger.info("Portfolio Coordinator остановлен")
+
+    def start_strategy(self, strategy_id: str, tickers: List[str]):
+        """
+        Запустить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+        """
+        self.strategy_state_manager.start_strategy(strategy_id, tickers)
+        logger.info(f"Запущена стратегия {strategy_id} для тикеров: {tickers}")
+
+    def stop_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """
+        Остановить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров (если None - остановить все)
+        """
+        self.strategy_state_manager.stop_strategy(strategy_id, tickers)
+        if tickers:
+            logger.info(f"Остановлена стратегия {strategy_id} для тикеров: {tickers}")
+        else:
+            logger.info(f"Остановлена стратегия {strategy_id} для всех тикеров")
+
+    def get_active_strategies(self) -> Dict[str, List[str]]:
+        """
+        Получить все активные стратегии и их тикеры.
+
+        Returns:
+            Словарь, где ключ - strategy_id, значение - список тикеров
+        """
+        return self.strategy_state_manager.get_all_active_strategies()
+
+    def is_strategy_active(self, strategy_id: str, ticker: str = None) -> bool:
+        """
+        Проверить, активна ли стратегия для указанного тикера.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            ticker: Тикер (если None - проверить общую активность стратегии)
+
+        Returns:
+            True, если стратегия активна для тикера (или в общем, если ticker=None)
+        """
+        return self.strategy_state_manager.is_strategy_active(strategy_id, ticker)
+
+    def get_strategy_state_summary(self) -> Dict:
+        """Получить сводку состояния стратегий."""
+        return self.strategy_state_manager.get_state_summary()
+
+
+# Singleton instance
+_portfolio_coordinator = None
+
+
+def get_portfolio_coordinator() -> PortfolioCoordinator:
+    """Получить экземпляр Portfolio Coordinator (Singleton)."""
+    global _portfolio_coordinator
+    if _portfolio_coordinator is None:
+        _portfolio_coordinator = PortfolioCoordinator()
+    return _portfolio_coordinator
+
+
+async def main():
+    """Тестирование Portfolio Coordinator."""
+    logging.basicConfig(level=logging.INFO)  # Настройка логирования
+
+    coordinator = get_portfolio_coordinator()
+    await coordinator.start()
+
+    # Эмуляция запуска и остановки стратегий
+    coordinator.start_strategy("strategy_1", ["AAPL", "MSFT"])
+    coordinator.start_strategy("strategy_2", ["GOOGL"])
+
+    print("Активные стратегии:", coordinator.get_active_strategies())
+
+    await asyncio.sleep(5)  # Пауза
+
+    coordinator.stop_strategy("strategy_1", ["AAPL"])
+    print("Активные стратегии после остановки:", coordinator.get_active_strategies())
+
+    await coordinator.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+"""Portfolio Coordinator - координирует запуск и остановку стратегий."""
+
+import asyncio
+import logging
+from typing import Dict, List
+
+from src.strategy_state_manager import get_strategy_state_manager
+
+logger = logging.getLogger(__name__)
+
+
+class PortfolioCoordinator:
+    """
+    Координатор портфеля.
+
+    Отвечает за запуск и остановку стратегий на основе внешних сигналов.
+    """
+
+    def __init__(self):
+        """Инициализация координатора."""
+        self.strategy_state_manager = get_strategy_state_manager()
+        self.is_running = False
+        logger.info("Portfolio Coordinator инициализирован")
+
+    async def start(self):
+        """Запуск координатора."""
+        if self.is_running:
+            logger.info("Portfolio Coordinator уже включен")
+            return
+
+        self.is_running = True
+        logger.info("Portfolio Coordinator запущен")
+
+    async def stop(self):
+        """Остановка координатора."""
+        if not self.is_running:
+            logger.info("Синхронизация отключена")
+            return
+
+        self.is_running = False
+        logger.info("Portfolio Coordinator остановлен")
+
+    def start_strategy(self, strategy_id: str, tickers: List[str]):
+        """
+        Запустить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+        """
+        self.strategy_state_manager.start_strategy(strategy_id, tickers)
+        logger.info(f"Запущена стратегия {strategy_id} для тикеров: {tickers}")
+
+    def stop_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """
+        Остановить стратегию для указанных тикеров.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров (если None - остановить все)
+        """
+        self.strategy_state_manager.stop_strategy(strategy_id, tickers)
+        if tickers:
+            logger.info(f"Остановлена стратегия {strategy_id} для тикеров: {tickers}")
+        else:
+            logger.info(f"Остановлена стратегия {strategy_id} для всех тикеров")
+
+    def get_active_strategies(self) -> Dict[str, List[str]]:
+        """
+        Получить все активные стратегии и их тикеры.
+
+        Returns:
+            Словарь, где ключ - strategy_id, значение - список тикеров
+        """
+        return self.strategy_state_manager.get_all_active_strategies()
+
+    def is_strategy_active(self, strategy_id: str, ticker: str = None) -> bool:
+        """
+        Проверить, активна ли стратегия для указанного тикера.
+
+        Args:
+            strategy_id: Идентификатор стратегии
+            ticker: Тикер (если None - проверить общую активность стратегии)
+
+        Returns:
+            True, если стратегия активна для тикера (или в общем, если ticker=None)
+        """
+        return self.strategy_state_manager.is_strategy_active(strategy_id, ticker)
+
+    def get_strategy_state_summary(self) -> Dict:
+        """Получить сводку состояния стратегий."""
+        return self.strategy_state_manager.get_state_summary()
+
+
+# Singleton instance
+_portfolio_coordinator = None
+
+
+def get_portfolio_coordinator() -> PortfolioCoordinator:
+    """Получить экземпляр Portfolio Coordinator (Singleton)."""
+    global _portfolio_coordinator
+    if _portfolio_coordinator is None:
+        _portfolio_coordinator = PortfolioCoordinator()
+    return _portfolio_coordinator
+
+
+async def main():
+    """Тестирование Portfolio Coordinator."""
+    logging.basicConfig(level=logging.INFO)  # Настройка логирования
+
+    coordinator = get_portfolio_coordinator()
+    await coordinator.start()
+
+    # Эмуляция запуска и остановки стратегий
+    coordinator.start_strategy("strategy_1", ["AAPL", "MSFT"])
+    coordinator.start_strategy("strategy_2", ["GOOGL"])
+
+    print("Активные стратегии:", coordinator.get_active_strategies())
+
+    await asyncio.sleep(5)  # Пауза
+
+    coordinator.stop_strategy("strategy_1", ["AAPL"])
+    print("Активные стратегии после остановки:", coordinator.get_active_strategies())
+
+    await coordinator.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
