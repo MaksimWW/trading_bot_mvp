@@ -22,7 +22,7 @@ from morning_brief import get_morning_brief_for_telegram
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
-from src.daily_report import get_daily_report_generator
+from daily_report import get_daily_report_generator
 
 # Настройка логирования
 logging.basicConfig(
