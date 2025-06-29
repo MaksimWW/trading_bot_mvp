@@ -82,7 +82,7 @@ class TradingTelegramBot:
 💰 **Рыночные данные:**
 • `/price TICKER` - цена акции (например: `/price SBER`)
 • `/accounts` - список торговых счетов
-• `/news TICKER` - анализ новостей (в разработке)
+• `/news TICKER` - анализ новостей по акции (RSS)
 • `/analysis TICKER` - технический анализ акции
 • `/signal TICKER` - комбинированный торговый сигнал
 ⚖️ **Управление рисками:**
@@ -354,62 +354,47 @@ class TradingTelegramBot:
             )
 
     async def news_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /news TICKER - анализ новостей"""
-        try:
-            # Проверяем есть ли тикер в команде
-            if not context.args:
-                await update.message.reply_text(
-                    "📰 <b>Анализ новостей по компании</b>\n\n"
-                    "Использование: <code>/news TICKER</code>\n\n"
-                    "Примеры:\n"
-                    "• <code>/news SBER</code> - новости о Сбербанке\n"
-                    "• <code>/news GAZP</code> - новости о Газпроме\n"
-                    "• <code>/news YNDX</code> - новости о Яндексе\n\n"
-                    "🤖 Анализ выполняется с помощью ИИ\n"
-                    "⏱️ Время обработки: 3-7 секунд",
-                    parse_mode="HTML",
-                )
-                return
-            ticker = context.args[0].upper()
-            # Отправляем сообщение о начале анализа
-            loading_msg = await update.message.reply_text(
-                f"🔍 Ищу новости о <b>{ticker}</b>...\n" "🤖 Анализирую через Perplexity AI...",
-                parse_mode="HTML",
-            )
-            try:
-                from perplexity_client import PerplexityClient
-
-                perplexity = PerplexityClient()
-                news_results = perplexity.search_ticker_news(ticker, hours=24)
-                result_text = await self._format_news_result(ticker, news_results)
-            except ImportError:
-                result_text = f"""❌ <b>PERPLEXITY CLIENT НЕ НАЙДЕН</b>
-🔧 Необходимо создать файл <code>perplexity_client.py</code>
-💡 Пока что используйте:
-- <code>/price {ticker}</code> - текущая цена акции
-- <code>/accounts</code> - торговые счета
-- <code>/status</code> - состояние систем"""
-            except Exception as api_error:
-                logger.error(f"Ошибка Perplexity API для {ticker}: {api_error}")
-                result_text = f"""❌ <b>ОШИБКА ПОЛУЧЕНИЯ НОВОСТЕЙ {ticker}</b>
-🔍 Причина: {str(api_error)}
-💡 Попробуйте:
-- Повторить запрос через несколько секунд
-- Проверить соединение с интернетом
-- Использовать <code>/status</code> для диагностики
-- Попробовать другой тикер: GAZP, YNDX
-🔄 Альтернативы:
-- <code>/price {ticker}</code> - текущая цена
-- <code>/accounts</code> - торговые счета"""
-            await loading_msg.edit_text(result_text, parse_mode="HTML")
-            logger.info(f"Команда news выполнена для {ticker}")
-        except Exception as e:
-            logger.error(f"Ошибка в команде news: {e}")
-            ticker_name = context.args[0].upper() if context.args else "акции"
+        """Команда анализа новостей с RSS fallback"""
+        if not context.args:
+            await update.message.reply_text("❌ Укажите тикер: /news SBER")
+            return
+        
+        ticker = context.args[0].upper()
+        
+        # Проверка поддерживаемых тикеров
+        supported_tickers = ['SBER', 'GAZP', 'YNDX', 'LKOH', 'ROSN', 'NVTK', 'GMKN']
+        if ticker not in supported_tickers:
             await update.message.reply_text(
-                f"❌ Ошибка при анализе новостей {ticker_name}. Попробуйте позже.",
-                parse_mode="HTML",
+                f"❌ Тикер {ticker} не поддерживается.\n"
+                f"Доступные тикеры: {', '.join(supported_tickers)}"
             )
+            return
+        
+        try:
+            # Отправка сообщения о начале анализа
+            status_message = await update.message.reply_text(
+                f"🔍 Анализирую новости по {ticker}...\n"
+                f"📡 Используется RSS резерв\n"
+                f"⏳ Это займет 10-20 секунд"
+            )
+            
+            # Импорт и создание анализатора
+            from news_analyzer_with_fallback import NewsAnalyzerWithFallback
+            analyzer = NewsAnalyzerWithFallback()
+            
+            # Анализ новостей
+            result = await analyzer.analyze_ticker_news(ticker, hours_back=48)
+            
+            # Форматирование и отправка ответа
+            response = analyzer.format_telegram_response(result)
+            await status_message.edit_text(response)
+            
+            logger.info(f"News analysis completed for {ticker}: {result['sentiment_label']}")
+            
+        except Exception as e:
+            error_message = f"❌ Ошибка анализа новостей по {ticker}:\n{str(e)[:200]}"
+            await update.message.reply_text(error_message)
+            logger.error(f"News command error for {ticker}: {e}")
 
     async def _parse_risk_params(self, args, loading_msg, ticker):
         """Parse entry price and stop loss from command arguments."""
