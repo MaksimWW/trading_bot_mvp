@@ -1627,7 +1627,7 @@ class TradingTelegramBot:
 - Обработано стратегий: {result['strategies_count']}
 - Общий вес стратегий: {result['total_weight']:.1f}
 - Статус координации: {result['coordination_status']}
-- Время выполнения: {result.get('last_coordination', 'N/A')[-8:] if result.get('last_coordination') else 'N/A'}
+- Время выполнения: {result.get('last_coordination', 'N/A')[-8:] if result.get('last_coordination') else 'Не указано'}
 
 """
 
