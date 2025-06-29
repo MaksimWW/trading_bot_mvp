@@ -13,13 +13,16 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, List, Optional
 
-from config import SUPPORTED_TICKERS
+from config import get_ticker_info
 from portfolio_analytics import PortfolioAnalytics
 from portfolio_manager import get_portfolio_manager
 from strategy_engine import TradingSignal, get_strategy_engine
 from strategy_executor import get_strategy_executor
 
 logger = logging.getLogger(__name__)
+
+# Поддерживаемые тикеры
+SUPPORTED_TICKERS = ["SBER", "GAZP", "YNDX", "LKOH", "ROSN", "NVTK", "GMKN"]
 
 
 class StrategyWeight(Enum):
@@ -109,7 +112,8 @@ class PortfolioCoordinator:
             True если стратегия добавлена успешно
         """
         try:
-            if ticker not in SUPPORTED_TICKERS:
+            ticker_info = get_ticker_info(ticker)
+            if not ticker_info:
                 logger.error(f"Тикер {ticker} не поддерживается")
                 return False
 
