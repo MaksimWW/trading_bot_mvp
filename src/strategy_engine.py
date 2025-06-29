@@ -290,6 +290,9 @@ class StrategyEngine:
         # Инициализация стандартных стратегий
         self._initialize_default_strategies()
 
+        # Восстанавливаем состояние стратегий
+        self._restore_strategy_state()
+
         logger.info("StrategyEngine инициализирован")
 
     def _initialize_default_strategies(self):
