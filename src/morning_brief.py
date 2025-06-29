@@ -320,7 +320,7 @@ class MorningBriefGenerator:
         text += f"\n\n📝 *ОБЗОР:*\n{brief_data.market_overview}"
 
         if brief_data.risk_alerts:
-            text += f"\n\n⚠️ *ПРЕДУПРЕЖДЕНИЯ:*\n"
+            text += "\n\n⚠️ *ПРЕДУПРЕЖДЕНИЯ:*\n"
             for alert in brief_data.risk_alerts:
                 text += f"• {alert}\n"
 
