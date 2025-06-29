@@ -1,0 +1,97 @@
+Отредактируй файл src/rss_parser.py. Найди эти строки:
+
+        # Конфигурация RSS источников
+        self.rss_sources = {
+            'rbc': {
+                'name': 'РБК',
+                'urls': [
+                    'https://rssexport.rbc.ru/rbcnews/news/20/full.rss',
+                ],
+                'encoding': 'utf-8'
+            },
+            'finam': {
+                'name': 'Финам',
+                'urls': [
+                    'https://www.finam.ru/net/analysis/conews/rsspoint',
+                ],
+                'encoding': 'utf-8'
+            },
+        }
+
+И замени на:
+
+        # Конфигурация RSS источников (рабочие URL)
+        self.rss_sources = {
+            'rbc': {
+                'name': 'РБК',
+                'urls': [
+                    'https://rbc.ru/v10/ajax/get-news-feed/project/rbcnews.rbc.ru/',
+                    'https://www.rbc.ru/crypto/',
+                ],
+                'encoding': 'utf-8'
+            },
+            'interfax': {
+                'name': 'Интерфакс',
+                'urls': [
+                    'https://www.interfax.ru/rss.asp',
+                ],
+                'encoding': 'utf-8'
+            },
+            'tass': {
+                'name': 'ТАСС',
+                'urls': [
+                    'https://tass.ru/rss/v2.xml',
+                ],
+                'encoding': 'utf-8'
+            },
+            'vedomosti': {
+                'name': 'Ведомости',
+                'urls': [
+                    'https://www.vedomosti.ru/rss/news',
+                ],
+                'encoding': 'utf-8'
+            },
+        }
+
+Также добавь метод для проверки доступности источников. Найди метод __init__ и добавь после него:
+
+    async def check_sources_availability(self):
+        """Проверка доступности RSS источников"""
+        print("🧪 Тестирование RSS парсера...")
+        print("📡 Проверка доступности:")
+        
+        if not self.session:
+            self.session = aiohttp.ClientSession(timeout=self.timeout)
+        
+        for source_key, source_config in self.rss_sources.items():
+            try:
+                url = source_config['urls'][0]  # Проверяем первый URL
+                async with self.session.get(url) as response:
+                    if response.status == 200:
+                        print(f"✅ {source_key}")
+                    else:
+                        print(f"❌ {source_key} (HTTP {response.status})")
+            except Exception as e:
+                print(f"❌ {source_key} (Ошибка: {str(e)[:50]})")
+
+И в конце файла замени тестовую функцию:
+
+    async def test_rss_parser():
+        async with RSSParser() as parser:
+            await parser.check_sources_availability()
+            
+            print("📰 Тест новостей по SBER:")
+            sber_news = await parser.get_ticker_news("SBER", 24)
+            print(f"Найдено: {len(sber_news)} новостей")
+            
+            for i, news in enumerate(sber_news[:2]):
+                title = news['title'][:50] + "..." if len(news['title']) > 50 else news['title']
+                print(f"{i+1}. {title} (Релевантность: {news['relevance_score']:.2f})")
+            
+            print("\n📈 Тест рыночных новостей:")
+            market_news = await parser.get_market_news(12)
+            print(f"Найдено: {len(market_news)} новостей")
+            
+            for i, news in enumerate(market_news[:2]):
+                title = news['title'][:50] + "..." if len(news['title']) > 50 else news['title']
+                print(f"{i+1}. {title} (Источник: {news['source']})")
