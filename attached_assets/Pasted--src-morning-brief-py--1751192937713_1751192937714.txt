@@ -1,0 +1,118 @@
+Создай файл src/morning_brief.py с базовой структурой для генерации утренних брифингов. Файл должен включать класс MorningBriefGenerator с методами для анализа новостей за ночь и технических сигналов.
+
+```python
+"""
+Morning Brief System для торгового бота
+Утренний анализ рынка с использованием RSS и существующих компонентов
+"""
+
+import asyncio
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+import json
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class MorningBriefData:
+    """Структура данных для утреннего брифинга"""
+    date: str
+    market_sentiment: float  # -1.0 to 1.0
+    top_news: List[Dict[str, Any]]
+    technical_signals: Dict[str, Dict[str, Any]]
+    trading_recommendations: List[Dict[str, Any]]
+    market_overview: str
+    risk_alerts: List[str]
+    portfolio_status: Optional[Dict[str, Any]] = None
+
+class MorningBriefGenerator:
+    """Генератор утренних брифингов для трейдеров"""
+    
+    def __init__(self):
+        """Инициализация компонентов системы"""
+        # Импорты будут добавлены после создания RSS parser
+        self.top_tickers = ["SBER", "GAZP", "YNDX", "LKOH", "ROSN"]
+        self.overnight_hours = 12  # Анализ за последние 12 часов
+        
+    async def generate_morning_brief(self, user_id: Optional[str] = None) -> MorningBriefData:
+        """
+        Генерация полного утреннего брифинга
+        
+        Args:
+            user_id: ID пользователя для персонализации (опционально)
+            
+        Returns:
+            MorningBriefData: Структурированные данные брифинга
+        """
+        logger.info("Начинаю генерацию утреннего брифинга...")
+        
+        try:
+            # Временная заглушка - вернем базовую структуру
+            brief_data = MorningBriefData(
+                date=datetime.now().strftime("%Y-%m-%d"),
+                market_sentiment=0.0,
+                top_news=[],
+                technical_signals={},
+                trading_recommendations=[],
+                market_overview="Система утренних брифингов инициализирована. RSS parser будет добавлен на следующем шаге.",
+                risk_alerts=["⚠️ Система в режиме разработки"],
+                portfolio_status=None
+            )
+            
+            logger.info("Утренний брифинг (базовая версия) успешно сгенерирован")
+            return brief_data
+            
+        except Exception as e:
+            logger.error(f"Ошибка генерации утреннего брифинга: {e}")
+            raise
+
+def format_morning_brief_for_telegram(brief: MorningBriefData) -> str:
+    """Форматирование утреннего брифинга для отправки в Telegram"""
+    
+    # Эмодзи для настроения рынка
+    sentiment_emoji = "📈" if brief.market_sentiment > 0.2 else "📉" if brief.market_sentiment < -0.2 else "➡️"
+    
+    text = f"""🌅 *УТРЕННИЙ БРИФИНГ* - {brief.date}
+
+{sentiment_emoji} *Настроение рынка:* {brief.market_sentiment:.2f} """
+    
+    if brief.market_sentiment > 0.2:
+        text += "(Позитивное)"
+    elif brief.market_sentiment < -0.2:
+        text += "(Негативное)"
+    else:
+        text += "(Нейтральное)"
+    
+    text += f"\n\n📝 *ОБЗОР:*\n{brief.market_overview}"
+    
+    if brief.risk_alerts:
+        text += f"\n\n⚠️ *ПРЕДУПРЕЖДЕНИЯ:*\n"
+        for alert in brief.risk_alerts:
+            text += f"• {alert}\n"
+    
+    text += f"\n\n🕐 Обновлено: {datetime.now().strftime('%H:%M')}"
+    
+    return text
+
+# Удобная функция для получения утреннего брифинга в формате Telegram
+async def get_morning_brief_for_telegram(user_id: Optional[str] = None) -> str:
+    """Удобная функция для получения утреннего брифинга в формате Telegram"""
+    try:
+        generator = MorningBriefGenerator()
+        brief = await generator.generate_morning_brief(user_id)
+        return format_morning_brief_for_telegram(brief)
+    except Exception as e:
+        logger.error(f"Ошибка генерации утреннего брифинга: {e}")
+        return f"❌ Ошибка генерации утреннего брифинга: {str(e)}"
+
+if __name__ == "__main__":
+    # Тестирование системы
+    async def test_morning_brief():
+        generator = MorningBriefGenerator()
+        brief = await generator.generate_morning_brief()
+        formatted = format_morning_brief_for_telegram(brief)
+        print(formatted)
+    
+    asyncio.run(test_morning_brief())
