@@ -173,58 +173,43 @@ class PortfolioCoordinator:
             logger.error(f"Ошибка удаления стратегии {strategy_id} для {ticker}: {e}")
             return False
 
-    async def coordinate_portfolio(self) -> Dict:
-        """
-        Основная функция координации портфеля.
-
-        Returns:
-            Результат координации
-        """
-        if not self.enabled:
-            return {"status": "disabled", "message": "Portfolio coordination отключена"}
-
+    async def coordinate_portfolio(self):
+        """Основной метод координации портфеля стратегий."""
+        logger.info("🚀 НАЧАЛО coordinate_portfolio")
+        
         try:
-            logger.info("Начинаем координацию портфеля")
-            
-            # Auto-sync активных стратегий из Strategy Engine
+            logger.info("📊 Шаг 1: Вызываем _sync_with_strategy_engine")
             await self._sync_with_strategy_engine()
-
-            # 1. Получаем сигналы от всех стратегий
-            strategy_signals = await self._gather_strategy_signals()
-
-            # 2. Агрегируем сигналы
-            aggregated_signals = self._aggregate_signals(strategy_signals)
-
-            # 3. Обновляем performance метрики
-            await self._update_performance_metrics()
-
-            # 4. Проверяем необходимость ребалансировки
-            rebalance_needed = self._check_rebalance_needed()
-
-            # 5. Выполняем ребалансировку если нужно
-            if rebalance_needed:
-                await self._execute_rebalancing()
-
-            # 6. Генерируем рекомендации
-            recommendations = self._generate_recommendations(aggregated_signals)
-
-            self.last_coordination = datetime.now()
-
-            result = {
-                "status": "success",
-                "timestamp": self.last_coordination.isoformat(),
-                "strategies_count": len(self.strategy_allocations),
-                "signals_aggregated": len(aggregated_signals),
-                "rebalance_executed": rebalance_needed,
-                "recommendations": recommendations,
+            logger.info("✅ Шаг 1 завершен")
+            
+            logger.info("📊 Шаг 2: Вызываем _calculate_portfolio_weights")
+            await self._calculate_portfolio_weights()
+            logger.info("✅ Шаг 2 завершен")
+            
+            logger.info("📊 Шаг 3: Вызываем _update_coordination_status")
+            self._update_coordination_status()
+            logger.info("✅ Шаг 3 завершен")
+            
+            logger.info(f"📈 Координация завершена. Стратегий: {len(self.active_strategies)}")
+            
+            return {
+                "success": True,
+                "strategies_count": len(self.active_strategies),
+                "total_weight": sum(s.weight for s in self.active_strategies.values()),
+                "coordination_status": self.coordination_status.value,
+                "last_coordination": self.last_coordination.isoformat() if self.last_coordination else None
             }
-
-            logger.info(f"Координация портфеля завершена: {result}")
-            return result
-
+            
         except Exception as e:
-            logger.error(f"Ошибка координации портфеля: {e}")
-            return {"status": "error", "message": str(e)}
+            logger.error(f"❌ ОШИБКА в coordinate_portfolio: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            return {
+                "success": False,
+                "error": str(e),
+                "strategies_count": 0
+            }
 
     async def _gather_strategy_signals(self) -> Dict[str, TradingSignal]:
         """Собрать сигналы от всех стратегий в портфеле."""
