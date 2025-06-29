@@ -83,6 +83,11 @@ class PortfolioCoordinator:
         self.enabled = False
         self.last_coordination = None
         self.coordination_interval = timedelta(hours=6)  # Координация каждые 6 часов
+        
+        # Активные стратегии и статус координации
+        self.active_strategies = {}
+        self.coordination_status = "INITIALIZED"
+        self._last_weight_calculation = None
 
         logger.info("Portfolio Coordinator инициализирован")
 
@@ -301,6 +306,82 @@ class PortfolioCoordinator:
             logger.error(f"Ошибка синхронизации с Strategy Engine: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
+
+    async def _calculate_portfolio_weights(self):
+        """Расчет и обновление весов стратегий в портфеле."""
+        logger.info("⚖️ Начинаем расчет весов портфеля")
+        
+        try:
+            if not self.strategy_allocations:
+                logger.info("Нет стратегий для расчета весов")
+                return
+            
+            # Получаем сигналы от всех стратегий
+            strategy_signals = await self._gather_strategy_signals()
+            logger.info(f"Получено {len(strategy_signals)} сигналов")
+            
+            # Обновляем метрики производительности
+            await self._update_performance_metrics()
+            
+            # Проверяем необходимость ребалансировки
+            if self._check_rebalance_needed():
+                logger.info("Требуется ребалансировка портфеля")
+                await self._execute_rebalancing()
+            
+            # Агрегируем сигналы по тикерам
+            aggregated_signals = self._aggregate_signals(strategy_signals)
+            
+            # Генерируем рекомендации
+            recommendations = self._generate_recommendations(aggregated_signals)
+            
+            logger.info(f"Веса портфеля обновлены. Рекомендаций: {len(recommendations)}")
+            
+            # Сохраняем информацию о расчете весов
+            self._last_weight_calculation = {
+                "timestamp": datetime.now(),
+                "strategies_count": len(self.strategy_allocations),
+                "signals_count": len(strategy_signals),
+                "recommendations": recommendations
+            }
+            
+        except Exception as e:
+            logger.error(f"Ошибка расчета весов портфеля: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def _update_coordination_status(self):
+        """Обновление статуса координации портфеля."""
+        logger.info("📋 Обновляем статус координации")
+        
+        try:
+            self.last_coordination = datetime.now()
+            
+            # Определяем статус координации
+            if not self.enabled:
+                coordination_status = "DISABLED"
+            elif len(self.strategy_allocations) == 0:
+                coordination_status = "NO_STRATEGIES"
+            elif len(self.strategy_allocations) == 1:
+                coordination_status = "SINGLE_STRATEGY"
+            else:
+                coordination_status = "ACTIVE"
+            
+            # Сохраняем статус
+            self.coordination_status = coordination_status
+            
+            # Инициализируем active_strategies если не существует
+            if not hasattr(self, 'active_strategies'):
+                self.active_strategies = {}
+            
+            # Обновляем список активных стратегий
+            for allocation_key, allocation in self.strategy_allocations.items():
+                if allocation.weight > 0:
+                    self.active_strategies[allocation_key] = allocation
+            
+            logger.info(f"Статус координации обновлен: {coordination_status}")
+            
+        except Exception as e:
+            logger.error(f"Ошибка обновления статуса координации: {e}")
 
     def _aggregate_signals(self, strategy_signals: Dict[str, TradingSignal]) -> Dict[str, float]:
         """
