@@ -34,19 +34,17 @@ class RSSParser:
     def __init__(self):
         self.session = None
         self.feeds = {
-            'rbc': [
-                'https://rbc.ru/v10/ajax/get-news-feed/project/rbcnews.ru/region/77',
-                'https://quote.rbc.ru/news/export.rss',
-            ],
-            'finam': [
-                'https://www.finam.ru/profiles/rss-news/',
-            ],
             'investing': [
                 'https://ru.investing.com/rss/news.rss',
-                'https://ru.investing.com/rss/news_285.rss',
             ],
             'interfax': [
                 'https://www.interfax.ru/rss.asp',
+            ],
+            'tass': [
+                'https://tass.ru/rss/v2.xml',
+            ],
+            'vedomosti': [
+                'https://www.vedomosti.ru/rss/news',
             ],
         }
         
@@ -151,7 +149,7 @@ class RSSParser:
                         full_text = f"{title} {summary}"
                         relevance = self.extract_ticker_relevance(full_text, ticker)
                         
-                        if relevance > 0.1:
+                        if relevance > 0.05 or any(keyword in full_text.lower() for keyword in ['акции', 'биржа', 'рынок', 'торги']):
                             news_item = NewsItem(
                                 title=title[:200],
                                 content=summary[:500],
