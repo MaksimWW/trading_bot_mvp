@@ -18,10 +18,10 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
+from morning_brief import get_morning_brief_for_telegram
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
-from morning_brief import get_morning_brief_for_telegram
 
 # Настройка логирования
 logging.basicConfig(
@@ -1754,17 +1754,14 @@ class TradingTelegramBot:
                 "🌅 Генерирую утренний брифинг...\n"
                 "📊 Анализирую рынок\n"
                 "🎯 Формирую рекомендации...",
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN,
             )
 
             # Генерируем брифинг
             brief_text = await get_morning_brief_for_telegram(user_id)
 
             # Отправляем результат
-            await loading_msg.edit_text(
-                brief_text,
-                parse_mode=ParseMode.MARKDOWN
-            )
+            await loading_msg.edit_text(brief_text, parse_mode=ParseMode.MARKDOWN)
 
             logger.info(f"Morning brief успешно сгенерирован для пользователя {user_id}")
 
@@ -1777,7 +1774,7 @@ class TradingTelegramBot:
                 "• Проверить /status систем"
             )
 
-            if 'loading_msg' in locals():
+            if "loading_msg" in locals():
                 await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             else:
                 await update.message.reply_text(error_msg, parse_mode=ParseMode.MARKDOWN)

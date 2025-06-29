@@ -4,20 +4,23 @@ RSS Parser для торгового бота
 """
 
 import asyncio
+import html
+import logging
+import re
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 import aiohttp
 import feedparser
-import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, asdict
-import re
-import html
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class NewsItem:
     """Структура новостного элемента"""
+
     title: str
     description: str
     link: str
@@ -27,6 +30,7 @@ class NewsItem:
     ticker: Optional[str] = None
     sentiment: Optional[float] = None
     relevance_score: float = 0.0
+
 
 class RSSParser:
     """RSS Parser с поддержкой множественных источников"""
@@ -38,43 +42,43 @@ class RSSParser:
 
         # Конфигурация рабочих RSS источников
         self.rss_sources = {
-            'interfax': {
-                'name': 'Интерфакс',
-                'urls': [
-                    'https://www.interfax.ru/rss.asp',
+            "interfax": {
+                "name": "Интерфакс",
+                "urls": [
+                    "https://www.interfax.ru/rss.asp",
                 ],
-                'encoding': 'utf-8'
+                "encoding": "utf-8",
             },
-            'tass': {
-                'name': 'ТАСС',
-                'urls': [
-                    'https://tass.ru/rss/v2.xml',
+            "tass": {
+                "name": "ТАСС",
+                "urls": [
+                    "https://tass.ru/rss/v2.xml",
                 ],
-                'encoding': 'utf-8'
+                "encoding": "utf-8",
             },
-            'vedomosti': {
-                'name': 'Ведомости',
-                'urls': [
-                    'https://www.vedomosti.ru/rss/news',
+            "vedomosti": {
+                "name": "Ведомости",
+                "urls": [
+                    "https://www.vedomosti.ru/rss/news",
                 ],
-                'encoding': 'utf-8'
+                "encoding": "utf-8",
             },
-            'investing': {
-                'name': 'Investing.com',
-                'urls': [
-                    'https://ru.investing.com/rss/news.rss',
+            "investing": {
+                "name": "Investing.com",
+                "urls": [
+                    "https://ru.investing.com/rss/news.rss",
                 ],
-                'encoding': 'utf-8'
+                "encoding": "utf-8",
             },
         }
 
         # Маппинг тикеров к поисковым терминам
         self.ticker_keywords = {
-            'SBER': ['сбербанк', 'sberbank', 'sber', 'сбер'],
-            'GAZP': ['газпром', 'gazprom', 'газ'],
-            'YNDX': ['яндекс', 'yandex', 'yndx'],
-            'LKOH': ['лукойл', 'lukoil', 'нефть'],
-            'ROSN': ['роснефть', 'rosneft', 'нефть'],
+            "SBER": ["сбербанк", "sberbank", "sber", "сбер"],
+            "GAZP": ["газпром", "gazprom", "газ"],
+            "YNDX": ["яндекс", "yandex", "yndx"],
+            "LKOH": ["лукойл", "lukoil", "нефть"],
+            "ROSN": ["роснефть", "rosneft", "нефть"],
         }
 
         # Кеш для новостей
@@ -102,7 +106,7 @@ class RSSParser:
         working_sources = 0
         for source_key, source_config in self.rss_sources.items():
             try:
-                url = source_config['urls'][0]  # Проверяем первый URL
+                url = source_config["urls"][0]  # Проверяем первый URL
                 async with self.session.get(url) as response:
                     if response.status == 200:
                         print(f"✅ {source_key}")
@@ -121,7 +125,7 @@ class RSSParser:
             cache_key = f"{ticker}_{hours_back}"
             if self._is_cache_valid(cache_key):
                 logger.info(f"Возвращаем новости {ticker} из кеша")
-                return self.news_cache[cache_key]['data']
+                return self.news_cache[cache_key]["data"]
 
             if not self.session:
                 self.session = aiohttp.ClientSession(timeout=self.timeout)
@@ -129,10 +133,7 @@ class RSSParser:
             all_news = await self._fetch_all_news(hours_back)
             ticker_news = self._filter_news_by_ticker(all_news, ticker)
 
-            self.news_cache[cache_key] = {
-                'data': ticker_news,
-                'timestamp': datetime.now()
-            }
+            self.news_cache[cache_key] = {"data": ticker_news, "timestamp": datetime.now()}
 
             logger.info(f"Найдено {len(ticker_news)} новостей для {ticker}")
             return ticker_news
@@ -146,7 +147,7 @@ class RSSParser:
         try:
             cache_key = f"market_{hours_back}"
             if self._is_cache_valid(cache_key):
-                return self.news_cache[cache_key]['data']
+                return self.news_cache[cache_key]["data"]
 
             if not self.session:
                 self.session = aiohttp.ClientSession(timeout=self.timeout)
@@ -154,10 +155,7 @@ class RSSParser:
             all_news = await self._fetch_all_news(hours_back)
             market_news = self._filter_market_news(all_news)
 
-            self.news_cache[cache_key] = {
-                'data': market_news,
-                'timestamp': datetime.now()
-            }
+            self.news_cache[cache_key] = {"data": market_news, "timestamp": datetime.now()}
 
             logger.info(f"Найдено {len(market_news)} рыночных новостей")
             return market_news
@@ -173,8 +171,8 @@ class RSSParser:
 
         tasks = []
         for source_key, source_config in self.rss_sources.items():
-            for url in source_config['urls']:
-                task = self._fetch_source_news(url, source_config['name'], cutoff_time)
+            for url in source_config["urls"]:
+                task = self._fetch_source_news(url, source_config["name"], cutoff_time)
                 tasks.append(task)
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -188,7 +186,9 @@ class RSSParser:
         all_news.sort(key=lambda x: x.published_parsed or datetime.min, reverse=True)
         return all_news
 
-    async def _fetch_source_news(self, url: str, source_name: str, cutoff_time: datetime) -> List[NewsItem]:
+    async def _fetch_source_news(
+        self, url: str, source_name: str, cutoff_time: datetime
+    ) -> List[NewsItem]:
         """Получение новостей из одного RSS источника"""
         try:
             async with self.session.get(url) as response:
@@ -207,19 +207,21 @@ class RSSParser:
                 for entry in feed.entries:
                     try:
                         published_dt = None
-                        if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                        if hasattr(entry, "published_parsed") and entry.published_parsed:
                             published_dt = datetime(*entry.published_parsed[:6])
-                        elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                        elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
                             published_dt = datetime(*entry.updated_parsed[:6])
 
                         # Создаем объект новости без фильтрации по времени для тестирования
                         news_item = NewsItem(
-                            title=self._clean_text(entry.get('title', '')),
-                            description=self._clean_text(entry.get('description', '') or entry.get('summary', '')),
-                            link=entry.get('link', ''),
-                            published=entry.get('published', ''),
+                            title=self._clean_text(entry.get("title", "")),
+                            description=self._clean_text(
+                                entry.get("description", "") or entry.get("summary", "")
+                            ),
+                            link=entry.get("link", ""),
+                            published=entry.get("published", ""),
                             published_parsed=published_dt,
-                            source=source_name
+                            source=source_name,
                         )
 
                         news_items.append(news_item)
@@ -238,7 +240,9 @@ class RSSParser:
             logger.error(f"Ошибка получения RSS {url}: {e}")
             return []
 
-    def _filter_news_by_ticker(self, news_list: List[NewsItem], ticker: str) -> List[Dict[str, Any]]:
+    def _filter_news_by_ticker(
+        self, news_list: List[NewsItem], ticker: str
+    ) -> List[Dict[str, Any]]:
         """Фильтрация новостей по тикеру"""
         keywords = self.ticker_keywords.get(ticker.upper(), [ticker.lower()])
         filtered_news = []
@@ -248,19 +252,36 @@ class RSSParser:
 
             if relevance_score > 0.1:
                 news_dict = asdict(news)
-                news_dict['relevance_score'] = relevance_score
-                news_dict['ticker'] = ticker
+                news_dict["relevance_score"] = relevance_score
+                news_dict["ticker"] = ticker
                 filtered_news.append(news_dict)
 
-        filtered_news.sort(key=lambda x: x['relevance_score'], reverse=True)
+        filtered_news.sort(key=lambda x: x["relevance_score"], reverse=True)
         return filtered_news
 
     def _filter_market_news(self, news_list: List[NewsItem]) -> List[Dict[str, Any]]:
         """Фильтрация общерыночных новостей"""
         market_keywords = [
-            'рынок', 'биржа', 'торги', 'индекс', 'ртс', 'ммвб', 'moex',
-            'экономика', 'инфляция', 'цб', 'центробанк', 'ставка', 'рубль',
-            'нефть', 'газ', 'доллар', 'евро', 'санкции', 'инвестиции', 'акции'
+            "рынок",
+            "биржа",
+            "торги",
+            "индекс",
+            "ртс",
+            "ммвб",
+            "moex",
+            "экономика",
+            "инфляция",
+            "цб",
+            "центробанк",
+            "ставка",
+            "рубль",
+            "нефть",
+            "газ",
+            "доллар",
+            "евро",
+            "санкции",
+            "инвестиции",
+            "акции",
         ]
 
         market_news = []
@@ -269,10 +290,10 @@ class RSSParser:
 
             if relevance_score > 0.05:
                 news_dict = asdict(news)
-                news_dict['relevance_score'] = relevance_score
+                news_dict["relevance_score"] = relevance_score
                 market_news.append(news_dict)
 
-        market_news.sort(key=lambda x: x['relevance_score'], reverse=True)
+        market_news.sort(key=lambda x: x["relevance_score"], reverse=True)
         return market_news[:10]  # Топ-10 рыночных новостей
 
     def _calculate_relevance(self, news: NewsItem, keywords: List[str]) -> float:
@@ -296,8 +317,8 @@ class RSSParser:
         if not text:
             return ""
 
-        text = re.sub(r'<[^>]+>', '', text)
-        text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"\s+", " ", text).strip()
         text = html.unescape(text)
 
         return text
@@ -307,7 +328,7 @@ class RSSParser:
         if cache_key not in self.news_cache:
             return False
 
-        cached_time = self.news_cache[cache_key]['timestamp']
+        cached_time = self.news_cache[cache_key]["timestamp"]
         return (datetime.now() - cached_time).seconds < self.cache_ttl
 
     async def close(self):
@@ -315,7 +336,9 @@ class RSSParser:
         if self.session:
             await self.session.close()
 
+
 if __name__ == "__main__":
+
     async def test_rss_parser():
         async with RSSParser() as parser:
             working_count = await parser.check_sources_availability()
@@ -326,7 +349,7 @@ if __name__ == "__main__":
                 print(f"Найдено: {len(sber_news)} новостей")
 
                 for i, news in enumerate(sber_news[:2]):
-                    title = news['title'][:50] + "..." if len(news['title']) > 50 else news['title']
+                    title = news["title"][:50] + "..." if len(news["title"]) > 50 else news["title"]
                     print(f"{i+1}. {title} (Релевантность: {news['relevance_score']:.2f})")
 
                 print("\n📈 Тест рыночных новостей:")
@@ -334,7 +357,7 @@ if __name__ == "__main__":
                 print(f"Найдено: {len(market_news)} новостей")
 
                 for i, news in enumerate(market_news[:3]):
-                    title = news['title'][:50] + "..." if len(news['title']) > 50 else news['title']
+                    title = news["title"][:50] + "..." if len(news["title"]) > 50 else news["title"]
                     print(f"{i+1}. {title} (Источник: {news['source']})")
             else:
                 print("❌ Нет рабочих RSS источников")

@@ -4,18 +4,21 @@ Morning Brief System для торгового бота
 """
 
 import asyncio
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
 import json
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 import feedparser  # Импорт RSS parser
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class MorningBriefData:
     """Структура данных для утреннего брифинга"""
+
     date: str
     market_sentiment: float  # -1.0 to 1.0
     top_news: List[Dict[str, Any]]
@@ -24,6 +27,7 @@ class MorningBriefData:
     market_overview: str
     risk_alerts: List[str]
     portfolio_status: Optional[Dict[str, Any]] = None
+
 
 class RSSParser:
     """Асинхронный RSS парсер"""
@@ -53,13 +57,13 @@ class RSSParser:
 
                 if time_diff <= timedelta(hours=hours):
                     news_item = {
-                        'title': entry.title,
-                        'description': entry.summary,
-                        'link': entry.link,
-                        'source': url,
-                        'published': published_time.isoformat(),
-                        'ticker': None,  # Общие рыночные новости
-                        'relevance_score': 0.5
+                        "title": entry.title,
+                        "description": entry.summary,
+                        "link": entry.link,
+                        "source": url,
+                        "published": published_time.isoformat(),
+                        "ticker": None,  # Общие рыночные новости
+                        "relevance_score": 0.5,
                     }
                     news.append(news_item)
         return news
@@ -70,27 +74,28 @@ class RSSParser:
         news = []
         # Create some mock news
         news_item_1 = {
-            'title': f"Анализ акций {ticker}",
-            'description': f"Акции {ticker} показывают признаки роста.",
-            'link': "http://example.com/news1",
-            'source': "Example News",
-            'published': datetime.now().isoformat(),
-            'ticker': ticker,
-            'relevance_score': 0.7
+            "title": f"Анализ акций {ticker}",
+            "description": f"Акции {ticker} показывают признаки роста.",
+            "link": "http://example.com/news1",
+            "source": "Example News",
+            "published": datetime.now().isoformat(),
+            "ticker": ticker,
+            "relevance_score": 0.7,
         }
         news_item_2 = {
-            'title': f"Прогноз для {ticker}",
-            'description': f"Эксперты прогнозируют умеренный рост акций {ticker}.",
-            'link': "http://example.com/news2",
-            'source': "Expert Insights",
-            'published': datetime.now().isoformat(),
-            'ticker': ticker,
-            'relevance_score': 0.6
+            "title": f"Прогноз для {ticker}",
+            "description": f"Эксперты прогнозируют умеренный рост акций {ticker}.",
+            "link": "http://example.com/news2",
+            "source": "Expert Insights",
+            "published": datetime.now().isoformat(),
+            "ticker": ticker,
+            "relevance_score": 0.6,
         }
         news.append(news_item_1)
         news.append(news_item_2)
 
         return news
+
 
 class MorningBriefGenerator:
     """Генератор утренних брифингов для трейдеров"""
@@ -102,7 +107,7 @@ class MorningBriefGenerator:
         self.overnight_hours = 12  # Анализ за последние 12 часов
         self.rss_urls = [
             "https://www.finanz.ru/rss/news_all.xml",
-            "https://www.vedomosti.ru/rss/articles"
+            "https://www.vedomosti.ru/rss/articles",
         ]
         self.rss_parser = RSSParser(self.rss_urls)
 
@@ -156,7 +161,7 @@ class MorningBriefGenerator:
                     trading_recommendations=recommendations,
                     market_overview=market_overview,
                     risk_alerts=risk_alerts,
-                    portfolio_status=None
+                    portfolio_status=None,
                 )
 
                 logger.info("Утренний брифинг успешно сгенерирован")
@@ -172,8 +177,8 @@ class MorningBriefGenerator:
             return 0.0
 
         # Простой расчет на основе ключевых слов
-        positive_words = ['рост', 'увеличение', 'прибыль', 'доходы', 'успех', 'развитие']
-        negative_words = ['падение', 'снижение', 'убытки', 'кризис', 'проблемы', 'санкции']
+        positive_words = ["рост", "увеличение", "прибыль", "доходы", "успех", "развитие"]
+        negative_words = ["падение", "снижение", "убытки", "кризис", "проблемы", "санкции"]
 
         sentiment_score = 0.0
         for news in news_list:
@@ -197,25 +202,27 @@ class MorningBriefGenerator:
         signals = {}
         for ticker in self.top_tickers:
             signals[ticker] = {
-                'rsi': 50.0,
-                'rsi_signal': 'NEUTRAL',
-                'macd': 'NEUTRAL',
-                'bollinger': 'NEUTRAL',
-                'overall_signal': 'NEUTRAL',
-                'confidence': 0.5
+                "rsi": 50.0,
+                "rsi_signal": "NEUTRAL",
+                "macd": "NEUTRAL",
+                "bollinger": "NEUTRAL",
+                "overall_signal": "NEUTRAL",
+                "confidence": 0.5,
             }
         return signals
 
-    def _generate_recommendations(self, news_list: List[Dict], technical_signals: Dict) -> List[Dict[str, Any]]:
+    def _generate_recommendations(
+        self, news_list: List[Dict], technical_signals: Dict
+    ) -> List[Dict[str, Any]]:
         """Генерация торговых рекомендаций"""
         recommendations = []
 
         # Анализируем новости по тикерам
         ticker_sentiment = {}
         for news in news_list:
-            ticker = news.get('ticker')
+            ticker = news.get("ticker")
             if ticker:
-                relevance = news.get('relevance_score', 0)
+                relevance = news.get("relevance_score", 0)
                 if ticker not in ticker_sentiment:
                     ticker_sentiment[ticker] = []
                 ticker_sentiment[ticker].append(relevance)
@@ -234,15 +241,17 @@ class MorningBriefGenerator:
                 action = "HOLD"
                 priority = 0.1
 
-            recommendations.append({
-                'ticker': ticker,
-                'action': action,
-                'priority': priority,
-                'reasoning': f"Новостной анализ (релевантность: {avg_score:.2f})"
-            })
+            recommendations.append(
+                {
+                    "ticker": ticker,
+                    "action": action,
+                    "priority": priority,
+                    "reasoning": f"Новостной анализ (релевантность: {avg_score:.2f})",
+                }
+            )
 
         # Сортируем по приоритету
-        recommendations.sort(key=lambda x: x['priority'], reverse=True)
+        recommendations.sort(key=lambda x: x["priority"], reverse=True)
         return recommendations[:5]
 
     def _generate_market_overview(self, news_list: List[Dict], sentiment: float) -> str:
@@ -257,10 +266,12 @@ class MorningBriefGenerator:
             sentiment_text = "нейтральным фоном"
 
         overview = f"Утренний обзор показывает {sentiment_text} на рынке. "
-        overview += f"Проанализировано {news_count} новостей за последние {self.overnight_hours} часов. "
+        overview += (
+            f"Проанализировано {news_count} новостей за последние {self.overnight_hours} часов. "
+        )
 
         if news_list:
-            top_sources = set([news.get('source', 'N/A') for news in news_list[:5]])
+            top_sources = set([news.get("source", "N/A") for news in news_list[:5]])
             overview += f"Основные источники: {', '.join(list(top_sources)[:3])}."
 
         return overview
@@ -276,7 +287,7 @@ class MorningBriefGenerator:
             alerts.append("⚠️ Недостаточно данных для анализа")
 
         # Проверяем наличие критических слов в новостях
-        critical_words = ['санкции', 'кризис', 'обвал', 'дефолт']
+        critical_words = ["санкции", "кризис", "обвал", "дефолт"]
         for news in news_list[:5]:
             text = f"{news.get('title', '')} {news.get('description', '')}".lower()
             for word in critical_words:
@@ -290,7 +301,11 @@ class MorningBriefGenerator:
         """Форматирование утреннего брифинга для отправки в Telegram"""
 
         # Эмодзи для настроения рынка
-        sentiment_emoji = "📈" if brief_data.market_sentiment > 0.2 else "📉" if brief_data.market_sentiment < -0.2 else "➡️"
+        sentiment_emoji = (
+            "📈"
+            if brief_data.market_sentiment > 0.2
+            else "📉" if brief_data.market_sentiment < -0.2 else "➡️"
+        )
 
         text = f"""🌅 *УТРЕННИЙ БРИФИНГ* - {brief_data.date}
 
@@ -314,6 +329,7 @@ class MorningBriefGenerator:
 
         return text
 
+
 # Удобная функция для получения утреннего брифинга в формате Telegram
 async def get_morning_brief_for_telegram(user_id: Optional[str] = None) -> str:
     """Удобная функция для получения утреннего брифинга в формате Telegram"""
@@ -324,6 +340,7 @@ async def get_morning_brief_for_telegram(user_id: Optional[str] = None) -> str:
     except Exception as e:
         logger.error(f"Ошибка генерации утреннего брифинга: {e}")
         return f"❌ Ошибка генерации утреннего брифинга: {str(e)}"
+
 
 if __name__ == "__main__":
     # Тестирование системы

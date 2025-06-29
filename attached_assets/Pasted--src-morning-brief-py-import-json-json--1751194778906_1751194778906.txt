@@ -1,0 +1,83 @@
+Отредактируй файл src/morning_brief.py. Найди строку:
+
+import json
+
+И удали её, так как json не используется.
+
+Затем найди строку с f-string без плейсхолдеров (около строки 324):
+
+                overview += f"Основные источники: {', '.join(list(top_sources)[:3])}."
+
+И замени на:
+
+                overview += "Основные источники: " + ", ".join(list(top_sources)[:3]) + "."
+
+Теперь отредактируй файл src/rss_parser.py. Найди метод _filter_market_news и строку где используется переменная text:
+
+        text = f"{news.title} {news.description}".lower()
+
+И удали эту строку, так как она не используется далее в методе.
+
+Также упрости метод _fetch_source_news, разбив его на части. Найди этот метод и замени на:
+
+    async def _fetch_source_news(self, url: str, source_name: str, cutoff_time: datetime) -> List[NewsItem]:
+        """Получение новостей из одного RSS источника"""
+        try:
+            response_data = await self._get_rss_response(url)
+            if not response_data:
+                return []
+            
+            return self._parse_rss_entries(response_data, source_name, cutoff_time)
+                
+        except asyncio.TimeoutError:
+            logger.warning(f"Таймаут для {url}")
+            return []
+        except Exception as e:
+            logger.error(f"Ошибка получения RSS {url}: {e}")
+            return []
+
+    async def _get_rss_response(self, url: str) -> Optional[str]:
+        """Получение RSS контента"""
+        async with self.session.get(url) as response:
+            if response.status != 200:
+                logger.warning(f"HTTP {response.status} для {url}")
+                return None
+            return await response.text()
+
+    def _parse_rss_entries(self, content: str, source_name: str, cutoff_time: datetime) -> List[NewsItem]:
+        """Парсинг RSS записей"""
+        feed = feedparser.parse(content)
+        
+        if not feed.entries:
+            logger.warning(f"Нет записей в RSS для {source_name}")
+            return []
+        
+        news_items = []
+        for entry in feed.entries:
+            try:
+                news_item = self._create_news_item(entry, source_name)
+                if news_item:
+                    news_items.append(news_item)
+            except Exception as e:
+                logger.warning(f"Ошибка парсинга записи RSS: {e}")
+                continue
+        
+        logger.info(f"Получено {len(news_items)} новостей из {source_name}")
+        return news_items[:20]
+
+    def _create_news_item(self, entry, source_name: str) -> Optional[NewsItem]:
+        """Создание объекта новости из RSS записи"""
+        published_dt = None
+        if hasattr(entry, 'published_parsed') and entry.published_parsed:
+            published_dt = datetime(*entry.published_parsed[:6])
+        elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+            published_dt = datetime(*entry.updated_parsed[:6])
+        
+        return NewsItem(
+            title=self._clean_text(entry.get('title', '')),
+            description=self._clean_text(entry.get('description', '') or entry.get('summary', '')),
+            link=entry.get('link', ''),
+            published=entry.get('published', ''),
+            published_parsed=published_dt,
+            source=source_name
+        )
