@@ -1,22 +1,28 @@
 {
-  "strategies": {
+  "active_strategies": {
     "rsi_mean_reversion": {
-      "active_tickers": [
+      "tickers": [
         "SBER"
       ],
-      "started_at": "2025-06-29T01:45:01.321017",
-      "status": "active",
-      "last_updated": "2025-06-29T01:45:01.321026"
+      "start_time": "2025-06-29T01:45:01.321017",
+      "status": "active"
     },
     "macd_trend_following": {
-      "active_tickers": [
+      "tickers": [
         "SBER"
       ],
-      "started_at": "2025-06-29T01:45:14.438465",
-      "status": "active",
-      "last_updated": "2025-06-29T01:45:14.438472"
+      "start_time": "2025-06-29T01:45:14.438465",
+      "status": "active"
+    },
+    "test_strategy": {
+      "tickers": [
+        "SBER"
+      ],
+      "start_time": "2025-06-29T07:59:27.845626",
+      "status": "active"
     }
   },
-  "last_updated": "2025-06-29T01:45:14.438475",
+  "strategy_history": [],
+  "last_update": "2025-06-29T07:59:27.845629",
   "version": "1.0"
 }
