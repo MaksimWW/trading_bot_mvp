@@ -201,7 +201,7 @@ class PortfolioCoordinator:
                 "success": True,
                 "strategies_count": len(self.active_strategies),
                 "total_weight": sum(s.weight for s in self.active_strategies.values()),
-                "coordination_status": self.coordination_status.value,
+                "coordination_status": self.coordination_status if isinstance(self.coordination_status, str) else self.coordination_status.value,
                 "last_coordination": self.last_coordination.isoformat() if self.last_coordination else None
             }
             
