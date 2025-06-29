@@ -675,7 +675,8 @@ class TradingTelegramBot:
 
             logger.info(
                 f"Аналитика портфеля отправлена: {metrics.positions_count} позиций, "
-                f"Sharpe {metrics_ratio:.2f}"
+                ```python
+f"Sharpe {metrics_ratio:.2f}"
             )
 
         except Exception as e:
@@ -1349,7 +1350,7 @@ class TradingTelegramBot:
                 ticker = context.args[0].upper()
                 text = self._handle_ticker_add(executor, ticker)
 
-            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+            await update.message.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
         except Exception as e:
             await update.message.reply_text(
@@ -1604,8 +1605,7 @@ class TradingTelegramBot:
         """Обработчик команды /coordinate_portfolio."""
         loading_msg = await update.message.reply_text(
             "🔄 Выполняем координацию портфеля...\n"
-            "📊 Анализируем стратегии и агрегируем сигналы...",
-            parse_mode=ParseMode.MARKDOWN
+            "📊 Анализируем стратегии и агрегируем сигналы..."
         )
 
         try:
@@ -1644,12 +1644,11 @@ class TradingTelegramBot:
 - Проверить состояние системы: `/status`
                 """
 
-            await loading_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+            await loading_msg.edit_text(text)
 
         except Exception as e:
             await loading_msg.edit_text(
                 f"❌ Ошибка координации портфеля: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Coordinate portfolio command error: {e}")
 
