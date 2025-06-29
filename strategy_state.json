@@ -1,0 +1,22 @@
+{
+  "strategies": {
+    "rsi_mean_reversion": {
+      "active_tickers": [
+        "SBER"
+      ],
+      "started_at": "2025-06-29T05:51:44.028707",
+      "status": "active",
+      "last_updated": "2025-06-29T05:51:44.028716"
+    },
+    "macd_trend_following": {
+      "active_tickers": [
+        "SBER"
+      ],
+      "started_at": "2025-06-29T05:51:54.028052",
+      "status": "active",
+      "last_updated": "2025-06-29T05:51:54.028061"
+    }
+  },
+  "last_updated": "2025-06-29T05:51:54.028063",
+  "version": "1.0"
+}
