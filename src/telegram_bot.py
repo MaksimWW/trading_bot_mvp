@@ -39,6 +39,11 @@ class TradingTelegramBot:
         self.tinkoff_client = TinkoffClient()
         self.portfolio_manager = PortfolioManager()
         self.application = None
+        
+        # Portfolio Coordinator
+        from portfolio_coordinator import get_portfolio_coordinator
+        self.portfolio_coordinator = get_portfolio_coordinator()
+        
         logger.info("🤖 Инициализация Trading Telegram Bot")
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
