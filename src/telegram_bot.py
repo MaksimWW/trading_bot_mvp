@@ -1835,6 +1835,32 @@ class TradingTelegramBot:
                 "Попробуйте еще раз через несколько минут."
             )
 
+    async def handle_daily_report(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /daily_report"""
+        try:
+            user_id = str(update.effective_user.id)
+            
+            loading_msg = await update.message.reply_text(
+                "📊 Генерирую ежедневный отчет...\n"
+                "⏳ Анализирую торговую активность и портфель...",
+                parse_mode='Markdown'
+            )
+            
+            report = await self.daily_report_generator.generate_daily_report(user_id)
+            
+            await loading_msg.delete()
+            
+            await update.message.reply_text(report, parse_mode='Markdown')
+            
+            logger.info(f"Daily report generated for user {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Error in daily_report command: {e}")
+            await update.message.reply_text(
+                "❌ Ошибка при генерации ежедневного отчета.\n"
+                "Попробуйте еще раз через несколько минут."
+            )
+
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик неизвестных команд."""
         await update.message.reply_text(
