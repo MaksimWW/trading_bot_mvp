@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Union
 
 from config import get_ticker_info
 from portfolio_analytics import PortfolioAnalytics
@@ -85,7 +85,6 @@ class PortfolioCoordinator:
         self.coordination_interval = timedelta(hours=6)  # Координация каждые 6 часов
 
         # Активные стратегии и статус координации
-        self.active_strategies = {}
         self.coordination_status = "INITIALIZED"
         self._last_weight_calculation = None
 
@@ -276,7 +275,6 @@ class PortfolioCoordinator:
                     f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})"
                 )
                 if active_tickers:
-                    self.active_strategies[strategy_id] = strategy_obj
                     logger.info(f"Стратегия {strategy_id} добавлена как активная")
                     logger.info(
                         f"🔍 DEBUG: self.active_strategies размер: {len(self.active_strategies)}"
@@ -380,13 +378,11 @@ class PortfolioCoordinator:
             self.coordination_status = coordination_status
 
             # Инициализируем active_strategies если не существует
-            if not hasattr(self, "active_strategies"):
-                self.active_strategies = {}
 
             # Обновляем список активных стратегий
             for allocation_key, allocation in self.strategy_allocations.items():
                 if allocation.weight > 0:
-                    self.active_strategies[allocation_key] = allocation
+                    pass
 
             logger.info(f"Статус координации обновлен: {coordination_status}")
 
