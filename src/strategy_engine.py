@@ -16,6 +16,7 @@ from ai_signal_integration import AISignalIntegration
 from news_analyzer import get_news_analyzer
 from portfolio_manager import PortfolioManager
 from technical_analysis import get_technical_analyzer
+from strategy_state_manager import get_strategy_state_manager
 
 logger = logging.getLogger(__name__)
 
