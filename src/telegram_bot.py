@@ -18,7 +18,6 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
-from portfolio_coordinator import get_portfolio_coordinator
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
@@ -1682,7 +1681,7 @@ class TradingTelegramBot:
                 # Получаем аналитику портфеля
                 try:
                     analytics = await self.portfolio_analytics.calculate_comprehensive_metrics()
-                except:
+                except Exception:
                     analytics = None
 
                 text = f"""
