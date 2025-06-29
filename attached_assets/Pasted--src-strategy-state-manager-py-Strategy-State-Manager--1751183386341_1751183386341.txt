@@ -1,0 +1,187 @@
+Замени содержимое файла src/strategy_state_manager.py на следующий код:
+
+"""
+Strategy State Manager - управление состоянием стратегий между процессами.
+Этот модуль обеспечивает сохранение и восстановление состояния стратегий
+между различными процессами и перезапусками бота.
+"""
+
+import json
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List
+
+logger = logging.getLogger(__name__)
+
+
+class StrategyStateManager:
+    """Менеджер состояния стратегий для persistence между процессами."""
+    
+    def __init__(self, state_file: str = "strategy_state.json"):
+        """
+        Инициализация менеджера состояния.
+        
+        Args:
+            state_file: Путь к файлу состояния
+        """
+        self.state_file = Path(state_file)
+        self.state = self._load_state()
+        logger.info(f"Strategy State Manager инициализирован: {self.state_file}")
+    
+    def _load_state(self) -> Dict:
+        """Загрузка состояния из файла."""
+        if self.state_file.exists():
+            try:
+                with open(self.state_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Ошибка загрузки состояния: {e}")
+                return self._get_default_state()
+        return self._get_default_state()
+    
+    def _save_state(self):
+        """Сохранение состояния в файл."""
+        try:
+            with open(self.state_file, 'w', encoding='utf-8') as f:
+                json.dump(self.state, f, ensure_ascii=False, indent=2)
+            logger.debug("Состояние стратегий сохранено")
+        except Exception as e:
+            logger.error(f"Ошибка сохранения состояния: {e}")
+    
+    def _get_default_state(self) -> Dict:
+        """Состояние по умолчанию."""
+        return {
+            "active_strategies": {},
+            "strategy_history": [],
+            "last_update": datetime.now().isoformat(),
+            "version": "1.0"
+        }
+    
+    def start_strategy(self, strategy_id: str, tickers: List[str]):
+        """
+        Запуск стратегии (совместимость с strategy_engine.py).
+        
+        Args:
+            strategy_id: Идентификатор стратегии
+            tickers: Список тикеров
+        """
+        self.state["active_strategies"][strategy_id] = {
+            "tickers": tickers,
+            "start_time": datetime.now().isoformat(),
+            "status": "active"
+        }
+        self.state["last_update"] = datetime.now().isoformat()
+        self._save_state()
+        logger.info(f"Запущена стратегия {strategy_id} для {tickers}")
+    
+    def add_strategy(self, strategy_id: str, tickers: List[str]):
+        """Добавление активной стратегии (алиас для start_strategy)."""
+        self.start_strategy(strategy_id, tickers)
+    
+    def stop_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """Остановка стратегии или отдельных тикеров."""
+        if strategy_id not in self.state["active_strategies"]:
+            return
+        
+        if tickers is None:
+            # Останавливаем всю стратегию
+            del self.state["active_strategies"][strategy_id]
+            logger.info(f"Остановлена стратегия {strategy_id}")
+        else:
+            # Останавливаем только указанные тикеры
+            current_tickers = self.state["active_strategies"][strategy_id]["tickers"]
+            remaining_tickers = [t for t in current_tickers if t not in tickers]
+            
+            if remaining_tickers:
+                self.state["active_strategies"][strategy_id]["tickers"] = remaining_tickers
+                logger.info(f"Из стратегии {strategy_id} удалены тикеры {tickers}")
+            else:
+                del self.state["active_strategies"][strategy_id]
+                logger.info(f"Стратегия {strategy_id} полностью остановлена")
+        
+        self.state["last_update"] = datetime.now().isoformat()
+        self._save_state()
+    
+    def remove_strategy(self, strategy_id: str, tickers: List[str] = None):
+        """Удаление стратегии (алиас для stop_strategy)."""
+        self.stop_strategy(strategy_id, tickers)
+    
+    def get_active_tickers(self, strategy_id: str) -> List[str]:
+        """Получение активных тикеров для стратегии."""
+        strategy = self.state["active_strategies"].get(strategy_id, {})
+        return strategy.get("tickers", [])
+    
+    def get_all_active_strategies(self) -> Dict[str, List[str]]:
+        """Получение всех активных стратегий."""
+        result = {}
+        for strategy_id, data in self.state["active_strategies"].items():
+            result[strategy_id] = data["tickers"]
+        return result
+    
+    def is_strategy_active(self, strategy_id: str, ticker: str = None) -> bool:
+        """Проверка активности стратегии."""
+        if strategy_id not in self.state["active_strategies"]:
+            return False
+        
+        if ticker is None:
+            return True
+        
+        tickers = self.state["active_strategies"][strategy_id]["tickers"]
+        return ticker in tickers
+    
+    def get_state_summary(self) -> Dict:
+        """Получение сводки состояния."""
+        active_count = len(self.state["active_strategies"])
+        total_tickers = sum(
+            len(data["tickers"]) 
+            for data in self.state["active_strategies"].values()
+        )
+        
+        return {
+            "active_strategies_count": active_count,
+            "total_active_tickers": total_tickers,
+            "strategies": list(self.state["active_strategies"].keys()),
+            "last_update": self.state["last_update"]
+        }
+
+
+# Глобальный экземпляр менеджера
+_global_state_manager = None
+
+
+def get_strategy_state_manager() -> StrategyStateManager:
+    """Получение глобального экземпляра менеджера состояния."""
+    global _global_state_manager
+    if _global_state_manager is None:
+        _global_state_manager = StrategyStateManager()
+    return _global_state_manager
+
+
+def main():
+    """Тестирование Strategy State Manager."""
+    print("🧪 Тестирование Strategy State Manager...")
+    
+    manager = get_strategy_state_manager()
+    
+    # Тест запуска стратегий (совместимость с strategy_engine)
+    manager.start_strategy("rsi_strategy", ["SBER", "GAZP"])
+    manager.start_strategy("macd_strategy", ["YNDX"])
+    
+    # Тест получения состояния
+    print("Активные стратегии:", manager.get_all_active_strategies())
+    print("Сводка:", manager.get_state_summary())
+    
+    # Тест остановки тикеров
+    manager.stop_strategy("rsi_strategy", ["GAZP"])
+    print("После остановки GAZP:", manager.get_all_active_strategies())
+    
+    # Тест полной остановки
+    manager.stop_strategy("macd_strategy")
+    print("После остановки MACD:", manager.get_all_active_strategies())
+    
+    print("✅ Тестирование завершено")
+
+
+if __name__ == "__main__":
+    main()
