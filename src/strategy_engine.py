@@ -307,6 +307,30 @@ class StrategyEngine:
 
         logger.info(f"Инициализировано {len(self.strategies)} стратегий")
 
+    def _restore_strategy_state(self):
+        """Восстановить состояние стратегий из State Manager."""
+        try:
+            state_manager = get_strategy_state_manager()
+            active_strategies = state_manager.get_all_active_strategies()
+            
+            restored_count = 0
+            for strategy_id, tickers in active_strategies.items():
+                if strategy_id in self.strategies:
+                    strategy = self.strategies[strategy_id]
+                    if not hasattr(strategy, 'active_tickers'):
+                        strategy.active_tickers = []
+                    strategy.active_tickers = tickers
+                    restored_count += 1
+                    logger.info(f"Восстановлено состояние {strategy_id}: {len(tickers)} тикеров")
+            
+            if restored_count > 0:
+                logger.info(f"Восстановлено состояние {restored_count} стратегий")
+            else:
+                logger.info("Нет сохраненного состояния стратегий")
+                
+        except Exception as e:
+            logger.error(f"Ошибка восстановления состояния стратегий: {e}")
+
     def get_all_strategies(self) -> Dict[str, Dict[str, Any]]:
         """Получение всех доступных стратегий."""
         return {
