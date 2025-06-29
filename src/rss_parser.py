@@ -116,43 +116,47 @@ class RSSParser:
     async def get_ticker_news(self, ticker: str, hours_back: int = 24) -> List[NewsItem]:
         """Получение новостей по тикеру из всех источников"""
         all_news = []
-        
+
         for source, urls in self.feeds.items():
             source_news = await self._get_news_from_source(source, urls, ticker, hours_back)
             all_news.extend(source_news)
-        
+
         # Сортировка по релевантности
         all_news.sort(key=lambda x: x.relevance_score, reverse=True)
         return all_news[:10]
-    
-    async def _get_news_from_source(self, source: str, urls: List[str], ticker: str, hours_back: int) -> List[NewsItem]:
+
+    async def _get_news_from_source(
+        self, source: str, urls: List[str], ticker: str, hours_back: int
+    ) -> List[NewsItem]:
         """Получение новостей из конкретного источника"""
         news_items = []
         cutoff_time = datetime.now() - timedelta(hours=hours_back)
-        
+
         for feed_url in urls:
             try:
                 feed = await self.fetch_feed(feed_url)
                 if not feed:
                     continue
-                
+
                 for entry in feed.entries[:20]:
                     news_item = self._process_feed_entry(entry, source, ticker, cutoff_time)
                     if news_item:
                         news_items.append(news_item)
-                        
+
             except Exception as e:
                 logger.error(f"Error parsing feed {feed_url}: {e}")
-        
+
         return news_items
-    
-    def _process_feed_entry(self, entry, source: str, ticker: str, cutoff_time: datetime) -> Optional[NewsItem]:
+
+    def _process_feed_entry(
+        self, entry, source: str, ticker: str, cutoff_time: datetime
+    ) -> Optional[NewsItem]:
         """Обработка одной записи из RSS ленты"""
-        title = getattr(entry, 'title', '')
-        summary = getattr(entry, 'summary', '')
-        link = getattr(entry, 'link', '')
-        published_str = getattr(entry, 'published', '')
-        
+        title = getattr(entry, "title", "")
+        summary = getattr(entry, "summary", "")
+        link = getattr(entry, "link", "")
+        published_str = getattr(entry, "published", "")
+
         # Парсинг даты
         try:
             published = feedparser._parse_date(published_str)
@@ -162,23 +166,25 @@ class RSSParser:
                 published = datetime.now()
         except Exception:
             published = datetime.now()
-        
+
         if published < cutoff_time:
             return None
-        
+
         full_text = f"{title} {summary}"
         relevance = self.extract_ticker_relevance(full_text, ticker)
-        
-        if relevance > 0.05 or any(keyword in full_text.lower() for keyword in ['акции', 'биржа', 'рынок', 'торги']):
+
+        if relevance > 0.05 or any(
+            keyword in full_text.lower() for keyword in ["акции", "биржа", "рынок", "торги"]
+        ):
             return NewsItem(
                 title=title[:200],
                 content=summary[:500],
                 url=link,
                 published=published,
                 source=source,
-                relevance_score=relevance
+                relevance_score=relevance,
             )
-        
+
         return None
 
     async def test_connection(self) -> Dict[str, bool]:
