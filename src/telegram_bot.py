@@ -358,18 +358,18 @@ class TradingTelegramBot:
         if not context.args:
             await update.message.reply_text("❌ Укажите тикер: /news SBER")
             return
-        
+
         ticker = context.args[0].upper()
-        
+
         # Проверка поддерживаемых тикеров
-        supported_tickers = ['SBER', 'GAZP', 'YNDX', 'LKOH', 'ROSN', 'NVTK', 'GMKN']
+        supported_tickers = ["SBER", "GAZP", "YNDX", "LKOH", "ROSN", "NVTK", "GMKN"]
         if ticker not in supported_tickers:
             await update.message.reply_text(
                 f"❌ Тикер {ticker} не поддерживается.\n"
                 f"Доступные тикеры: {', '.join(supported_tickers)}"
             )
             return
-        
+
         try:
             # Отправка сообщения о начале анализа
             status_message = await update.message.reply_text(
@@ -377,20 +377,21 @@ class TradingTelegramBot:
                 f"📡 Используется RSS резерв\n"
                 f"⏳ Это займет 10-20 секунд"
             )
-            
+
             # Импорт и создание анализатора
             from news_analyzer_with_fallback import NewsAnalyzerWithFallback
+
             analyzer = NewsAnalyzerWithFallback()
-            
+
             # Анализ новостей
             result = await analyzer.analyze_ticker_news(ticker, hours_back=48)
-            
+
             # Форматирование и отправка ответа
             response = analyzer.format_telegram_response(result)
             await status_message.edit_text(response)
-            
+
             logger.info(f"News analysis completed for {ticker}: {result['sentiment_label']}")
-            
+
         except Exception as e:
             error_message = f"❌ Ошибка анализа новостей по {ticker}:\n{str(e)[:200]}"
             await update.message.reply_text(error_message)
