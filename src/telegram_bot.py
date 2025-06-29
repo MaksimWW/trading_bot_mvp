@@ -18,10 +18,10 @@ from telegram.ext import (
 )
 
 from config import TELEGRAM_TOKEN
+from portfolio_coordinator import get_portfolio_coordinator
 from portfolio_manager import PortfolioManager
 from risk_manager import RiskManager
 from tinkoff_client import TinkoffClient
-from portfolio_coordinator import get_portfolio_coordinator
 
 # Настройка логирования
 logging.basicConfig(
@@ -42,6 +42,7 @@ class TradingTelegramBot:
 
         # Portfolio Coordinator
         from portfolio_coordinator import get_portfolio_coordinator
+
         self.portfolio_coordinator = get_portfolio_coordinator()
 
         logger.info("🤖 Инициализация Trading Telegram Bot")
@@ -1357,7 +1358,7 @@ class TradingTelegramBot:
             )
             logger.error(f"Auto execute command error: {e}")
 
-    async def execution_status_command(self, update: Update, context:ContextTypes.DEFAULT_TYPE):
+    async def execution_status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик команды /execution_status."""
         try:
             from strategy_executor import get_strategy_executor
@@ -1474,7 +1475,9 @@ class TradingTelegramBot:
             )
             logger.error(f"Auto settings command error: {e}")
 
-    async def portfolio_strategies_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def portfolio_strategies_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         """Обработчик команды /portfolio_strategies."""
         try:
             coordinator = self.portfolio_coordinator
@@ -1507,7 +1510,7 @@ class TradingTelegramBot:
 """
 
                 for i, (key, allocation) in enumerate(allocations.items(), 1):
-                    strategy_name = allocation.strategy_id.replace('_', ' ').title()
+                    strategy_name = allocation.strategy_id.replace("_", " ").title()
                     text += f"""
 🎯 *{i}. {strategy_name} ({allocation.ticker}):*
 - Вес в портфеле: {allocation.weight:.1%}
@@ -1534,8 +1537,7 @@ class TradingTelegramBot:
 
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка получения стратегий портфеля: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка получения стратегий портфеля: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Portfolio strategies command error: {e}")
 
@@ -1565,13 +1567,15 @@ class TradingTelegramBot:
                 total_weight = sum(a.weight for a in allocations.values())
 
                 for key, allocation in allocations.items():
-                    strategy_name = allocation.strategy_id.replace('_', ' ').title()
+                    strategy_name = allocation.strategy_id.replace("_", " ").title()
                     weight_pct = allocation.weight * 100
                     target_pct = allocation.target_allocation * 100
                     current_pct = allocation.current_allocation * 100
 
                     deviation = abs(current_pct - target_pct)
-                    status_emoji = "🟢" if deviation <= coordinator.rebalance_threshold * 100 else "🟡"
+                    status_emoji = (
+                        "🟢" if deviation <= coordinator.rebalance_threshold * 100 else "🟡"
+                    )
 
                     text += f"""
 {status_emoji} *{strategy_name} ({allocation.ticker}):*
@@ -1595,12 +1599,13 @@ class TradingTelegramBot:
 
         except Exception as e:
             await update.message.reply_text(
-                f"❌ Ошибка получения весов стратегий: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка получения весов стратегий: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Strategy weights command error: {e}")
 
-    async def coordinate_portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def coordinate_portfolio_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         """Обработчик команды /coordinate_portfolio."""
         loading_msg = await update.message.reply_text(
             "🔄 Выполняем координацию портфеля...\n"
@@ -1613,6 +1618,7 @@ class TradingTelegramBot:
             # Включаем координацию если она отключена
             if not coordinator.enabled:
                 from portfolio_coordinator import StrategyWeight
+
                 coordinator.enable_coordination(StrategyWeight.EQUAL)
 
             # Выполняем координацию
@@ -1651,11 +1657,12 @@ class TradingTelegramBot:
             )
             logger.error(f"Coordinate portfolio command error: {e}")
 
-    async def portfolio_performance_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def portfolio_performance_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
         """Обработчик команды /portfolio_performance."""
         loading_msg = await update.message.reply_text(
-            "📊 Анализируем производительность портфеля...",
-            parse_mode=ParseMode.MARKDOWN
+            "📊 Анализируем производительность портфеля...", parse_mode=ParseMode.MARKDOWN
         )
 
         try:
@@ -1690,9 +1697,9 @@ class TradingTelegramBot:
 
 """
 
-                if analytics and 'returns' in analytics:
-                    returns = analytics['returns']
-                    risk_metrics = analytics.get('risk_metrics', {})
+                if analytics and "returns" in analytics:
+                    returns = analytics["returns"]
+                    risk_metrics = analytics.get("risk_metrics", {})
 
                     text += f"""
 💰 *Доходность:*
@@ -1709,9 +1716,17 @@ class TradingTelegramBot:
                 # Производительность по стратегиям
                 text += "🎯 *По стратегиям:*\n"
                 for key, allocation in allocations.items():
-                    strategy_name = allocation.strategy_id.replace('_', ' ').title()
-                    perf_icon = "📈" if allocation.performance_score > 0 else "📉" if allocation.performance_score < 0 else "➖"
-                    risk_icon = "🟢" if allocation.risk_score < 0.3 else "🟡" if allocation.risk_score < 0.7 else "🔴"
+                    strategy_name = allocation.strategy_id.replace("_", " ").title()
+                    perf_icon = (
+                        "📈"
+                        if allocation.performance_score > 0
+                        else "📉" if allocation.performance_score < 0 else "➖"
+                    )
+                    risk_icon = (
+                        "🟢"
+                        if allocation.risk_score < 0.3
+                        else "🟡" if allocation.risk_score < 0.7 else "🔴"
+                    )
 
                     text += f"""
 {perf_icon} *{strategy_name} ({allocation.ticker}):*
@@ -1735,16 +1750,14 @@ class TradingTelegramBot:
 
         except Exception as e:
             await loading_msg.edit_text(
-                f"❌ Ошибка анализа производительности: {str(e)}",
-                parse_mode=ParseMode.MARKDOWN
+                f"❌ Ошибка анализа производительности: {str(e)}", parse_mode=ParseMode.MARKDOWN
             )
             logger.error(f"Portfolio performance command error: {e}")
 
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик неизвестных команд."""
         await update.message.reply_text(
-            "🤔 Не понимаю эту команду.\n"
-            "Воспользуйтесь /help для списка доступных команд."
+            "🤔 Не понимаю эту команду.\n" "Воспользуйтесь /help для списка доступных команд."
         )
         logger.warning(f"Получена неизвестная команда: {update.message.text}")
 

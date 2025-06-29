@@ -1,4 +1,3 @@
-
 """
 Portfolio Coordinator - Умная координация множественных торговых стратегий.
 
@@ -67,6 +66,7 @@ class PortfolioCoordinator:
     def __init__(self):
         """Инициализация координатора портфеля."""
         from strategy_engine import get_strategy_engine
+
         self.strategy_engine = get_strategy_engine()
         self.strategy_executor = get_strategy_executor()
         self.portfolio_manager = get_portfolio_manager()
@@ -83,7 +83,7 @@ class PortfolioCoordinator:
         self.enabled = False
         self.last_coordination = None
         self.coordination_interval = timedelta(hours=6)  # Координация каждые 6 часов
-        
+
         # Активные стратегии и статус координации
         self.active_strategies = {}
         self.coordination_status = "INITIALIZED"
@@ -181,40 +181,45 @@ class PortfolioCoordinator:
     async def coordinate_portfolio(self):
         """Основной метод координации портфеля стратегий."""
         logger.info("🚀 НАЧАЛО coordinate_portfolio")
-        
+
         try:
             logger.info("📊 Шаг 1: Вызываем _sync_with_strategy_engine")
             await self._sync_with_strategy_engine()
             logger.info("✅ Шаг 1 завершен")
-            
+
             logger.info("📊 Шаг 2: Вызываем _calculate_portfolio_weights")
             await self._calculate_portfolio_weights()
             logger.info("✅ Шаг 2 завершен")
-            
+
             logger.info("📊 Шаг 3: Вызываем _update_coordination_status")
             self._update_coordination_status()
             logger.info("✅ Шаг 3 завершен")
-            
+
             logger.info(f"📈 Координация завершена. Стратегий: {len(self.active_strategies)}")
-            
+
             return {
                 "success": True,
                 "strategies_count": len(self.active_strategies),
-                "total_weight": sum(getattr(s, 'weight', 0.0) for s in self.active_strategies.values()),
-                "coordination_status": self.coordination_status if isinstance(self.coordination_status, str) else self.coordination_status.value,
-                "last_coordination": self.last_coordination.isoformat() if self.last_coordination else None
+                "total_weight": sum(
+                    getattr(s, "weight", 0.0) for s in self.active_strategies.values()
+                ),
+                "coordination_status": (
+                    self.coordination_status
+                    if isinstance(self.coordination_status, str)
+                    else self.coordination_status.value
+                ),
+                "last_coordination": (
+                    self.last_coordination.isoformat() if self.last_coordination else None
+                ),
             }
-            
+
         except Exception as e:
             logger.error(f"❌ ОШИБКА в coordinate_portfolio: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
-            
-            return {
-                "success": False,
-                "error": str(e),
-                "strategies_count": 0
-            }
+
+            return {"success": False, "error": str(e), "strategies_count": 0}
 
     async def _gather_strategy_signals(self) -> Dict[str, TradingSignal]:
         """Собрать сигналы от всех стратегий в портфеле."""
@@ -248,107 +253,119 @@ class PortfolioCoordinator:
     async def _sync_with_strategy_engine(self):
         """Синхронизация с Strategy Engine для получения активных стратегий."""
         logger.info("🔄 Начинаем синхронизацию с Strategy Engine")
-        
+
         try:
             logger.info("📊 Получаем Strategy Engine instance")
             strategy_engine = get_strategy_engine()
             logger.info(f"✅ Strategy Engine получен: {type(strategy_engine)}")
-            
+
             logger.info("📋 Получаем список стратегий")
             strategies = strategy_engine.get_all_strategies()
             logger.info(f"📊 Найдено стратегий: {len(strategies)}")
-            
+
             for strategy_id, strategy in strategies.items():
                 logger.info(f"🎯 Обрабатываем стратегию: {strategy_id}")
-            
+
             # Получаем все стратегии и проверяем их active_tickers
             all_strategies = self.strategy_engine.strategies
             active_strategies = {}
-            
+
             for strategy_id, strategy_obj in all_strategies.items():
-                active_tickers = getattr(strategy_obj, 'active_tickers', [])
-                logger.info(f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})")
+                active_tickers = getattr(strategy_obj, "active_tickers", [])
+                logger.info(
+                    f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})"
+                )
                 if active_tickers:
                     self.active_strategies[strategy_id] = strategy_obj
                     logger.info(f"Стратегия {strategy_id} добавлена как активная")
-                    logger.info(f"🔍 DEBUG: self.active_strategies размер: {len(self.active_strategies)}")
-                    logger.info(f"🔍 DEBUG: self.active_strategies keys: {list(self.active_strategies.keys())}")
-            
-            logger.info(f"Strategy Engine содержит {len(self.active_strategies)} активных стратегий")
-            
+                    logger.info(
+                        f"🔍 DEBUG: self.active_strategies размер: {len(self.active_strategies)}"
+                    )
+                    logger.info(
+                        f"🔍 DEBUG: self.active_strategies keys: {list(self.active_strategies.keys())}"
+                    )
+
+            logger.info(
+                f"Strategy Engine содержит {len(self.active_strategies)} активных стратегий"
+            )
+
             for strategy_id, strategy_obj in self.active_strategies.items():
                 # Получаем активные тикеры из стратегии
-                if hasattr(strategy_obj, 'active_tickers'):
+                if hasattr(strategy_obj, "active_tickers"):
                     active_tickers = strategy_obj.active_tickers
                 else:
-                    active_tickers = ['SBER']  # Fallback
-                
+                    active_tickers = ["SBER"]  # Fallback
+
                 # Добавляем каждый тикер в портфель
                 for ticker in active_tickers:
                     allocation_key = f"{strategy_id}_{ticker}"
-                    
+
                     # Добавляем стратегию в портфель если её нет
                     if allocation_key not in self.strategy_allocations:
                         success = self.add_strategy_to_portfolio(strategy_id, ticker)
                         if success:
                             logger.info(f"Auto-sync: добавлена стратегия {allocation_key}")
-            
-            logger.info(f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}")
-            
+
+            logger.info(
+                f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}"
+            )
+
         except Exception as e:
             logger.error(f"Ошибка синхронизации с Strategy Engine: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     async def _calculate_portfolio_weights(self):
         """Расчет и обновление весов стратегий в портфеле."""
         logger.info("⚖️ Начинаем расчет весов портфеля")
-        
+
         try:
             if not self.strategy_allocations:
                 logger.info("Нет стратегий для расчета весов")
                 return
-            
+
             # Получаем сигналы от всех стратегий
             strategy_signals = await self._gather_strategy_signals()
             logger.info(f"Получено {len(strategy_signals)} сигналов")
-            
+
             # Обновляем метрики производительности
             await self._update_performance_metrics()
-            
+
             # Проверяем необходимость ребалансировки
             if self._check_rebalance_needed():
                 logger.info("Требуется ребалансировка портфеля")
                 await self._execute_rebalancing()
-            
+
             # Агрегируем сигналы по тикерам
             aggregated_signals = self._aggregate_signals(strategy_signals)
-            
+
             # Генерируем рекомендации
             recommendations = self._generate_recommendations(aggregated_signals)
-            
+
             logger.info(f"Веса портфеля обновлены. Рекомендаций: {len(recommendations)}")
-            
+
             # Сохраняем информацию о расчете весов
             self._last_weight_calculation = {
                 "timestamp": datetime.now(),
                 "strategies_count": len(self.strategy_allocations),
                 "signals_count": len(strategy_signals),
-                "recommendations": recommendations
+                "recommendations": recommendations,
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка расчета весов портфеля: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _update_coordination_status(self):
         """Обновление статуса координации портфеля."""
         logger.info("📋 Обновляем статус координации")
-        
+
         try:
             self.last_coordination = datetime.now()
-            
+
             # Определяем статус координации
             if not self.enabled:
                 coordination_status = "DISABLED"
@@ -358,21 +375,21 @@ class PortfolioCoordinator:
                 coordination_status = "SINGLE_STRATEGY"
             else:
                 coordination_status = "ACTIVE"
-            
+
             # Сохраняем статус
             self.coordination_status = coordination_status
-            
+
             # Инициализируем active_strategies если не существует
-            if not hasattr(self, 'active_strategies'):
+            if not hasattr(self, "active_strategies"):
                 self.active_strategies = {}
-            
+
             # Обновляем список активных стратегий
             for allocation_key, allocation in self.strategy_allocations.items():
                 if allocation.weight > 0:
                     self.active_strategies[allocation_key] = allocation
-            
+
             logger.info(f"Статус координации обновлен: {coordination_status}")
-            
+
         except Exception as e:
             logger.error(f"Ошибка обновления статуса координации: {e}")
 
@@ -433,7 +450,9 @@ class PortfolioCoordinator:
 
                 if ticker_position and total_value > 0:
                     allocation.current_allocation = ticker_position["total_value"] / total_value
-                    allocation.performance_score = ticker_position.get("unrealized_pnl_percent", 0.0)
+                    allocation.performance_score = ticker_position.get(
+                        "unrealized_pnl_percent", 0.0
+                    )
                 else:
                     allocation.current_allocation = 0.0
                     allocation.performance_score = 0.0
@@ -522,12 +541,11 @@ class PortfolioCoordinator:
         total_allocation = sum(a.current_allocation for a in self.strategy_allocations.values())
         cash_allocation = max(0, 1.0 - total_allocation)
 
-        avg_performance = (
-            sum(a.performance_score for a in self.strategy_allocations.values())
-            / max(1, total_strategies)
-        )
-        avg_risk = (
-            sum(a.risk_score for a in self.strategy_allocations.values()) / max(1, total_strategies)
+        avg_performance = sum(
+            a.performance_score for a in self.strategy_allocations.values()
+        ) / max(1, total_strategies)
+        avg_risk = sum(a.risk_score for a in self.strategy_allocations.values()) / max(
+            1, total_strategies
         )
 
         last_rebalance = max(

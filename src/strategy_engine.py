@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional
 from ai_signal_integration import AISignalIntegration
 from news_analyzer import get_news_analyzer
 from portfolio_manager import PortfolioManager
-from technical_analysis import get_technical_analyzer
 from strategy_state_manager import get_strategy_state_manager
+from technical_analysis import get_technical_analyzer
 
 logger = logging.getLogger(__name__)
 
@@ -312,22 +312,22 @@ class StrategyEngine:
         try:
             state_manager = get_strategy_state_manager()
             active_strategies = state_manager.get_all_active_strategies()
-            
+
             restored_count = 0
             for strategy_id, tickers in active_strategies.items():
                 if strategy_id in self.strategies:
                     strategy = self.strategies[strategy_id]
-                    if not hasattr(strategy, 'active_tickers'):
+                    if not hasattr(strategy, "active_tickers"):
                         strategy.active_tickers = []
                     strategy.active_tickers = tickers
                     restored_count += 1
                     logger.info(f"Восстановлено состояние {strategy_id}: {len(tickers)} тикеров")
-            
+
             if restored_count > 0:
                 logger.info(f"Восстановлено состояние {restored_count} стратегий")
             else:
                 logger.info("Нет сохраненного состояния стратегий")
-                
+
         except Exception as e:
             logger.error(f"Ошибка восстановления состояния стратегий: {e}")
 
@@ -348,11 +348,11 @@ class StrategyEngine:
     def start_strategy(self, strategy_id: str, tickers: List[str]) -> Dict[str, Any]:
         """
         Запустить стратегию для указанных тикеров.
-        
+
         Args:
             strategy_id: Идентификатор стратегии
             tickers: Список тикеров
-            
+
         Returns:
             Результат запуска стратегии
         """
@@ -360,42 +360,39 @@ class StrategyEngine:
             return {
                 "success": False,
                 "message": f"Стратегия {strategy_id} не найдена",
-                "available_strategies": list(self.strategies.keys())
+                "available_strategies": list(self.strategies.keys()),
             }
-        
+
         strategy = self.strategies[strategy_id]
-        
+
         try:
             # Обновляем active_tickers стратегии
-            if not hasattr(strategy, 'active_tickers'):
+            if not hasattr(strategy, "active_tickers"):
                 strategy.active_tickers = []
-            
+
             # Добавляем новые тикеры
             for ticker in tickers:
                 if ticker not in strategy.active_tickers:
                     strategy.active_tickers.append(ticker)
-            
+
             # Сохраняем состояние через State Manager
             state_manager = get_strategy_state_manager()
             state_manager.start_strategy(strategy_id, tickers)
-            
+
             logger.info(f"Стратегия {strategy.name} запущена")
             logger.info(f"Стратегия {strategy_id} запущена для тикеров: {tickers}")
-            
+
             return {
                 "success": True,
                 "message": f"Стратегия {strategy.name} запущена для {len(tickers)} тикеров",
                 "strategy_name": strategy.name,
                 "tickers": tickers,
-                "total_active_tickers": len(strategy.active_tickers)
+                "total_active_tickers": len(strategy.active_tickers),
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка запуска стратегии {strategy_id}: {e}")
-            return {
-                "success": False,
-                "message": f"Ошибка: {str(e)}"
-            }
+            return {"success": False, "message": f"Ошибка: {str(e)}"}
 
     def stop_strategy(self, strategy_id: str) -> bool:
         """Остановка стратегии."""
