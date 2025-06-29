@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 from rss_parser import RSSParser
 
@@ -172,7 +172,8 @@ class NewsAnalyzerWithFallback:
         message += f"📈 Новостей: {news_count}\n"
         message += f"{reliability_emoji} Надежность: {reliability}\n"
         message += f"📡 Источник: RSS резерв\n\n"
-        message += f"💬 {analysis_result.get('news_summary', 'Резюме недоступно')}\n\n"
+        summary = analysis_result.get('news_summary', 'Резюме недоступно')
+        message += f"💬 {summary}\n\n"
         message += "⚠️ Использован резервный RSS источник"
 
         return message
