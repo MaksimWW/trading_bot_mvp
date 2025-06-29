@@ -257,10 +257,13 @@ class PortfolioCoordinator:
             strategies = self._get_strategies_from_engine(strategy_engine)
             self._process_strategy_sync(strategies)
             self._add_strategies_to_portfolio()
-            logger.info(f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}")
+            logger.info(
+                f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}"
+            )
         except Exception as e:
             logger.error(f"Ошибка синхронизации с Strategy Engine: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _get_strategy_engine_instance(self):
@@ -281,21 +284,23 @@ class PortfolioCoordinator:
         """Обработка синхронизации стратегий."""
         for strategy_id, strategy in strategies.items():
             logger.info(f"🎯 Обрабатываем стратегию: {strategy_id}")
-        
+
         all_strategies = self.strategy_engine.strategies
         for strategy_id, strategy_obj in all_strategies.items():
             active_tickers = getattr(strategy_obj, "active_tickers", [])
-            logger.info(f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})")
+            logger.info(
+                f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})"
+            )
             if active_tickers:
                 logger.info(f"Стратегия {strategy_id} добавлена как активная")
 
     def _add_strategies_to_portfolio(self):
         """Добавление активных стратегий в портфель."""
         logger.info(f"Strategy Engine содержит {len(self.active_strategies)} активных стратегий")
-        
+
         for strategy_id, strategy_obj in self.active_strategies.items():
             active_tickers = getattr(strategy_obj, "active_tickers", ["SBER"])
-            
+
             for ticker in active_tickers:
                 allocation_key = f"{strategy_id}_{ticker}"
                 if allocation_key not in self.strategy_allocations:
