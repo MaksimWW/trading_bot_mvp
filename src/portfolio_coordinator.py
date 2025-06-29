@@ -269,7 +269,7 @@ class PortfolioCoordinator:
                 active_tickers = getattr(strategy_obj, 'active_tickers', [])
                 logger.info(f"Проверка стратегии {strategy_id}: {len(active_tickers)} тикеров ({active_tickers})")
                 if active_tickers:
-                    active_strategies[strategy_id] = strategy_obj
+                    self.active_strategies[strategy_id] = strategy_obj
                     logger.info(f"Стратегия {strategy_id} добавлена как активная")
                     logger.info(f"🔍 DEBUG: self.active_strategies размер: {len(self.active_strategies)}")
                     logger.info(f"🔍 DEBUG: self.active_strategies keys: {list(self.active_strategies.keys())}")
