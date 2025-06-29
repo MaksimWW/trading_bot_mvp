@@ -66,6 +66,7 @@ class PortfolioCoordinator:
 
     def __init__(self):
         """Инициализация координатора портфеля."""
+        from strategy_engine import get_strategy_engine
         self.strategy_engine = get_strategy_engine()
         self.strategy_executor = get_strategy_executor()
         self.portfolio_manager = get_portfolio_manager()
