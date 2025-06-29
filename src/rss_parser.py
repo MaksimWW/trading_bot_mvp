@@ -35,14 +35,18 @@ class RSSParser:
         self.session = None
         self.feeds = {
             'rbc': [
-                'https://rssexport.rbc.ru/rbcnews/news/20/full.rss',
-                'https://rssexport.rbc.ru/rbcnews/news/30/full.rss',
+                'https://rbc.ru/v10/ajax/get-news-feed/project/rbcnews.ru/region/77',
+                'https://quote.rbc.ru/news/export.rss',
             ],
             'finam': [
-                'https://www.finam.ru/analysis/export/rss_analysis.xml',
+                'https://www.finam.ru/profiles/rss-news/',
             ],
             'investing': [
                 'https://ru.investing.com/rss/news.rss',
+                'https://ru.investing.com/rss/news_285.rss',
+            ],
+            'interfax': [
+                'https://www.interfax.ru/rss.asp',
             ],
         }
         
@@ -71,15 +75,26 @@ class RSSParser:
             await self.session.close()
     
     async def fetch_feed(self, url: str) -> Optional[feedparser.FeedParserDict]:
-        """Получение RSS ленты"""
+        """Получение RSS ленты с retry логикой"""
         try:
-            async with self.session.get(url) as response:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            async with self.session.get(url, headers=headers, ssl=False) as response:
                 if response.status == 200:
                     content = await response.text()
-                    return feedparser.parse(content)
+                    parsed_feed = feedparser.parse(content)
+                    
+                    if hasattr(parsed_feed, 'entries') and len(parsed_feed.entries) > 0:
+                        return parsed_feed
+                    else:
+                        logger.warning(f"Empty or invalid feed: {url}")
+                        return None
                 else:
                     logger.warning(f"Failed to fetch {url}: HTTP {response.status}")
                     return None
+                    
         except Exception as e:
             logger.error(f"Error fetching RSS feed {url}: {e}")
             return None
