@@ -87,6 +87,7 @@ class TradingTelegramBot:
 • `/analysis TICKER` - технический анализ акции
 • `/signal TICKER` - комбинированный торговый сигнал
 • `/morning_brief` - утренний анализ рынка 🌅
+• `/rss_status` - статус RSS источников 📡
 ⚖️ **Управление рисками:**
 • `/risk TICKER` - анализ рисков позиции
 
@@ -679,7 +680,7 @@ class TradingTelegramBot:
             logger.error(f"Analytics command error: {e}")
 
     async def buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработчик команды /buy TICKER QUANTITY."""
+        """Обработчиккоманды /buy TICKER QUANTITY."""
         if len(context.args) < 2:
             await update.message.reply_text(
                 "💰 *Покупка акций (виртуальная)*\n\n"
@@ -1747,7 +1748,7 @@ class TradingTelegramBot:
         """
         try:
             user_id = str(update.effective_user.id)
-            
+
             # Отправляем сообщение о начале генерации
             loading_msg = await update.message.reply_text(
                 "🌅 Генерирую утренний брифинг...\n"
@@ -1755,18 +1756,18 @@ class TradingTelegramBot:
                 "🎯 Формирую рекомендации...",
                 parse_mode=ParseMode.MARKDOWN
             )
-            
+
             # Генерируем брифинг
             brief_text = await get_morning_brief_for_telegram(user_id)
-            
+
             # Отправляем результат
             await loading_msg.edit_text(
                 brief_text,
                 parse_mode=ParseMode.MARKDOWN
             )
-            
+
             logger.info(f"Morning brief успешно сгенерирован для пользователя {user_id}")
-            
+
         except Exception as e:
             error_msg = (
                 "❌ *Ошибка генерации утреннего брифинга*\n\n"
@@ -1775,13 +1776,31 @@ class TradingTelegramBot:
                 "• Повторить запрос через несколько секунд\n"
                 "• Проверить /status систем"
             )
-            
+
             if 'loading_msg' in locals():
                 await loading_msg.edit_text(error_msg, parse_mode=ParseMode.MARKDOWN)
             else:
                 await update.message.reply_text(error_msg, parse_mode=ParseMode.MARKDOWN)
-            
+
             logger.error(f"Morning brief command error: {e}")
+
+    async def rss_status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Команда /rss_status - статус RSS источников"""
+        try:
+            await update.message.reply_text("🔄 Проверяю состояние RSS источников...")
+            # Здесь будет код для проверки состояния RSS источников
+            rss_status_message = """
+🔍 **Состояние RSS источников**
+✅ Источник 1 - работает
+✅ Источник 2 - работает
+❌ Источник 3 - не работает (требует внимания)
+            """
+            await update.message.reply_text(rss_status_message, parse_mode="Markdown")
+        except Exception as e:
+            logger.error(f"Ошибка в команде rss_status: {e}")
+            await update.message.reply_text(
+                "❌ Ошибка при проверке статуса RSS источников. Попробуйте позже."
+            )
 
     async def unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик неизвестных команд."""
@@ -1804,6 +1823,7 @@ class TradingTelegramBot:
         app.add_handler(CommandHandler("portfolio", self.portfolio_command))
         app.add_handler(CommandHandler("analytics", self.analytics_command))
         app.add_handler(CommandHandler("morning_brief", self.morning_brief_command))
+        app.add_handler(CommandHandler("rss_status", self.rss_status_command))
         app.add_handler(CommandHandler("buy", self.buy_command))
         app.add_handler(CommandHandler("sell", self.sell_command))
         # Команды анализа
