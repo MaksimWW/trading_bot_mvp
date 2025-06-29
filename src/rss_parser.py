@@ -310,8 +310,6 @@ class RSSParser:
 
     def _calculate_relevance(self, news: NewsItem, keywords: List[str]) -> float:
         """Расчет релевантности новости"""
-        text = f"{news.title} {news.description}".lower()
-
         score = 0.0
         for keyword in keywords:
             keyword_lower = keyword.lower()

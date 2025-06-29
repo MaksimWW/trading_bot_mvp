@@ -271,7 +271,7 @@ class MorningBriefGenerator:
 
         if news_list:
             top_sources = set([news.get("source", "N/A") for news in news_list[:5]])
-            overview += f"Основные источники: {', '.join(list(top_sources)[:3])}."
+            overview += "Основные источники: " + ", ".join(list(top_sources)[:3]) + "."
 
         return overview
 
