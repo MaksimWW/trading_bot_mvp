@@ -256,9 +256,21 @@ class PortfolioCoordinator:
         return signals
 
     async def _sync_with_strategy_engine(self):
-        """Синхронизация с активными стратегиями из Strategy Engine."""
+        """Синхронизация с Strategy Engine для получения активных стратегий."""
+        logger.info("🔄 Начинаем синхронизацию с Strategy Engine")
+        
         try:
-            logger.info("🔄 Начинаем синхронизацию с Strategy Engine")
+            logger.info("📊 Получаем Strategy Engine instance")
+            strategy_engine = get_strategy_engine()
+            logger.info(f"✅ Strategy Engine получен: {type(strategy_engine)}")
+            
+            logger.info("📋 Получаем список стратегий")
+            strategies = strategy_engine.get_strategies()
+            logger.info(f"📊 Найдено стратегий: {len(strategies)}")
+            
+            for strategy_id, strategy in strategies.items():
+                logger.info(f"🎯 Обрабатываем стратегию: {strategy_id}")
+            
             # Получаем все стратегии и проверяем их active_tickers
             all_strategies = self.strategy_engine.strategies
             active_strategies = {}
