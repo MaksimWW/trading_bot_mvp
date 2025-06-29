@@ -1,0 +1,302 @@
+Отредактируй файл src/telegram_bot.py. Найди метод setup_handlers и добавь перед строкой с add_error_handler новые команды:
+
+        # Portfolio coordination commands
+        app.add_handler(CommandHandler("portfolio_strategies", self.portfolio_strategies_command))
+        app.add_handler(CommandHandler("strategy_weights", self.strategy_weights_command))
+        app.add_handler(CommandHandler("coordinate_portfolio", self.coordinate_portfolio_command))
+        app.add_handler(CommandHandler("portfolio_performance", self.portfolio_performance_command))
+
+Также добавь в импорты в начале файла:
+
+from portfolio_coordinator import get_portfolio_coordinator
+
+А в __init__ метод добавь:
+
+        self.portfolio_coordinator = get_portfolio_coordinator()
+
+И добавь эти новые методы в класс TradingTelegramBot перед методом unknown_command:
+
+    async def portfolio_strategies_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /portfolio_strategies."""
+        try:
+            coordinator = self.portfolio_coordinator
+            allocations = coordinator.get_strategy_allocations()
+            status = coordinator.get_portfolio_status()
+            
+            if not allocations:
+                text = """
+📊 *ПОРТФЕЛЬ СТРАТЕГИЙ*
+
+❌ В портфеле нет активных стратегий
+
+💡 *Доступные команды:*
+- `/coordinate_portfolio` - запустить координацию
+- `/strategy_weights` - управление весами
+- `/portfolio_performance` - производительность
+
+*Для добавления стратегий используйте существующие команды Strategy Engine.*
+                """
+            else:
+                text = f"""
+📊 *АКТИВНЫЕ СТРАТЕГИИ ПОРТФЕЛЯ*
+
+📈 *Общий статус:*
+- Всего стратегий: {status.total_strategies}
+- Активных: {status.active_strategies}
+- Средняя производительность: {status.performance_score:.2%}
+- Денежные средства: {status.cash_allocation:.1%}
+
+"""
+                
+                for i, (key, allocation) in enumerate(allocations.items(), 1):
+                    strategy_name = allocation.strategy_id.replace('_', ' ').title()
+                    text += f"""
+🎯 *{i}. {strategy_name} ({allocation.ticker}):*
+- Вес в портфеле: {allocation.weight:.1%}
+- Целевое распределение: {allocation.target_allocation:.1%}
+- Текущее распределение: {allocation.current_allocation:.1%}
+- Производительность: {allocation.performance_score:.2%}
+- Последняя ребалансировка: {allocation.last_rebalance.strftime('%H:%M %d.%m')}
+
+"""
+                
+                text += f"""
+📊 *Координация:*
+- Статус: {'🟢 Включена' if coordinator.enabled else '🔴 Отключена'}
+- Метод весов: {coordinator.weight_method.value.replace('_', ' ').title()}
+- Последняя координация: {coordinator.last_coordination.strftime('%H:%M %d.%m') if coordinator.last_coordination else 'Не выполнялась'}
+
+💡 *Команды:*
+- `/coordinate_portfolio` - запустить координацию
+- `/strategy_weights` - настройки весов
+- `/portfolio_performance` - детальная аналитика
+                """
+            
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+            
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка получения стратегий портфеля: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Portfolio strategies command error: {e}")
+
+    async def strategy_weights_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /strategy_weights."""
+        try:
+            coordinator = self.portfolio_coordinator
+            allocations = coordinator.get_strategy_allocations()
+            
+            if not allocations:
+                text = """
+⚖️ *УПРАВЛЕНИЕ ВЕСАМИ СТРАТЕГИЙ*
+
+❌ В портфеле нет стратегий для управления весами
+
+💡 Сначала добавьте стратегии через команды Strategy Engine, затем используйте координацию портфеля.
+                """
+            else:
+                text = f"""
+⚖️ *ВЕСА СТРАТЕГИЙ В ПОРТФЕЛЕ*
+
+📊 *Текущий метод:* {coordinator.weight_method.value.replace('_', ' ').title()}
+🎯 *Порог ребалансировки:* {coordinator.rebalance_threshold:.1%}
+
+"""
+                
+                total_weight = sum(a.weight for a in allocations.values())
+                
+                for key, allocation in allocations.items():
+                    strategy_name = allocation.strategy_id.replace('_', ' ').title()
+                    weight_pct = allocation.weight * 100
+                    target_pct = allocation.target_allocation * 100
+                    current_pct = allocation.current_allocation * 100
+                    
+                    deviation = abs(current_pct - target_pct)
+                    status_emoji = "🟢" if deviation <= coordinator.rebalance_threshold * 100 else "🟡"
+                    
+                    text += f"""
+{status_emoji} *{strategy_name} ({allocation.ticker}):*
+- Текущий вес: {weight_pct:.1f}%
+- Целевое распределение: {target_pct:.1f}%
+- Фактическое распределение: {current_pct:.1f}%
+- Отклонение: {deviation:.1f}%
+
+"""
+                
+                text += f"""
+📊 *Итого распределено:* {total_weight:.1%}
+💰 *Свободные средства:* {(1-total_weight):.1%}
+
+💡 *Доступные действия:*
+- `/coordinate_portfolio` - выполнить ребалансировку
+- Автоматическая ребалансировка при отклонении > {coordinator.rebalance_threshold:.1%}
+                """
+            
+            await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+            
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ Ошибка получения весов стратегий: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Strategy weights command error: {e}")
+
+    async def coordinate_portfolio_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /coordinate_portfolio."""
+        loading_msg = await update.message.reply_text(
+            "🔄 Выполняем координацию портфеля...\n"
+            "📊 Анализируем стратегии и агрегируем сигналы...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            coordinator = self.portfolio_coordinator
+            
+            # Включаем координацию если она отключена
+            if not coordinator.enabled:
+                from portfolio_coordinator import StrategyWeight
+                coordinator.enable_coordination(StrategyWeight.EQUAL)
+            
+            # Выполняем координацию
+            result = await coordinator.coordinate_portfolio()
+            
+            if result["status"] == "success":
+                text = f"""
+✅ *КООРДИНАЦИЯ ПОРТФЕЛЯ ЗАВЕРШЕНА*
+
+📊 *Результаты:*
+- Обработано стратегий: {result['strategies_count']}
+- Агрегировано сигналов: {result['signals_aggregated']}
+- Ребалансировка: {'✅ Выполнена' if result['rebalance_executed'] else '➖ Не требовалась'}
+- Время выполнения: {result['timestamp'][-8:-3]}
+
+"""
+                
+                recommendations = result.get('recommendations', [])
+                if recommendations:
+                    text += "🎯 *Рекомендации:*\n"
+                    for rec in recommendations[:5]:  # Показываем первые 5
+                        text += f"• {rec}\n"
+                    
+                    if len(recommendations) > 5:
+                        text += f"• И ещё {len(recommendations) - 5} рекомендаций...\n"
+                else:
+                    text += "📋 *Рекомендации:* Нет активных торговых сигналов\n"
+                
+                text += f"""
+
+💡 *Следующие шаги:*
+- `/portfolio_strategies` - просмотр результатов
+- `/strategy_weights` - проверка распределения
+- `/portfolio_performance` - анализ производительности
+                """
+                
+            else:
+                text = f"""
+❌ *ОШИБКА КООРДИНАЦИИ ПОРТФЕЛЯ*
+
+Причина: {result.get('message', 'Неизвестная ошибка')}
+
+💡 Попробуйте:
+- Проверить активные стратегии: `/portfolio_strategies`
+- Проверить состояние системы: `/status`
+                """
+            
+            await loading_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+            
+        except Exception as e:
+            await loading_msg.edit_text(
+                f"❌ Ошибка координации портфеля: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Coordinate portfolio command error: {e}")
+
+    async def portfolio_performance_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды /portfolio_performance."""
+        loading_msg = await update.message.reply_text(
+            "📊 Анализируем производительность портфеля...",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+        try:
+            coordinator = self.portfolio_coordinator
+            status = coordinator.get_portfolio_status()
+            allocations = coordinator.get_strategy_allocations()
+            
+            if not allocations:
+                text = """
+📊 *ПРОИЗВОДИТЕЛЬНОСТЬ ПОРТФЕЛЯ*
+
+❌ В портфеле нет стратегий для анализа
+
+💡 Добавьте стратегии и дайте им поработать для получения метрик производительности.
+                """
+            else:
+                # Получаем аналитику портфеля
+                try:
+                    analytics = await self.portfolio_analytics.calculate_comprehensive_metrics()
+                except:
+                    analytics = None
+                
+                text = f"""
+📊 *ПРОИЗВОДИТЕЛЬНОСТЬ ПОРТФЕЛЯ*
+
+📈 *Общие метрики:*
+- Всего стратегий: {status.total_strategies}
+- Активных стратегий: {status.active_strategies}
+- Средняя производительность: {status.performance_score:.2%}
+- Средний риск: {status.risk_score:.2f}/1.0
+- Распределение активов: {status.total_allocation:.1%}
+
+"""
+                
+                if analytics and 'returns' in analytics:
+                    returns = analytics['returns']
+                    risk_metrics = analytics.get('risk_metrics', {})
+                    
+                    text += f"""
+💰 *Доходность:*
+- Общая доходность: {returns.get('total_return', 0):.2%}
+- Годовая доходность: {returns.get('annualized_return', 0):.2%}
+
+🛡️ *Риски:*
+- Волатильность: {risk_metrics.get('volatility', 0):.1%}
+- Максимальная просадка: {risk_metrics.get('max_drawdown', 0):.1%}
+- Sharpe ratio: {risk_metrics.get('sharpe_ratio', 0):.2f}
+
+"""
+                
+                # Производительность по стратегиям
+                text += "🎯 *По стратегиям:*\n"
+                for key, allocation in allocations.items():
+                    strategy_name = allocation.strategy_id.replace('_', ' ').title()
+                    perf_icon = "📈" if allocation.performance_score > 0 else "📉" if allocation.performance_score < 0 else "➖"
+                    risk_icon = "🟢" if allocation.risk_score < 0.3 else "🟡" if allocation.risk_score < 0.7 else "🔴"
+                    
+                    text += f"""
+{perf_icon} *{strategy_name} ({allocation.ticker}):*
+- Производительность: {allocation.performance_score:.2%}
+- Риск: {risk_icon} {allocation.risk_score:.2f}
+- Вес: {allocation.weight:.1%}
+
+"""
+                
+                text += f"""
+📅 *Временные метрики:*
+- Последняя ребалансировка: {status.last_rebalance.strftime('%H:%M %d.%m.%Y')}
+- Интервал координации: {coordinator.coordination_interval.total_seconds()/3600:.0f} часов
+
+💡 *Команды для улучшения:*
+- `/coordinate_portfolio` - оптимизация распределения
+- `/strategy_weights` - настройка весов
+                """
+            
+            await loading_msg.edit_text(text, parse_mode=ParseMode.MARKDOWN)
+            
+        except Exception as e:
+            await loading_msg.edit_text(
+                f"❌ Ошибка анализа производительности: {str(e)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.error(f"Portfolio performance command error: {e}")
