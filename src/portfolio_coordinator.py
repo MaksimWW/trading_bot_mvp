@@ -260,16 +260,33 @@ class PortfolioCoordinator:
             # Получаем активные стратегии из Strategy Engine
             active_strategies = self.strategy_engine.active_strategies
             
-            for strategy_id, strategy_info in active_strategies.items():
-                # Для каждого тикера в стратегии
-                for ticker in strategy_info.get('tickers', []):
-                    allocation_key = f"{strategy_id}_{ticker}"
-                    
-                    # Добавляем стратегию в портфель если её нет
-                    if allocation_key not in self.strategy_allocations:
-                        success = self.add_strategy_to_portfolio(strategy_id, ticker)
-                        if success:
-                            logger.info(f"Auto-sync: добавлена стратегия {allocation_key}")
+            logger.info(f"Strategy Engine содержит {len(active_strategies)} активных стратегий")
+            
+            for strategy_id, strategy_obj in active_strategies.items():
+                # Получаем поддерживаемые тикеры из объекта стратегии
+                if hasattr(strategy_obj, 'supported_tickers'):
+                    supported_tickers = strategy_obj.supported_tickers
+                elif hasattr(strategy_obj, 'tickers'):
+                    supported_tickers = strategy_obj.tickers
+                else:
+                    # Fallback - используем стандартные тикеры
+                    supported_tickers = ['SBER', 'GAZP', 'YNDX', 'LKOH']
+                
+                # Для каждого поддерживаемого тикера проверяем, есть ли активные сигналы
+                for ticker in supported_tickers:
+                    try:
+                        # Проверяем есть ли сигналы для этого тикера
+                        signals = await self.strategy_engine.execute_strategy_signals(ticker)
+                        if signals and len(signals.get('signals', [])) > 0:
+                            allocation_key = f"{strategy_id}_{ticker}"
+                            
+                            # Добавляем стратегию в портфель если её нет
+                            if allocation_key not in self.strategy_allocations:
+                                success = self.add_strategy_to_portfolio(strategy_id, ticker)
+                                if success:
+                                    logger.info(f"Auto-sync: добавлена стратегия {allocation_key}")
+                    except Exception as e:
+                        logger.debug(f"Не удалось получить сигналы для {strategy_id}/{ticker}: {e}")
             
             logger.info(f"Синхронизация завершена. Стратегий в портфеле: {len(self.strategy_allocations)}")
             
